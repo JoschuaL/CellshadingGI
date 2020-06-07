@@ -242,19 +242,20 @@ void HelloVulkan::loadModel(const std::string& filename, nvmath::mat4f transform
   model.nbIndices  = static_cast<uint32_t>(loader.m_indices.size());
   model.nbVertices = static_cast<uint32_t>(loader.m_vertices.size());
 
-
+  std::vector<AreaLight> lights = {};
   for(int i = 0; i < loader.m_matIndx.size(); i++){
     int id = loader.m_matIndx[i];
     const MaterialObj& mat = loader.m_materials[id];
     if(mat.emission.x > 0.f || mat.emission.y > 0.f || mat.emission.z > 0.f){
       const AreaLight light = {mat.emission, loader.m_vertices[loader.m_indices[3 * i + 0]].pos,
                                loader.m_vertices[loader.m_indices[3 * i + 1]].pos,
-                               loader.m_vertices[loader.m_indices[3 * i + 2]].pos};
-      m_AreaLights.push_back(light);
+                               loader.m_vertices[loader.m_indices[3 * i + 2]].pos, 0};
+      lights.push_back(light);
       std::cout << mat.emission.x << ','  << mat.emission.y << ','  << mat.emission.z << std::endl;
     }
   }
-
+  lights[lights.size()-1].last = 1;
+  m_AreaLightsPerObject.push_back(lights);
   // Create the buffers on Device and copy vertices, indices and materials
   nvvk::CommandPool cmdBufGet(m_device, m_graphicsQueueIndex);
   vk::CommandBuffer cmdBuf = cmdBufGet.createCommandBuffer();
@@ -267,7 +268,7 @@ void HelloVulkan::loadModel(const std::string& filename, nvmath::mat4f transform
   model.matColorBuffer = m_alloc.createBuffer(cmdBuf, loader.m_materials, vkBU::eStorageBuffer);
   model.matIndexBuffer = m_alloc.createBuffer(cmdBuf, loader.m_matIndx, vkBU::eStorageBuffer);
 
-  model.lightBuffer = m_alloc.createBuffer(cmdBuf, m_AreaLights, vkBU::eStorageBuffer);
+  model.lightBuffer = m_alloc.createBuffer(cmdBuf, m_AreaLightsPerObject[m_AreaLightsPerObject.size()-1], vkBU::eStorageBuffer);
   // Creates all textures found
   createTextureImages(cmdBuf, loader.m_textures);
   cmdBufGet.submitAndWait(cmdBuf);
@@ -920,7 +921,7 @@ void HelloVulkan::raytrace(const vk::CommandBuffer& cmdBuf, const nvmath::vec4f&
   m_rtPushConstants.lightPosition  = m_pushConstant.lightPosition;
   m_rtPushConstants.lightColor = m_pushConstant.lightColor;
   m_rtPushConstants.lightType      = m_pushConstant.lightType;
-  m_rtPushConstants.numLights = m_AreaLights.size();
+  m_rtPushConstants.numObjs = m_AreaLightsPerObject.size();
 
   cmdBuf.bindPipeline(vk::PipelineBindPoint::eRayTracingKHR, m_rtPipeline);
   cmdBuf.bindDescriptorSets(vk::PipelineBindPoint::eRayTracingKHR, m_rtPipelineLayout, 0,

@@ -166,7 +166,7 @@ public:
   vk::PipelineLayout                                  m_rtPipelineLayout;
   vk::Pipeline                                        m_rtPipeline;
   nvvk::Buffer                                        m_rtSBTBuffer;
-  std::vector<AreaLight>     m_AreaLights = std::vector<AreaLight>();
+  std::vector<std::vector<AreaLight>>     m_AreaLightsPerObject = {};
 
   struct RtPushConstant
   {
@@ -174,6 +174,6 @@ public:
     nvmath::vec4f lightColor;
     nvmath::vec3f lightPosition;
     LightType     lightType;
-    int           numLights;
+    int           numObjs;
   } m_rtPushConstants;
 };

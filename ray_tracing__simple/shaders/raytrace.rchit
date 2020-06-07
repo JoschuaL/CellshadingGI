@@ -29,7 +29,7 @@ layout(push_constant) uniform Constants
   vec4 clearColor;
   vec4 lightColor;
   vec4 lightPosition;
-  int  numLights;
+  int  numObjs;
 }
 pushC;
 
@@ -130,39 +130,48 @@ void main()
   }*/
 
   vec3 lightsColor = vec3(0.0, 0.0, 0.0);
-  for(int i = 0; i < pushC.numLights; i++)
-  {
-    AreaLight li = lights[0].l[i];
+  for(int i = 0; i < pushC.numObjs; i++){
+    int j = 0;
+    while(true)
+    {
+      AreaLight li = lights[0].l[j];
 
-    vec3  pos  = li.v0.xyz + (0.5 * (li.v1.xyz - li.v0.xyz)) + (0.5 * (li.v2.xyz - li.v0.xyz));
-    float inv  = 1.0 / 3.0;
-    vec3  ldir = pos - worldPos;
-    float dist = length(ldir);
-    vec3  L    = normalize(ldir);
+      vec3  pos  = li.v0.xyz + (0.5 * (li.v1.xyz - li.v0.xyz)) + (0.5 * (li.v2.xyz - li.v0.xyz));
+      float inv  = 1.0 / 3.0;
+      vec3  ldir = pos - worldPos;
+      float dist = length(ldir);
+      vec3  L    = normalize(ldir);
 
 
-    float tMin   = 0.001;
-    float tMax   = dist;
-    vec3  origin = gl_WorldRayOriginEXT + gl_WorldRayDirectionEXT * gl_HitTEXT;
-    vec3  rayDir = L;
-    uint  flags  = gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsOpaqueEXT
-                 | gl_RayFlagsSkipClosestHitShaderEXT;
-    isShadowed = true;
-    traceRayEXT(topLevelAS,  // acceleration structure
-                flags,       // rayFlags
-                0xFF,        // cullMask
-                0,           // sbtRecordOffset
-                0,           // sbtRecordStride
-                1,           // missIndex
-                origin,      // ray origin
-                tMin,        // ray min range
-                rayDir,      // ray direction
-                tMax,        // ray max range
-                1            // payload (location = 1)
-    );
-    float attenuation = isShadowed ? 0.0 : 0.01;
-    lightsColor += (li.color.xyz * attenuation) / (dist * dist);
+      float tMin   = 0.001;
+      float tMax   = dist;
+      vec3  origin = gl_WorldRayOriginEXT + gl_WorldRayDirectionEXT * gl_HitTEXT;
+      vec3  rayDir = L;
+      uint  flags  = gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsOpaqueEXT
+                   | gl_RayFlagsSkipClosestHitShaderEXT;
+      isShadowed = true;
+      traceRayEXT(topLevelAS,  // acceleration structure
+                  flags,       // rayFlags
+                  0xFF,        // cullMask
+                  0,           // sbtRecordOffset
+                  0,           // sbtRecordStride
+                  1,           // missIndex
+                  origin,      // ray origin
+                  tMin,        // ray min range
+                  rayDir,      // ray direction
+                  tMax,        // ray max range
+                  1            // payload (location = 1)
+      );
+      float attenuation = isShadowed ? 0.0 : 0.01;
+      lightsColor += (li.color.xyz * attenuation) / (dist * dist);
+      j++;
+      if(floatBitsToInt(li.v2.w) == 1)
+      {
+        break;
+      }
+    }
   }
+  
 
   prd.hitValue = lightsColor;
 }
