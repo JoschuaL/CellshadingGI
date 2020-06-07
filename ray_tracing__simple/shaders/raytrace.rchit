@@ -13,21 +13,23 @@ layout(location = 0) rayPayloadInEXT hitPayload prd;
 layout(location = 1) rayPayloadEXT bool isShadowed;
 
 layout(binding = 0, set = 0) uniform accelerationStructureEXT topLevelAS;
+
 layout(binding = 1, set = 1, scalar) buffer MatColorBufferObject { WaveFrontMaterial m[]; } materials[];
 layout(binding = 2, set = 1, scalar) buffer ScnDesc { sceneDesc i[]; } scnDesc;
 layout(binding = 3, set = 1) uniform sampler2D textureSamplers[];
 layout(binding = 4, set = 1)  buffer MatIndexColorBuffer { int i[]; } matIndex[];
 layout(binding = 5, set = 1, scalar) buffer Vertices { Vertex v[]; } vertices[];
 layout(binding = 6, set = 1) buffer Indices { uint i[]; } indices[];
+layout(binding = 7, set = 1) buffer AreaLightsBuffer { AreaLight l[]; } lights[];
 
 // clang-format on
 
 layout(push_constant) uniform Constants
 {
-  vec4  clearColor;
-  vec3  lightPosition;
-  float lightIntensity;
-  int   lightType;
+  vec4 clearColor;
+  vec4 lightColor;
+  vec4 lightPosition;
+  int  numLights;
 }
 pushC;
 
@@ -51,8 +53,8 @@ void main()
   // Computing the normal at hit position
   vec3 normal = v0.nrm * barycentrics.x + v1.nrm * barycentrics.y + v2.nrm * barycentrics.z;
   // Transforming the normal to world space
-  normal = normalize(vec3(scnDesc.i[gl_InstanceID].transfoIT * vec4(normal, 0.0)));
-
+  normal        = normalize(vec3(scnDesc.i[gl_InstanceID].transfoIT * vec4(normal, 0.0)));
+  int lightType = floatBitsToInt(pushC.lightPosition.w);
 
   // Computing the coordinates of the hit position
   vec3 worldPos = v0.pos * barycentrics.x + v1.pos * barycentrics.y + v2.pos * barycentrics.z;
@@ -60,20 +62,20 @@ void main()
   worldPos = vec3(scnDesc.i[gl_InstanceID].transfo * vec4(worldPos, 1.0));
 
   // Vector toward the light
-  vec3  L;
-  float lightIntensity = pushC.lightIntensity;
-  float lightDistance  = 100000.0;
+  /*vec3  L;
+  vec4  lightColor    = pushC.lightColor;
+  float lightDistance = 100000.0;
   // Point light
-  if(pushC.lightType == 0)
+  if(lightType == 0)
   {
-    vec3 lDir      = pushC.lightPosition - worldPos;
+    vec3 lDir      = pushC.lightPosition.xyz - worldPos;
     lightDistance  = length(lDir);
-    lightIntensity = pushC.lightIntensity / (lightDistance * lightDistance);
+    lightColor.xyz = pushC.lightColor.xyz / (lightDistance * lightDistance);
     L              = normalize(lDir);
   }
   else  // Directional light
   {
-    L = normalize(pushC.lightPosition - vec3(0));
+    L = normalize(pushC.lightPosition.xyz - vec3(0));
   }
 
   // Material of the object
@@ -97,7 +99,7 @@ void main()
   // Tracing shadow ray only if the light is visible from the surface
   if(dot(normal, L) > 0)
   {
-    float tMin   = 0.001;
+    float tMin   = 0.01;
     float tMax   = lightDistance;
     vec3  origin = gl_WorldRayOriginEXT + gl_WorldRayDirectionEXT * gl_HitTEXT;
     vec3  rayDir = L;
@@ -116,17 +118,51 @@ void main()
                 tMax,        // ray max range
                 1            // payload (location = 1)
     );
-
+    int cell_levels = 10;
     if(isShadowed)
     {
       attenuation = 0.3;
     }
     else
     {
-      // Specular
       specular = computeSpecular(mat, gl_WorldRayDirectionEXT, L, normal);
     }
+  }*/
+
+  vec3 lightsColor = vec3(0.0, 0.0, 0.0);
+  for(int i = 0; i < pushC.numLights; i++)
+  {
+    AreaLight li = lights[0].l[i];
+
+    vec3  pos  = li.v0.xyz + (0.5 * (li.v1.xyz - li.v0.xyz)) + (0.5 * (li.v2.xyz - li.v0.xyz));
+    float inv  = 1.0 / 3.0;
+    vec3  ldir = pos - worldPos;
+    float dist = length(ldir);
+    vec3  L    = normalize(ldir);
+
+
+    float tMin   = 0.001;
+    float tMax   = dist;
+    vec3  origin = gl_WorldRayOriginEXT + gl_WorldRayDirectionEXT * gl_HitTEXT;
+    vec3  rayDir = L;
+    uint  flags  = gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsOpaqueEXT
+                 | gl_RayFlagsSkipClosestHitShaderEXT;
+    isShadowed = true;
+    traceRayEXT(topLevelAS,  // acceleration structure
+                flags,       // rayFlags
+                0xFF,        // cullMask
+                0,           // sbtRecordOffset
+                0,           // sbtRecordStride
+                1,           // missIndex
+                origin,      // ray origin
+                tMin,        // ray min range
+                rayDir,      // ray direction
+                tMax,        // ray max range
+                1            // payload (location = 1)
+    );
+    float attenuation = isShadowed ? 0.0 : 0.01;
+    lightsColor += (li.color.xyz * attenuation) / (dist * dist);
   }
 
-  prd.hitValue = vec3(lightIntensity * attenuation * (diffuse + specular));
+  prd.hitValue = lightsColor;
 }

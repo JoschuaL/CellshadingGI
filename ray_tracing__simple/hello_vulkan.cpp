@@ -121,6 +121,9 @@ void HelloVulkan::createDescriptorSetLayout()
   m_descSetLayoutBind.addBinding(  //
       vkDS(6, vkDT::eStorageBuffer, nbObj, vkSS::eClosestHitKHR));
 
+  m_descSetLayoutBind.addBinding(
+      vkDS(7, vkDT::eStorageBuffer, nbObj, vkSS::eClosestHitKHR));
+
 
   m_descSetLayout = m_descSetLayoutBind.createLayout(m_device);
   m_descPool      = m_descSetLayoutBind.createPool(m_device, 1);
@@ -145,17 +148,20 @@ void HelloVulkan::updateDescriptorSet()
   std::vector<vk::DescriptorBufferInfo> dbiMatIdx;
   std::vector<vk::DescriptorBufferInfo> dbiVert;
   std::vector<vk::DescriptorBufferInfo> dbiIdx;
+  std::vector<vk::DescriptorBufferInfo> dbiLight;
   for(size_t i = 0; i < m_objModel.size(); ++i)
   {
     dbiMat.push_back({m_objModel[i].matColorBuffer.buffer, 0, VK_WHOLE_SIZE});
     dbiMatIdx.push_back({m_objModel[i].matIndexBuffer.buffer, 0, VK_WHOLE_SIZE});
     dbiVert.push_back({m_objModel[i].vertexBuffer.buffer, 0, VK_WHOLE_SIZE});
     dbiIdx.push_back({m_objModel[i].indexBuffer.buffer, 0, VK_WHOLE_SIZE});
+    dbiLight.push_back({m_objModel[i].lightBuffer.buffer, 0, VK_WHOLE_SIZE});
   }
   writes.emplace_back(m_descSetLayoutBind.makeWriteArray(m_descSet, 1, dbiMat.data()));
   writes.emplace_back(m_descSetLayoutBind.makeWriteArray(m_descSet, 4, dbiMatIdx.data()));
   writes.emplace_back(m_descSetLayoutBind.makeWriteArray(m_descSet, 5, dbiVert.data()));
   writes.emplace_back(m_descSetLayoutBind.makeWriteArray(m_descSet, 6, dbiIdx.data()));
+  writes.emplace_back(m_descSetLayoutBind.makeWriteArray(m_descSet, 7, dbiLight.data()));
 
   // All texture samplers
   std::vector<vk::DescriptorImageInfo> diit;
@@ -223,6 +229,9 @@ void HelloVulkan::loadModel(const std::string& filename, nvmath::mat4f transform
     m.specular = nvmath::pow(m.specular, 2.2f);
   }
 
+
+
+
   ObjInstance instance;
   instance.objIndex    = static_cast<uint32_t>(m_objModel.size());
   instance.transform   = transform;
@@ -232,6 +241,19 @@ void HelloVulkan::loadModel(const std::string& filename, nvmath::mat4f transform
   ObjModel model;
   model.nbIndices  = static_cast<uint32_t>(loader.m_indices.size());
   model.nbVertices = static_cast<uint32_t>(loader.m_vertices.size());
+
+
+  for(int i = 0; i < loader.m_matIndx.size(); i++){
+    int id = loader.m_matIndx[i];
+    const MaterialObj& mat = loader.m_materials[id];
+    if(mat.emission.x > 0.f || mat.emission.y > 0.f || mat.emission.z > 0.f){
+      const AreaLight light = {mat.emission, loader.m_vertices[loader.m_indices[3 * i + 0]].pos,
+                               loader.m_vertices[loader.m_indices[3 * i + 1]].pos,
+                               loader.m_vertices[loader.m_indices[3 * i + 2]].pos};
+      m_AreaLights.push_back(light);
+      std::cout << mat.emission.x << ','  << mat.emission.y << ','  << mat.emission.z << std::endl;
+    }
+  }
 
   // Create the buffers on Device and copy vertices, indices and materials
   nvvk::CommandPool cmdBufGet(m_device, m_graphicsQueueIndex);
@@ -244,6 +266,8 @@ void HelloVulkan::loadModel(const std::string& filename, nvmath::mat4f transform
                            vkBU::eIndexBuffer | vkBU::eStorageBuffer | vkBU::eShaderDeviceAddress);
   model.matColorBuffer = m_alloc.createBuffer(cmdBuf, loader.m_materials, vkBU::eStorageBuffer);
   model.matIndexBuffer = m_alloc.createBuffer(cmdBuf, loader.m_matIndx, vkBU::eStorageBuffer);
+
+  model.lightBuffer = m_alloc.createBuffer(cmdBuf, m_AreaLights, vkBU::eStorageBuffer);
   // Creates all textures found
   createTextureImages(cmdBuf, loader.m_textures);
   cmdBufGet.submitAndWait(cmdBuf);
@@ -254,6 +278,7 @@ void HelloVulkan::loadModel(const std::string& filename, nvmath::mat4f transform
   m_debug.setObjectName(model.indexBuffer.buffer, (std::string("index_" + objNb).c_str()));
   m_debug.setObjectName(model.matColorBuffer.buffer, (std::string("mat_" + objNb).c_str()));
   m_debug.setObjectName(model.matIndexBuffer.buffer, (std::string("matIdx_" + objNb).c_str()));
+  m_debug.setObjectName(model.lightBuffer.buffer, (std::string("light_" + objNb).c_str()));
 
   m_objModel.emplace_back(model);
   m_objInstance.emplace_back(instance);
@@ -732,6 +757,7 @@ void HelloVulkan::createRtDescriptorSet()
 
   std::vector<vk::WriteDescriptorSet> writes;
   writes.emplace_back(m_rtDescSetLayoutBind.makeWrite(m_rtDescSet, 0, &descASInfo));
+  writes.emplace_back(m_rtDescSetLayoutBind.makeWrite(m_rtDescSet, 0, &descASInfo));
   writes.emplace_back(m_rtDescSetLayoutBind.makeWrite(m_rtDescSet, 1, &imageInfo));
   m_device.updateDescriptorSets(static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
 }
@@ -892,8 +918,9 @@ void HelloVulkan::raytrace(const vk::CommandBuffer& cmdBuf, const nvmath::vec4f&
   // Initializing push constant values
   m_rtPushConstants.clearColor     = clearColor;
   m_rtPushConstants.lightPosition  = m_pushConstant.lightPosition;
-  m_rtPushConstants.lightIntensity = m_pushConstant.lightIntensity;
+  m_rtPushConstants.lightColor = m_pushConstant.lightColor;
   m_rtPushConstants.lightType      = m_pushConstant.lightType;
+  m_rtPushConstants.numLights = m_AreaLights.size();
 
   cmdBuf.bindPipeline(vk::PipelineBindPoint::eRayTracingKHR, m_rtPipeline);
   cmdBuf.bindDescriptorSets(vk::PipelineBindPoint::eRayTracingKHR, m_rtPipelineLayout, 0,

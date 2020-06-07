@@ -33,7 +33,7 @@ struct Constants
 {
         float4 clearColor;
         float3 lightPosition;
-        float lightIntensity;
+        float3 lightColor;
         int lightType;
 };
 
@@ -74,7 +74,7 @@ void main(inout hitPayload prd, in MyAttrib attr)
 
   // Vector toward the light
   float3  L;
-  float lightIntensity = pushC.lightIntensity;
+  float3 lightColor = pushC.lightColor;
   float lightDistance  = 100000.0;
 
   // Point light
@@ -82,7 +82,7 @@ void main(inout hitPayload prd, in MyAttrib attr)
   {
     float3 lDir      = pushC.lightPosition - worldPos;
     lightDistance  = length(lDir);
-    lightIntensity = pushC.lightIntensity / (lightDistance * 
+    lightolor = pushC.lightColor / (lightDistance * 
                      lightDistance);
     L              = normalize(lDir);
   }
@@ -153,6 +153,6 @@ void main(inout hitPayload prd, in MyAttrib attr)
     }
   }
 
-  prd.hitValue = float3(lightIntensity * attenuation * (diffuse + 
+  prd.hitValue = float3(lightColor * attenuation * (diffuse + 
   specular));
 }

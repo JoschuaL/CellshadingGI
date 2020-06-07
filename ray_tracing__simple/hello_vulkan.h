@@ -34,6 +34,7 @@
 #include "nvvk/descriptorsets_vk.hpp"
 
 // #VKRay
+#include "AreaLight.h"
 #include "nvvk/raytraceKHR_vk.hpp"
 
 //--------------------------------------------------------------------------------------------------
@@ -43,6 +44,15 @@
 // - Rendering is done in an offscreen framebuffer
 // - The image of the framebuffer is displayed in post-process in a full-screen quad
 //
+
+enum LightType{
+  Point = 0,
+  Infinite,
+  Spot,
+  Area
+};
+
+
 class HelloVulkan : public nvvk::AppBase
 {
 public:
@@ -72,6 +82,7 @@ public:
     nvvk::Buffer indexBuffer;     // Device buffer of the indices forming triangles
     nvvk::Buffer matColorBuffer;  // Device buffer of array of 'Wavefront material'
     nvvk::Buffer matIndexBuffer;  // Device buffer of array of 'Wavefront material'
+    nvvk::Buffer lightBuffer;
   };
 
   // Instance of the OBJ
@@ -86,10 +97,10 @@ public:
   // Information pushed at each draw call
   struct ObjPushConstant
   {
-    nvmath::vec3f lightPosition{10.f, 15.f, 8.f};
+    nvmath::vec3f lightPosition{0.f, 2.f, 0.f};
     int           instanceId{0};  // To retrieve the transformation matrix
-    float         lightIntensity{100.f};
-    int           lightType{0};  // 0: point, 1: infinite
+    nvmath::vec4f lightColor{3.f,3.f,3.f, 1.f};
+    LightType     lightType{Point};  // 0: point, 1: infinite
   };
   ObjPushConstant m_pushConstant;
 
@@ -108,6 +119,7 @@ public:
   nvvk::Buffer               m_cameraMat;  // Device-Host of the camera matrices
   nvvk::Buffer               m_sceneDesc;  // Device buffer of the OBJ instances
   std::vector<nvvk::Texture> m_textures;   // vector of all textures of the scene
+
 
   nvvk::AllocatorDedicated m_alloc;  // Allocator for buffer, images, acceleration structures
   nvvk::DebugUtil          m_debug;  // Utility to name objects
@@ -154,12 +166,14 @@ public:
   vk::PipelineLayout                                  m_rtPipelineLayout;
   vk::Pipeline                                        m_rtPipeline;
   nvvk::Buffer                                        m_rtSBTBuffer;
+  std::vector<AreaLight>     m_AreaLights = std::vector<AreaLight>();
 
   struct RtPushConstant
   {
     nvmath::vec4f clearColor;
+    nvmath::vec4f lightColor;
     nvmath::vec3f lightPosition;
-    float         lightIntensity;
-    int           lightType;
+    LightType     lightType;
+    int           numLights;
   } m_rtPushConstants;
 };

@@ -52,6 +52,8 @@ VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 // Default search path for shaders
 std::vector<std::string> defaultSearchPaths;
 
+float guiLightColor[4] = {3.f,3.f,3.f, 1.f};
+
 // GLFW Callback functions
 static void onErrorCallback(int error, const char* description)
 {
@@ -70,17 +72,18 @@ void renderUI(HelloVulkan& helloVk)
     CameraManip.setLookat(pos, eye, up);
   }
   ImGui::SliderFloat3("Light Position", &helloVk.m_pushConstant.lightPosition.x, -20.f, 20.f);
-  ImGui::SliderFloat("Light Intensity", &helloVk.m_pushConstant.lightIntensity, 0.f, 100.f);
-  ImGui::RadioButton("Point", &helloVk.m_pushConstant.lightType, 0);
+  ImGui::ColorEdit4("Light Color", guiLightColor);
+  helloVk.m_pushConstant.lightColor = {guiLightColor[0], guiLightColor[1], guiLightColor[2], guiLightColor[3]};
+  ImGui::RadioButton("Point", reinterpret_cast<int*>(&helloVk.m_pushConstant.lightType), 0);
   ImGui::SameLine();
-  ImGui::RadioButton("Infinite", &helloVk.m_pushConstant.lightType, 1);
+  ImGui::RadioButton("Infinite", reinterpret_cast<int*>(&helloVk.m_pushConstant.lightType), 1);
 }
 
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
-static int const SAMPLE_WIDTH  = 1280;
-static int const SAMPLE_HEIGHT = 720;
+static int const SAMPLE_WIDTH  = 1920;
+static int const SAMPLE_HEIGHT = 1080;
 
 //--------------------------------------------------------------------------------------------------
 // Application Entry
@@ -174,8 +177,8 @@ int main(int argc, char** argv)
   helloVk.initGUI(0);  // Using sub-pass 0
 
   // Creation of the example
-  helloVk.loadModel(nvh::findFile("media/scenes/Medieval_building.obj", defaultSearchPaths));
-  helloVk.loadModel(nvh::findFile("media/scenes/plane.obj", defaultSearchPaths));
+  helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Original.obj", defaultSearchPaths));
+  //helloVk.loadModel(nvh::findFile("media/scenes/plane.obj", defaultSearchPaths));
 
 
   helloVk.createOffscreenRender();
@@ -198,7 +201,7 @@ int main(int argc, char** argv)
   helloVk.updatePostDescriptorSet();
 
 
-  nvmath::vec4f clearColor   = nvmath::vec4f(1, 1, 1, 1.00f);
+  nvmath::vec4f clearColor   = nvmath::vec4f(0, 0, 0, 1.00f);
   bool          useRaytracer = true;
 
 

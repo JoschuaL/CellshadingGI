@@ -105,6 +105,8 @@ void ObjLoader::loadModel(const std::string& filename)
       m_vertices.push_back(vertex);
       m_indices.push_back(static_cast<int>(m_indices.size()));
     }
+
+
   }
 
   // Fixing material indices

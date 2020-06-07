@@ -19,10 +19,10 @@ ubo;
 
 layout(push_constant) uniform shaderInformation
 {
-  vec3  lightPosition;
-  uint  instanceId;
-  float lightIntensity;
-  int   lightType;
+  vec3 lightPosition;
+  uint instanceId;
+  vec4 lightColor;
+  int  lightType;
 }
 pushC;
 
