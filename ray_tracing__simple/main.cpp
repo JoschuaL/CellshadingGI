@@ -77,6 +77,7 @@ void renderUI(HelloVulkan& helloVk)
   ImGui::RadioButton("Point", reinterpret_cast<int*>(&helloVk.m_pushConstant.lightType), 0);
   ImGui::SameLine();
   ImGui::RadioButton("Infinite", reinterpret_cast<int*>(&helloVk.m_pushConstant.lightType), 1);
+  ImGui::InputInt("Area Samples", &helloVk.m_numAreaSamples);
 }
 
 //////////////////////////////////////////////////////////////////////////
