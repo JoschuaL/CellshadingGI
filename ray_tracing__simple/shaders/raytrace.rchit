@@ -3,6 +3,7 @@
 #extension GL_EXT_nonuniform_qualifier : enable
 #extension GL_EXT_scalar_block_layout : enable
 #extension GL_GOOGLE_include_directive : enable
+#include "random.glsl"
 #include "raycommon.glsl"
 #include "wavefront.glsl"
 
@@ -30,6 +31,7 @@ layout(push_constant) uniform Constants
   vec4 lightColor;
   vec4 lightPosition;
   int  numObjs;
+  int  numAreaSamples;
 }
 pushC;
 
@@ -130,48 +132,80 @@ void main()
   }*/
 
   vec3 lightsColor = vec3(0.0, 0.0, 0.0);
-  for(int i = 0; i < pushC.numObjs; i++){
+  for(int i = 0; i < pushC.numObjs; i++)
+  {
     int j = 0;
     while(true)
     {
       AreaLight li = lights[0].l[j];
-
-      vec3  pos  = li.v0.xyz + (0.5 * (li.v1.xyz - li.v0.xyz)) + (0.5 * (li.v2.xyz - li.v0.xyz));
+      j++;
       float inv  = 1.0 / 3.0;
-      vec3  ldir = pos - worldPos;
-      float dist = length(ldir);
-      vec3  L    = normalize(ldir);
+      vec3  lpos = li.v0.xyz + (inv * (li.v1.xyz - li.v0.xyz)) + (inv * (li.v2.xyz - li.v0.xyz));
+      vec3  d1   = li.v1.xyz - li.v0.xyz;
+      vec3  d2   = li.v2.xyz - li.v0.xyz;
+      vec3  ln   = normalize(cross(d1, d2));
+      vec3  pos  = offset_ray(lpos, ln);
+
+      vec3  ldir        = pos - worldPos;
+      float dist        = length(ldir);
+      vec3  L           = normalize(ldir);
+      float inanglecos  = dot(gl_WorldRayDirectionEXT, normal);
+      float outanglecos = dot(-L, normal);
+      vec3  gn;
+      if(inanglecos < 0 && outanglecos < 0)
+      {
+        gn = -normal;
+      }
+      else if(inanglecos > 0 && outanglecos > 0)
+      {
+        gn = normal;
+      }
+      else
+      {
+        if(floatBitsToInt(li.v2.w) == 1)
+        {
+          break;
+        }
+        else
+        {
+          continue;
+        }
+      }
 
 
       float tMin   = 0.001;
       float tMax   = dist;
-      vec3  origin = gl_WorldRayOriginEXT + gl_WorldRayDirectionEXT * gl_HitTEXT;
       vec3  rayDir = L;
       uint  flags  = gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsOpaqueEXT
                    | gl_RayFlagsSkipClosestHitShaderEXT;
       isShadowed = true;
+
+
       traceRayEXT(topLevelAS,  // acceleration structure
                   flags,       // rayFlags
                   0xFF,        // cullMask
                   0,           // sbtRecordOffset
                   0,           // sbtRecordStride
                   1,           // missIndex
-                  origin,      // ray origin
+                  worldPos,    // ray origin
                   tMin,        // ray min range
                   rayDir,      // ray direction
                   tMax,        // ray max range
                   1            // payload (location = 1)
       );
-      float attenuation = isShadowed ? 0.0 : 0.01;
+
+      float attenuation = dist > 0.0 ? 0.001 : 0.1;
+      attenuation       = isShadowed ? 0.0 : 0.001;
+
       lightsColor += (li.color.xyz * attenuation) / (dist * dist);
-      j++;
+
       if(floatBitsToInt(li.v2.w) == 1)
       {
         break;
       }
     }
   }
-  
+
 
   prd.hitValue = lightsColor;
 }
