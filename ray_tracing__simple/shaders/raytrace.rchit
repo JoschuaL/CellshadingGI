@@ -32,14 +32,18 @@ layout(push_constant) uniform Constants
   vec4 lightPosition;
   int  numObjs;
   int  numAreaSamples;
+  int  frame;
 }
 pushC;
+
+layout(location = 0) callableDataEXT materialCall mc;
 
 
 void main()
 {
   // Object of this instance
   uint objId = scnDesc.i[gl_InstanceID].objId;
+  //init_rnd(prd.seed);
 
   // Indices of the triangle
   ivec3 ind = ivec3(indices[nonuniformEXT(objId)].i[3 * gl_PrimitiveID + 0],   //
@@ -62,6 +66,18 @@ void main()
   vec3 worldPos = v0.pos * barycentrics.x + v1.pos * barycentrics.y + v2.pos * barycentrics.z;
   // Transforming the position to world space
   worldPos = vec3(scnDesc.i[gl_InstanceID].transfo * vec4(worldPos, 1.0));
+
+  float inanglecos = dot(gl_WorldRayDirectionEXT, normal);
+  vec3  gn;
+  if(inanglecos < 0)
+  {
+    gn = normal;
+  }
+  else
+  {
+    gn = -normal;
+  }
+  worldPos = offset_ray(worldPos, gn);
 
   // Vector toward the light
   /*vec3  L;
@@ -131,7 +147,17 @@ void main()
     }
   }*/
 
+
+  mc.objId  = objId;
+  mc.pId    = gl_PrimitiveID;
+  mc.instID = gl_InstanceID;
+  mc.texCoord =
+      v0.texCoord * barycentrics.x + v1.texCoord * barycentrics.y + v2.texCoord * barycentrics.z;
+  ;
+  mc.normal        = gn;
+  mc.outDir        = gl_WorldRayDirectionEXT;
   vec3 lightsColor = vec3(0.0, 0.0, 0.0);
+
   for(int i = 0; i < pushC.numObjs; i++)
   {
     int j = 0;
@@ -139,65 +165,71 @@ void main()
     {
       AreaLight li = lights[0].l[j];
       j++;
-      float inv  = 1.0 / 3.0;
-      vec3  lpos = li.v0.xyz + (inv * (li.v1.xyz - li.v0.xyz)) + (inv * (li.v2.xyz - li.v0.xyz));
-      vec3  d1   = li.v1.xyz - li.v0.xyz;
-      vec3  d2   = li.v2.xyz - li.v0.xyz;
-      vec3  ln   = normalize(cross(d1, d2));
-      vec3  pos  = offset_ray(lpos, ln);
+      vec3 d1        = li.v1.xyz - li.v0.xyz;
+      vec3 d2        = li.v2.xyz - li.v0.xyz;
+      vec3 ln        = normalize(cross(d1, d2));
+      vec3 tempColor = vec3(0, 0, 0);
+      for(int k = 0; k < pushC.numAreaSamples; k++)
+      {
+        float u = rnd(prd.seed);
+        float v = rnd(prd.seed);
 
-      vec3  ldir        = pos - worldPos;
-      float dist        = length(ldir);
-      vec3  L           = normalize(ldir);
-      float inanglecos  = dot(gl_WorldRayDirectionEXT, normal);
-      float outanglecos = dot(-L, normal);
-      vec3  gn;
-      if(inanglecos < 0 && outanglecos < 0)
-      {
-        gn = -normal;
-      }
-      else if(inanglecos > 0 && outanglecos > 0)
-      {
-        gn = normal;
-      }
-      else
-      {
-        if(floatBitsToInt(li.v2.w) == 1)
+        vec3 lpos = u + v < 1.0 ? li.v0.xyz + (u * d1) + (v * d2) :
+                                  li.v0.xyz + ((1.0 - u) * d1) + ((1.0 - v) * d2);
+
+
+        vec3 pos = offset_ray(offset_ray(lpos, ln), ln);
+
+        vec3  ldir = pos - worldPos;
+        float dist = length(ldir);
+        vec3  L    = normalize(ldir);
+
+        float outanglecos = dot(-L, gn);
+
+        if(inanglecos < 0 && outanglecos > 0 || inanglecos > 0 && outanglecos < 0)
         {
-          break;
+          if(floatBitsToInt(li.v2.w) == 1)
+          {
+            break;
+          }
+          else
+          {
+            continue;
+          }
         }
-        else
-        {
-          continue;
-        }
+
+
+        float tMin   = 0.000;
+        float tMax   = dist;
+        vec3  rayDir = L;
+        uint  flags  = gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsOpaqueEXT
+                     | gl_RayFlagsSkipClosestHitShaderEXT;
+        isShadowed = true;
+
+
+        traceRayEXT(topLevelAS,  // acceleration structure
+                    flags,       // rayFlags
+                    0xFF,        // cullMask
+                    0,           // sbtRecordOffset
+                    0,           // sbtRecordStride
+                    1,           // missIndex
+                    worldPos,    // ray origin
+                    tMin,        // ray min range
+                    rayDir,      // ray direction
+                    tMax,        // ray max range
+                    1            // payload (location = 1)
+        );
+
+
+        float attenuation = isShadowed ? 0.0 : 0.01;
+        mc.inDir          = L;
+
+        executeCallableEXT(0, 0);
+        tempColor += mc.emission + mc.reflectance * (li.color.xyz * attenuation) / (dist * dist);
       }
 
 
-      float tMin   = 0.001;
-      float tMax   = dist;
-      vec3  rayDir = L;
-      uint  flags  = gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsOpaqueEXT
-                   | gl_RayFlagsSkipClosestHitShaderEXT;
-      isShadowed = true;
-
-
-      traceRayEXT(topLevelAS,  // acceleration structure
-                  flags,       // rayFlags
-                  0xFF,        // cullMask
-                  0,           // sbtRecordOffset
-                  0,           // sbtRecordStride
-                  1,           // missIndex
-                  worldPos,    // ray origin
-                  tMin,        // ray min range
-                  rayDir,      // ray direction
-                  tMax,        // ray max range
-                  1            // payload (location = 1)
-      );
-
-      float attenuation = dist > 0.0 ? 0.001 : 0.1;
-      attenuation       = isShadowed ? 0.0 : 0.001;
-
-      lightsColor += (li.color.xyz * attenuation) / (dist * dist);
+      lightsColor += tempColor / pushC.numAreaSamples;
 
       if(floatBitsToInt(li.v2.w) == 1)
       {

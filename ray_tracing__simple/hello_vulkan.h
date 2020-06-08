@@ -154,6 +154,8 @@ public:
   void                             createRtPipeline();
   void                             createRtShaderBindingTable();
   void raytrace(const vk::CommandBuffer& cmdBuf, const nvmath::vec4f& clearColor);
+  void resetFrame();
+  void updateFrame();
 
 
   vk::PhysicalDeviceRayTracingPropertiesKHR           m_rtProperties;
@@ -168,6 +170,8 @@ public:
   nvvk::Buffer                                        m_rtSBTBuffer;
   std::vector<std::vector<AreaLight>>     m_AreaLightsPerObject = {};
   int m_numAreaSamples = 1;
+  int m_numSamples = 1;
+  int m_FrameCount = 0;
 
   struct RtPushConstant
   {
@@ -177,5 +181,7 @@ public:
     LightType     lightType;
     int           numObjs;
     int numAreaSamples = 1;
+    int frame = 0;
+    int numSamples = 1;
   } m_rtPushConstants;
 };

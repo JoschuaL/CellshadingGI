@@ -104,16 +104,16 @@ void HelloVulkan::createDescriptorSetLayout()
       vkDS(0, vkDT::eUniformBuffer, 1, vkSS::eVertex | vkSS::eRaygenKHR));
   // Materials (binding = 1)
   m_descSetLayoutBind.addBinding(
-      vkDS(1, vkDT::eStorageBuffer, nbObj, vkSS::eVertex | vkSS::eFragment | vkSS::eClosestHitKHR));
+      vkDS(1, vkDT::eStorageBuffer, nbObj, vkSS::eVertex | vkSS::eFragment | vkSS::eClosestHitKHR | vkSS::eCallableKHR));
   // Scene description (binding = 2)
   m_descSetLayoutBind.addBinding(  //
       vkDS(2, vkDT::eStorageBuffer, 1, vkSS::eVertex | vkSS::eFragment | vkSS::eClosestHitKHR));
   // Textures (binding = 3)
   m_descSetLayoutBind.addBinding(
-      vkDS(3, vkDT::eCombinedImageSampler, nbTxt, vkSS::eFragment | vkSS::eClosestHitKHR));
+      vkDS(3, vkDT::eCombinedImageSampler, nbTxt, vkSS::eFragment | vkSS::eClosestHitKHR | vkSS::eCallableKHR));
   // Materials (binding = 4)
   m_descSetLayoutBind.addBinding(
-      vkDS(4, vkDT::eStorageBuffer, nbObj, vkSS::eFragment | vkSS::eClosestHitKHR));
+      vkDS(4, vkDT::eStorageBuffer, nbObj, vkSS::eFragment | vkSS::eClosestHitKHR | vkSS::eCallableKHR));
   // Storing vertices (binding = 5)
   m_descSetLayoutBind.addBinding(  //
       vkDS(5, vkDT::eStorageBuffer, nbObj, vkSS::eClosestHitKHR));
@@ -121,8 +121,7 @@ void HelloVulkan::createDescriptorSetLayout()
   m_descSetLayoutBind.addBinding(  //
       vkDS(6, vkDT::eStorageBuffer, nbObj, vkSS::eClosestHitKHR));
 
-  m_descSetLayoutBind.addBinding(
-      vkDS(7, vkDT::eStorageBuffer, nbObj, vkSS::eClosestHitKHR));
+  m_descSetLayoutBind.addBinding(vkDS(7, vkDT::eStorageBuffer, nbObj, vkSS::eClosestHitKHR));
 
 
   m_descSetLayout = m_descSetLayoutBind.createLayout(m_device);
@@ -230,8 +229,6 @@ void HelloVulkan::loadModel(const std::string& filename, nvmath::mat4f transform
   }
 
 
-
-
   ObjInstance instance;
   instance.objIndex    = static_cast<uint32_t>(m_objModel.size());
   instance.transform   = transform;
@@ -243,18 +240,20 @@ void HelloVulkan::loadModel(const std::string& filename, nvmath::mat4f transform
   model.nbVertices = static_cast<uint32_t>(loader.m_vertices.size());
 
   std::vector<AreaLight> lights = {};
-  for(int i = 0; i < loader.m_matIndx.size(); i++){
-    int id = loader.m_matIndx[i];
+  for(int i = 0; i < loader.m_matIndx.size(); i++)
+  {
+    int                id  = loader.m_matIndx[i];
     const MaterialObj& mat = loader.m_materials[id];
-    if(mat.emission.x > 0.f || mat.emission.y > 0.f || mat.emission.z > 0.f){
+    if(mat.emission.x > 0.f || mat.emission.y > 0.f || mat.emission.z > 0.f)
+    {
       const AreaLight light = {mat.emission, loader.m_vertices[loader.m_indices[3 * i + 0]].pos,
                                loader.m_vertices[loader.m_indices[3 * i + 1]].pos,
                                loader.m_vertices[loader.m_indices[3 * i + 2]].pos, 0};
       lights.push_back(light);
-      std::cout << mat.emission.x << ','  << mat.emission.y << ','  << mat.emission.z << std::endl;
+      std::cout << mat.emission.x << ',' << mat.emission.y << ',' << mat.emission.z << std::endl;
     }
   }
-  lights[lights.size()-1].last = 1;
+  lights[lights.size() - 1].last = 1;
   m_AreaLightsPerObject.push_back(lights);
   // Create the buffers on Device and copy vertices, indices and materials
   nvvk::CommandPool cmdBufGet(m_device, m_graphicsQueueIndex);
@@ -268,7 +267,9 @@ void HelloVulkan::loadModel(const std::string& filename, nvmath::mat4f transform
   model.matColorBuffer = m_alloc.createBuffer(cmdBuf, loader.m_materials, vkBU::eStorageBuffer);
   model.matIndexBuffer = m_alloc.createBuffer(cmdBuf, loader.m_matIndx, vkBU::eStorageBuffer);
 
-  model.lightBuffer = m_alloc.createBuffer(cmdBuf, m_AreaLightsPerObject[m_AreaLightsPerObject.size()-1], vkBU::eStorageBuffer);
+  model.lightBuffer =
+      m_alloc.createBuffer(cmdBuf, m_AreaLightsPerObject[m_AreaLightsPerObject.size() - 1],
+                           vkBU::eStorageBuffer);
   // Creates all textures found
   createTextureImages(cmdBuf, loader.m_textures);
   cmdBufGet.submitAndWait(cmdBuf);
@@ -834,6 +835,21 @@ void HelloVulkan::createRtPipeline()
   hg.setClosestHitShader(static_cast<uint32_t>(stages.size() - 1));
   m_rtShaderGroups.push_back(hg);
 
+  vk::RayTracingShaderGroupCreateInfoKHR cg{vk::RayTracingShaderGroupTypeKHR::eGeneral,
+                                            VK_SHADER_UNUSED_KHR, VK_SHADER_UNUSED_KHR,
+                                            VK_SHADER_UNUSED_KHR, VK_SHADER_UNUSED_KHR};
+
+
+
+
+  vk::ShaderModule callSM =
+      nvvk::createShaderModule(m_device,
+                               nvh::loadFile("shaders/lambert.rcall.spv", true, paths));
+
+  stages.push_back({{}, vk::ShaderStageFlagBits::eCallableKHR, callSM, "main"});
+  cg.setGeneralShader(static_cast<uint32_t>(stages.size() - 1));
+  m_rtShaderGroups.push_back(cg);
+
   vk::PipelineLayoutCreateInfo pipelineLayoutCreateInfo;
 
   // Push constant: we want to be able to update constants used by the shaders
@@ -869,6 +885,7 @@ void HelloVulkan::createRtPipeline()
   m_device.destroy(missSM);
   m_device.destroy(shadowmissSM);
   m_device.destroy(chitSM);
+  m_device.destroy(callSM);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -915,14 +932,17 @@ void HelloVulkan::createRtShaderBindingTable()
 //
 void HelloVulkan::raytrace(const vk::CommandBuffer& cmdBuf, const nvmath::vec4f& clearColor)
 {
+  updateFrame();
   m_debug.beginLabel(cmdBuf, "Ray trace");
   // Initializing push constant values
   m_rtPushConstants.clearColor     = clearColor;
   m_rtPushConstants.lightPosition  = m_pushConstant.lightPosition;
-  m_rtPushConstants.lightColor = m_pushConstant.lightColor;
+  m_rtPushConstants.lightColor     = m_pushConstant.lightColor;
   m_rtPushConstants.lightType      = m_pushConstant.lightType;
-  m_rtPushConstants.numObjs = m_AreaLightsPerObject.size();
+  m_rtPushConstants.numObjs        = m_AreaLightsPerObject.size();
   m_rtPushConstants.numAreaSamples = m_numAreaSamples;
+  m_rtPushConstants.frame = m_FrameCount;
+  m_rtPushConstants.numSamples = m_numSamples;
 
   cmdBuf.bindPipeline(vk::PipelineBindPoint::eRayTracingKHR, m_rtPipeline);
   cmdBuf.bindDescriptorSets(vk::PipelineBindPoint::eRayTracingKHR, m_rtPipelineLayout, 0,
@@ -938,6 +958,7 @@ void HelloVulkan::raytrace(const vk::CommandBuffer& cmdBuf, const nvmath::vec4f&
   vk::DeviceSize rayGenOffset   = 0u * progSize;  // Start at the beginning of m_sbtBuffer
   vk::DeviceSize missOffset     = 1u * progSize;  // Jump over raygen
   vk::DeviceSize hitGroupOffset = 3u * progSize;  // Jump over the previous shaders
+  vk::DeviceSize callableGroupOffset = 4u * progSize;
 
   vk::DeviceSize sbtSize = progSize * (vk::DeviceSize)m_rtShaderGroups.size();
 
@@ -947,7 +968,7 @@ void HelloVulkan::raytrace(const vk::CommandBuffer& cmdBuf, const nvmath::vec4f&
                                                              progSize, sbtSize};
   const vk::StridedBufferRegionKHR hitShaderBindingTable    = {m_rtSBTBuffer.buffer, hitGroupOffset,
                                                             progSize, sbtSize};
-  const vk::StridedBufferRegionKHR callableShaderBindingTable;
+  const vk::StridedBufferRegionKHR callableShaderBindingTable = {m_rtSBTBuffer.buffer, callableGroupOffset, progSize, sbtSize};
 
   cmdBuf.traceRaysKHR(&raygenShaderBindingTable, &missShaderBindingTable, &hitShaderBindingTable,
                       &callableShaderBindingTable,      //
@@ -955,4 +976,20 @@ void HelloVulkan::raytrace(const vk::CommandBuffer& cmdBuf, const nvmath::vec4f&
 
 
   m_debug.endLabel(cmdBuf);
+}
+
+void HelloVulkan::resetFrame() {
+  m_FrameCount = -1;
+}
+
+void HelloVulkan::updateFrame() {
+  static nvmath::mat4f refCamMatrix;
+
+  auto& m = CameraManip.getMatrix();
+  if(memcmp(&refCamMatrix.a00, &m.a00, sizeof(nvmath::mat4f)) != 0)
+  {
+    resetFrame();
+    refCamMatrix = m;
+  }
+  m_FrameCount++;
 }

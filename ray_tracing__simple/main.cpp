@@ -78,6 +78,7 @@ void renderUI(HelloVulkan& helloVk)
   ImGui::SameLine();
   ImGui::RadioButton("Infinite", reinterpret_cast<int*>(&helloVk.m_pushConstant.lightType), 1);
   ImGui::InputInt("Area Samples", &helloVk.m_numAreaSamples);
+  ImGui::InputInt("Per Frame Samples", &helloVk.m_numSamples);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -202,7 +203,7 @@ int main(int argc, char** argv)
   helloVk.updatePostDescriptorSet();
 
 
-  nvmath::vec4f clearColor   = nvmath::vec4f(0, 0, 0, 1.00f);
+  nvmath::vec4f clearColor   = nvmath::vec4f(0.01, 0, 0, 1.00f);
   bool          useRaytracer = true;
 
 
