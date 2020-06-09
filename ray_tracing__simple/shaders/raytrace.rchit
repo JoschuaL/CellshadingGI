@@ -54,6 +54,8 @@ void main()
   Vertex v1 = vertices[nonuniformEXT(objId)].v[ind.y];
   Vertex v2 = vertices[nonuniformEXT(objId)].v[ind.z];
 
+  int matProb = v0.mat;
+
   const vec3 barycentrics = vec3(1.0 - attribs.x - attribs.y, attribs.x, attribs.y);
 
   // Computing the normal at hit position
@@ -156,6 +158,8 @@ void main()
   ;
   mc.normal        = gn;
   mc.outDir        = gl_WorldRayDirectionEXT;
+  mc.reflectance   = vec3(0, 0, 0);
+  mc.emission      = vec3(0, 0, 0);
   vec3 lightsColor = vec3(0.0, 0.0, 0.0);
 
   for(int i = 0; i < pushC.numObjs; i++)
@@ -165,6 +169,17 @@ void main()
     {
       AreaLight li = lights[0].l[j];
       j++;
+      if(li.color.x + li.color.y + li.color.z <= 0.0)
+      {
+        if(floatBitsToInt(li.v2.w) == 1)
+        {
+          break;
+        }
+        else
+        {
+          continue;
+        }
+      }
       vec3 d1        = li.v1.xyz - li.v0.xyz;
       vec3 d2        = li.v2.xyz - li.v0.xyz;
       vec3 ln        = normalize(cross(d1, d2));
@@ -219,12 +234,19 @@ void main()
                     tMax,        // ray max range
                     1            // payload (location = 1)
         );
+        vec3 specular = vec3(0, 0, 0);
 
 
-        float attenuation = isShadowed ? 0.0 : 0.01;
+        float attenuation = isShadowed ? 0.0 : 0.1;
         mc.inDir          = L;
-
-        executeCallableEXT(0, 0);
+        if((matProb & 1) != 0)
+        {
+          executeCallableEXT(0, 0);
+        }
+        if((matProb & 2) != 0)
+        {
+          executeCallableEXT(1, 0);
+        }
         tempColor += mc.emission + mc.reflectance * (li.color.xyz * attenuation) / (dist * dist);
       }
 

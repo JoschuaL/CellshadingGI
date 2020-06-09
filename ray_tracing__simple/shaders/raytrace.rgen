@@ -33,8 +33,7 @@ pushC;
 void main()
 {
   // Initialize the random number
-  prd.seed = tea(gl_LaunchIDEXT.y * gl_LaunchSizeEXT.x + gl_LaunchIDEXT.x, pushC.frame);
-  init_rnd(prd.seed);
+  prd.seed       = tea(gl_LaunchIDEXT.y * gl_LaunchSizeEXT.x + gl_LaunchIDEXT.x, pushC.frame);
   vec3 hitValues = vec3(0);
 
   for(int smpl = 0; smpl < pushC.numSamples; smpl++)
@@ -57,7 +56,7 @@ void main()
     uint  rayFlags = gl_RayFlagsOpaqueEXT;
     float tMin     = 0.001;
     float tMax     = 10000.0;
-    
+
     traceRayEXT(topLevelAS,     // acceleration structure
                 rayFlags,       // rayFlags
                 0xFF,           // cullMask

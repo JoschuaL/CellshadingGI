@@ -1,11 +1,6 @@
 
 
-uint rand_lcg(inout uint seed)
-{
-  // LCG values from Numerical Recipes
-  seed = 1664525 * seed + 1013904223;
-  return seed;
-}
+
 
 float rnd(inout uint seed)
 {
@@ -16,14 +11,6 @@ float rnd(inout uint seed)
   return float(seed) * (1.0 / 4294967296.0);
 }
 
-void init_rnd(inout uint seed)
-{
-  seed = (seed ^ uint(61)) ^ (seed >> 16);
-  seed *= 9;
-  seed = seed ^ (seed >> 4);
-  seed *= 0x27d4eb2d;
-  seed      = seed ^ (seed >> 15);
-}
 
 
 // Generate a random unsigned int from two unsigned int values, using 16 pairs
@@ -45,18 +32,3 @@ uint tea(uint val0, uint val1)
   return v0;
 }
 
-// Generate a random unsigned int in [0, 2^24) given the previous RNG state
-// using the Numerical Recipes linear congruential generator
-uint lcg(inout uint prev)
-{
-  uint LCG_A = 1664525u;
-  uint LCG_C = 1013904223u;
-  prev       = (LCG_A * prev + LCG_C);
-  return prev & 0x00FFFFFF;
-}
-
-// Generate a random float in [0, 1) given the previous RNG state
-float rnd2(inout uint prev)
-{
-  return (float(lcg(prev)) / float(0x01000000));
-}

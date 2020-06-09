@@ -73,6 +73,7 @@ void ObjLoader::loadModel(const std::string& filename)
 
   for(const auto& shape : reader.GetShapes())
   {
+    int i = -1;
     m_vertices.reserve(shape.mesh.indices.size() + m_vertices.size());
     m_indices.reserve(shape.mesh.indices.size() + m_indices.size());
     m_matIndx.insert(m_matIndx.end(), shape.mesh.material_ids.begin(),
@@ -80,6 +81,7 @@ void ObjLoader::loadModel(const std::string& filename)
 
     for(const auto& index : shape.mesh.indices)
     {
+      i++;
       VertexObj    vertex = {};
       const float* vp     = &attrib.vertices[3 * index.vertex_index];
       vertex.pos          = {*(vp + 0), *(vp + 1), *(vp + 2)};
@@ -101,6 +103,19 @@ void ObjLoader::loadModel(const std::string& filename)
         const float* vc = &attrib.colors[3 * index.vertex_index];
         vertex.color    = {*(vc + 0), *(vc + 1), *(vc + 2)};
       }
+
+      MaterialObj mat = m_materials[shape.mesh.material_ids[i / 3]];
+      if((mat.diffuse.x > 0.0 || mat.diffuse.y > 0.0 || mat.diffuse.z > 0.0) && mat.illum >= 1){
+        vertex.mat |= 0x01;
+      }
+      if((mat.specular.x > 0.0 || mat.specular.y > 0.0 || mat.specular.z > 0.0) && mat.illum >= 2){
+        vertex.mat |= 0x02;
+      }
+      if((mat.specular.x > 0.0 || mat.specular.y > 0.0 || mat.specular.z > 0.0) && mat.illum >= 3){
+        vertex.mat |= 0x04;
+      }
+
+
 
       m_vertices.push_back(vertex);
       m_indices.push_back(static_cast<int>(m_indices.size()));

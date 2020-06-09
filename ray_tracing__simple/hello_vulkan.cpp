@@ -253,6 +253,12 @@ void HelloVulkan::loadModel(const std::string& filename, nvmath::mat4f transform
       std::cout << mat.emission.x << ',' << mat.emission.y << ',' << mat.emission.z << std::endl;
     }
   }
+
+  if(lights.empty()){
+    const AreaLight light = {{0,0,0,0}, {0,0,0,0},{0,0,0,0},{0,0,0},0};
+    lights.emplace_back(light);
+  }
+
   lights[lights.size() - 1].last = 1;
   m_AreaLightsPerObject.push_back(lights);
   // Create the buffers on Device and copy vertices, indices and materials
@@ -409,6 +415,7 @@ void HelloVulkan::destroyResources()
     m_alloc.destroy(m.indexBuffer);
     m_alloc.destroy(m.matColorBuffer);
     m_alloc.destroy(m.matIndexBuffer);
+    m_alloc.destroy(m.lightBuffer);
   }
 
   for(auto& t : m_textures)
@@ -842,13 +849,20 @@ void HelloVulkan::createRtPipeline()
 
 
 
-  vk::ShaderModule callSM =
+  vk::ShaderModule lambertSM =
       nvvk::createShaderModule(m_device,
                                nvh::loadFile("shaders/lambert.rcall.spv", true, paths));
 
-  stages.push_back({{}, vk::ShaderStageFlagBits::eCallableKHR, callSM, "main"});
+  vk::ShaderModule blinnSM = nvvk::createShaderModule(m_device, nvh::loadFile("shaders/blinn.rcall.spv", true, paths));
+
+  stages.push_back({{}, vk::ShaderStageFlagBits::eCallableKHR, lambertSM, "main"});
   cg.setGeneralShader(static_cast<uint32_t>(stages.size() - 1));
   m_rtShaderGroups.push_back(cg);
+
+  stages.push_back({{}, vk::ShaderStageFlagBits::eCallableKHR, blinnSM, "main"});
+  cg.setGeneralShader(static_cast<uint32_t>(stages.size() - 1));
+  m_rtShaderGroups.push_back(cg);
+
 
   vk::PipelineLayoutCreateInfo pipelineLayoutCreateInfo;
 
@@ -885,7 +899,8 @@ void HelloVulkan::createRtPipeline()
   m_device.destroy(missSM);
   m_device.destroy(shadowmissSM);
   m_device.destroy(chitSM);
-  m_device.destroy(callSM);
+  m_device.destroy(lambertSM);
+  m_device.destroy(blinnSM);
 }
 
 //--------------------------------------------------------------------------------------------------

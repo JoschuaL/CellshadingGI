@@ -32,6 +32,7 @@ struct VertexObj
   nvmath::vec3f nrm;
   nvmath::vec3f color;
   nvmath::vec2f texCoord;
+  int mat = 0;
 };
 
 

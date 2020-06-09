@@ -3,8 +3,8 @@
 #extension GL_GOOGLE_include_directive : enable
 #extension GL_EXT_nonuniform_qualifier : enable
 #extension GL_EXT_scalar_block_layout : enable
-#include "raycommon.glsl"
-#include "wavefront.glsl"
+#include "../raycommon.glsl"
+#include "../wavefront.glsl"
 
 layout(location = 0) callableDataInEXT materialCall mc;
 
@@ -42,15 +42,19 @@ void main()
 {
 
 
-  int               matIdx  = matIndex[nonuniformEXT(mc.objId)].i[mc.pId];
-  WaveFrontMaterial mat     = materials[nonuniformEXT(mc.objId)].m[matIdx];
-  uint              txtId   = 0;
-  vec3              diffuse = mat.diffuse;
-  if(mat.textureId >= 0)
-  {
-    txtId = mat.textureId + scnDesc.i[mc.instID].txtOffset;
-    diffuse *= texture(textureSamplers[nonuniformEXT(txtId)], mc.texCoord).xyz;
-  }
-  mc.reflectance = diffuse * max(dot(mc.normal, mc.inDir), 0.0);
-  mc.emission    = mat.emission;
+  int               matIdx = matIndex[nonuniformEXT(mc.objId)].i[mc.pId];
+  WaveFrontMaterial mat    = materials[nonuniformEXT(mc.objId)].m[matIdx];
+
+
+  // Compute specular only if not in shadow
+  const float kPi        = 3.14159265;
+  const float kShininess = max(mat.shininess, 4.0);
+
+  // Specular
+  const float kEnergyConservation = (2.0 + kShininess) / (2.0 * kPi);
+  vec3        V                   = normalize(-mc.outDir);
+  vec3        R                   = reflect(-mc.inDir, mc.normal);
+  float       specular            = kEnergyConservation * pow(max(dot(V, R), 0.0), kShininess);
+
+  mc.reflectance += vec3(mat.specular * specular);
 }

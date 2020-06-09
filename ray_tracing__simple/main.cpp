@@ -79,6 +79,7 @@ void renderUI(HelloVulkan& helloVk)
   ImGui::RadioButton("Infinite", reinterpret_cast<int*>(&helloVk.m_pushConstant.lightType), 1);
   ImGui::InputInt("Area Samples", &helloVk.m_numAreaSamples);
   ImGui::InputInt("Per Frame Samples", &helloVk.m_numSamples);
+  ImGui::Value("Frames", helloVk.m_FrameCount);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -179,7 +180,10 @@ int main(int argc, char** argv)
   helloVk.initGUI(0);  // Using sub-pass 0
 
   // Creation of the example
-  helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Original.obj", defaultSearchPaths));
+  //helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Original.obj", defaultSearchPaths));
+  //helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Sphere.obj", defaultSearchPaths));
+  //helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Glossy.obj", defaultSearchPaths));
+  helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Glossy-Floor.obj", defaultSearchPaths));
   //helloVk.loadModel(nvh::findFile("media/scenes/plane.obj", defaultSearchPaths));
 
 
