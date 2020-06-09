@@ -52,6 +52,7 @@ void ObjLoader::loadModel(const std::string& filename)
     m.emission = nvmath::vec3f(material.emission[0], material.emission[1], material.emission[2]);
     m.transmittance = nvmath::vec3f(material.transmittance[0], material.transmittance[1],
                                     material.transmittance[2]);
+
     m.dissolve      = material.dissolve;
     m.ior           = material.ior;
     m.shininess     = material.shininess;

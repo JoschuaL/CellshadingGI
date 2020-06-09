@@ -77,6 +77,7 @@ void renderUI(HelloVulkan& helloVk)
   ImGui::RadioButton("Point", reinterpret_cast<int*>(&helloVk.m_pushConstant.lightType), 0);
   ImGui::SameLine();
   ImGui::RadioButton("Infinite", reinterpret_cast<int*>(&helloVk.m_pushConstant.lightType), 1);
+  ImGui::InputFloat("fuzzy angle", &helloVk.m_fuzzyAngle, 0.01, 0.01);
   ImGui::InputInt("Area Samples", &helloVk.m_numAreaSamples);
   ImGui::InputInt("Per Frame Samples", &helloVk.m_numSamples);
   ImGui::Value("Frames", helloVk.m_FrameCount);
@@ -183,7 +184,8 @@ int main(int argc, char** argv)
   //helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Original.obj", defaultSearchPaths));
   //helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Sphere.obj", defaultSearchPaths));
   //helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Glossy.obj", defaultSearchPaths));
-  helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Glossy-Floor.obj", defaultSearchPaths));
+  helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Mirror.obj", defaultSearchPaths));
+  //helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Glossy-Floor.obj", defaultSearchPaths));
   //helloVk.loadModel(nvh::findFile("media/scenes/plane.obj", defaultSearchPaths));
 
 

@@ -168,6 +168,7 @@ public:
   vk::PipelineLayout                                  m_rtPipelineLayout;
   vk::Pipeline                                        m_rtPipeline;
   nvvk::Buffer                                        m_rtSBTBuffer;
+  float m_fuzzyAngle = 0.1;
   std::vector<std::vector<AreaLight>>     m_AreaLightsPerObject = {};
   int m_numAreaSamples = 1;
   int m_numSamples = 1;
@@ -183,5 +184,6 @@ public:
     int numAreaSamples = 1;
     int frame = 0;
     int numSamples = 1;
+    float fuzzyAngle;
   } m_rtPushConstants;
 };

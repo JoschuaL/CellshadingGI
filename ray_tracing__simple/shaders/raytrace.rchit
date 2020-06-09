@@ -260,6 +260,19 @@ void main()
     }
   }
 
+  if((matProb & 4) != 0)
+  {
+    mc.position   = worldPos;
+    mc.fuzzyAngle = pushC.frame / 1000.0;
+    mc.seed       = prd.seed;
+    executeCallableEXT(2, 0);
+    prd.seed         = mc.seed;
+    prd.attenuation  = mc.reflectance;
+    prd.rayOrigin    = worldPos;
+    prd.rayDirection = mc.emission;
+    prd.done         = false;
+  }
+
 
   prd.hitValue = lightsColor;
 }

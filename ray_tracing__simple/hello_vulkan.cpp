@@ -855,11 +855,17 @@ void HelloVulkan::createRtPipeline()
 
   vk::ShaderModule blinnSM = nvvk::createShaderModule(m_device, nvh::loadFile("shaders/blinn.rcall.spv", true, paths));
 
+  vk::ShaderModule mirrorSM = nvvk::createShaderModule(m_device, nvh::loadFile("shaders/mirror.rcall.spv", true, paths));
+
   stages.push_back({{}, vk::ShaderStageFlagBits::eCallableKHR, lambertSM, "main"});
   cg.setGeneralShader(static_cast<uint32_t>(stages.size() - 1));
   m_rtShaderGroups.push_back(cg);
 
   stages.push_back({{}, vk::ShaderStageFlagBits::eCallableKHR, blinnSM, "main"});
+  cg.setGeneralShader(static_cast<uint32_t>(stages.size() - 1));
+  m_rtShaderGroups.push_back(cg);
+
+  stages.push_back({{}, vk::ShaderStageFlagBits::eCallableKHR, mirrorSM, "main"});
   cg.setGeneralShader(static_cast<uint32_t>(stages.size() - 1));
   m_rtShaderGroups.push_back(cg);
 
@@ -901,6 +907,7 @@ void HelloVulkan::createRtPipeline()
   m_device.destroy(chitSM);
   m_device.destroy(lambertSM);
   m_device.destroy(blinnSM);
+  m_device.destroy(mirrorSM);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -958,6 +965,7 @@ void HelloVulkan::raytrace(const vk::CommandBuffer& cmdBuf, const nvmath::vec4f&
   m_rtPushConstants.numAreaSamples = m_numAreaSamples;
   m_rtPushConstants.frame = m_FrameCount;
   m_rtPushConstants.numSamples = m_numSamples;
+  m_rtPushConstants.fuzzyAngle = m_fuzzyAngle;
 
   cmdBuf.bindPipeline(vk::PipelineBindPoint::eRayTracingKHR, m_rtPipeline);
   cmdBuf.bindDescriptorSets(vk::PipelineBindPoint::eRayTracingKHR, m_rtPipelineLayout, 0,

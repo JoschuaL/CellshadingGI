@@ -53,23 +53,35 @@ void main()
     vec4 target    = cam.projInverse * vec4(d.x, d.y, 1, 1);
     vec4 direction = cam.viewInverse * vec4(normalize(target.xyz), 0);
 
-    uint  rayFlags = gl_RayFlagsOpaqueEXT;
-    float tMin     = 0.001;
-    float tMax     = 10000.0;
+    uint  rayFlags  = gl_RayFlagsOpaqueEXT;
+    float tMin      = 0.001;
+    float tMax      = 10000.0;
+    prd.done        = true;
+    prd.attenuation = vec3(1, 1, 1);
+    for(;;)
+    {
+      traceRayEXT(topLevelAS,     // acceleration structure
+                  rayFlags,       // rayFlags
+                  0xFF,           // cullMask
+                  0,              // sbtRecordOffset
+                  0,              // sbtRecordStride
+                  0,              // missIndex
+                  origin.xyz,     // ray origin
+                  tMin,           // ray min range
+                  direction.xyz,  // ray direction
+                  tMax,           // ray max range
+                  0               // payload (location = 0)
+      );
+      hitValues += prd.hitValue * prd.attenuation;
+      if(prd.done)
+      {
+        break;
+      }
 
-    traceRayEXT(topLevelAS,     // acceleration structure
-                rayFlags,       // rayFlags
-                0xFF,           // cullMask
-                0,              // sbtRecordOffset
-                0,              // sbtRecordStride
-                0,              // missIndex
-                origin.xyz,     // ray origin
-                tMin,           // ray min range
-                direction.xyz,  // ray direction
-                tMax,           // ray max range
-                0               // payload (location = 0)
-    );
-    hitValues += prd.hitValue;
+      prd.done      = true;
+      origin.xyz    = prd.rayOrigin;
+      direction.xyz = prd.rayDirection;
+    }
   }
   prd.hitValue = hitValues / pushC.numSamples;
 

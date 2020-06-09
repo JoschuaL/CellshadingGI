@@ -3,7 +3,11 @@ const float M_PI = 3.1415926535897932384626433832795;
 struct hitPayload
 {
   vec3 hitValue;
+  vec3 attenuation;
+  vec3 rayOrigin;
+  vec3 rayDirection;
   uint seed;
+  bool done;
 };
 
 struct AreaLight
@@ -16,15 +20,18 @@ struct AreaLight
 
 struct materialCall
 {
-  uint objId;
-  int  pId;
-  int  instID;
-  vec2 texCoord;
-  vec3 normal;
-  vec3 inDir;
-  vec3 outDir;
-  vec3 reflectance;
-  vec3 emission;
+  uint  objId;
+  uint  seed;
+  int   pId;
+  int   instID;
+  vec2  texCoord;
+  vec3  normal;
+  vec3  inDir;
+  vec3  outDir;
+  vec3 position;
+  vec3  reflectance;
+  vec3  emission;
+  float fuzzyAngle;
 };
 
 const float origin      = 1.0 / 32.0;
