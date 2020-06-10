@@ -112,8 +112,11 @@ void ObjLoader::loadModel(const std::string& filename)
       if((mat.specular.x > 0.0 || mat.specular.y > 0.0 || mat.specular.z > 0.0) && mat.illum >= 2){
         vertex.mat |= 0x02;
       }
-      if((mat.specular.x > 0.0 || mat.specular.y > 0.0 || mat.specular.z > 0.0) && mat.illum >= 3){
+      if((mat.specular.x > 0.0 || mat.specular.y > 0.0 || mat.specular.z > 0.0) && mat.illum >= 3 && mat.illum < 6){
         vertex.mat |= 0x04;
+      }
+      if(mat.illum >= 6){
+        vertex.mat |= 0x08;
       }
 
 

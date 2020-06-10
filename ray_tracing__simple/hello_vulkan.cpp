@@ -857,6 +857,8 @@ void HelloVulkan::createRtPipeline()
 
   vk::ShaderModule mirrorSM = nvvk::createShaderModule(m_device, nvh::loadFile("shaders/mirror.rcall.spv", true, paths));
 
+  vk::ShaderModule glassSM = nvvk::createShaderModule(m_device, nvh::loadFile("shaders/glass.rcall.spv", true, paths));
+
   stages.push_back({{}, vk::ShaderStageFlagBits::eCallableKHR, lambertSM, "main"});
   cg.setGeneralShader(static_cast<uint32_t>(stages.size() - 1));
   m_rtShaderGroups.push_back(cg);
@@ -866,6 +868,10 @@ void HelloVulkan::createRtPipeline()
   m_rtShaderGroups.push_back(cg);
 
   stages.push_back({{}, vk::ShaderStageFlagBits::eCallableKHR, mirrorSM, "main"});
+  cg.setGeneralShader(static_cast<uint32_t>(stages.size() - 1));
+  m_rtShaderGroups.push_back(cg);
+
+  stages.push_back({{}, vk::ShaderStageFlagBits::eCallableKHR, glassSM, "main"});
   cg.setGeneralShader(static_cast<uint32_t>(stages.size() - 1));
   m_rtShaderGroups.push_back(cg);
 
@@ -908,6 +914,7 @@ void HelloVulkan::createRtPipeline()
   m_device.destroy(lambertSM);
   m_device.destroy(blinnSM);
   m_device.destroy(mirrorSM);
+  m_device.destroy(glassSM);
 }
 
 //--------------------------------------------------------------------------------------------------

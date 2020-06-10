@@ -1,0 +1,111 @@
+#version 460 core
+#extension GL_EXT_ray_tracing : enable
+#extension GL_GOOGLE_include_directive : enable
+#extension GL_EXT_nonuniform_qualifier : enable
+#extension GL_EXT_scalar_block_layout : enable
+#include "../random.glsl"
+#include "../raycommon.glsl"
+#include "../wavefront.glsl"
+
+layout(location = 0) callableDataInEXT materialCall mc;
+
+layout(binding = 1, set = 1, scalar) buffer MatColorBufferObject
+{
+  WaveFrontMaterial m[];
+}
+materials[];
+
+layout(binding = 2, set = 1, scalar) buffer ScnDesc
+{
+  sceneDesc i[];
+}
+scnDesc;
+
+layout(binding = 3, set = 1) uniform sampler2D textureSamplers[];
+layout(binding = 4, set = 1) buffer MatIndexColorBuffer
+{
+  int i[];
+}
+matIndex[];
+
+layout(push_constant) uniform Constants
+{
+  vec4  clearColor;
+  vec3  lightPosition;
+  float lightIntensity;
+  vec3  lightDirection;
+  float lightSpotCutoff;
+  float lightSpotOuterCutoff;
+  int   lightType;
+};
+
+
+float fresnel(const vec3 indir, const vec3 normal, const float eta)
+{
+  float cosinangle = max(-1.0f, min(1.0f, dot(indir, normal)));
+  float etaIn, etaNext;
+  if(cosinangle > 0)
+  {
+    etaIn   = eta;
+    etaNext = 1;
+  }
+  else
+  {
+    etaIn   = 1;
+    etaNext = eta;
+  }
+
+  float sinteg = etaIn / etaNext * sqrt(max(0.f, 1 - cosinangle * cosinangle));
+  if(sinteg >= 1)
+  {
+    return 1;
+  }
+  else
+  {
+    float cost = sqrt(max(0.f, 1 - sinteg * sinteg));
+    cosinangle = abs(cosinangle);
+    float Rs =
+        ((etaNext * cosinangle) - (etaIn * cost)) / ((etaNext * cosinangle) + (etaIn * cost));
+    float Rp =
+        ((etaIn * cosinangle) - (etaNext * cost)) / ((etaIn * cosinangle) + (etaNext * cost));
+    return (Rs * Rs + Rp * Rp) / 2;
+  }
+}
+
+void main()
+{
+
+
+  int               matIdx = matIndex[nonuniformEXT(mc.objId)].i[mc.pId];
+  WaveFrontMaterial mat    = materials[nonuniformEXT(mc.objId)].m[matIdx];
+
+  vec3   dir       = mc.outDir;
+  vec3   hitNormal = mc.normal;
+  vec3   direction = vec3(0, 0, 1);
+  vec3 color     = vec3(0,0,0);
+
+  float kr;
+  float _eta = mat.ior;
+  kr = fresnel(dir, hitNormal, _eta);
+  float randy = rnd(mc.seed);
+  if(randy >= 0.5f)
+  {
+    if(kr < 1)
+    {
+      direction = normalize(refract(dir, hitNormal, _eta));
+      color     = vec3(1,1,1) * (1.0f - kr);
+    }
+  }
+  else
+  {
+    direction = reflect(dir, hitNormal);
+    color     = vec3(1,1,1) * kr;
+  }
+
+  mc.emission =direction;
+  mc.reflectance =  2 * color;
+}
+
+
+
+

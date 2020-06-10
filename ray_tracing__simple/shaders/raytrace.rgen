@@ -20,13 +20,14 @@ cam;
 
 layout(push_constant) uniform Constants
 {
-  vec4 clearColor;
-  vec4 lightColor;
-  vec4 lightPosition;
-  int  numObjs;
-  int  numAreaSamples;
-  int  frame;
-  int  numSamples;
+  vec4  clearColor;
+  vec4  lightColor;
+  vec4  lightPosition;
+  int   numObjs;
+  int   numAreaSamples;
+  int   frame;
+  int   numSamples;
+  float fuzzyAngle;
 }
 pushC;
 

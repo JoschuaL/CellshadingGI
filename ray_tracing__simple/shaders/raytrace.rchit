@@ -27,12 +27,14 @@ layout(binding = 7, set = 1) buffer AreaLightsBuffer { AreaLight l[]; } lights[]
 
 layout(push_constant) uniform Constants
 {
-  vec4 clearColor;
-  vec4 lightColor;
-  vec4 lightPosition;
-  int  numObjs;
-  int  numAreaSamples;
-  int  frame;
+  vec4  clearColor;
+  vec4  lightColor;
+  vec4  lightPosition;
+  int   numObjs;
+  int   numAreaSamples;
+  int   frame;
+  int   numSamples;
+  float fuzzyAngle;
 }
 pushC;
 
@@ -239,6 +241,8 @@ void main()
 
         float attenuation = isShadowed ? 0.0 : 0.1;
         mc.inDir          = L;
+        mc.reflectance    = vec3(0, 0, 0);
+        mc.emission       = vec3(0, 0, 0);
         if((matProb & 1) != 0)
         {
           executeCallableEXT(0, 0);
@@ -263,9 +267,20 @@ void main()
   if((matProb & 4) != 0)
   {
     mc.position   = worldPos;
-    mc.fuzzyAngle = pushC.frame / 1000.0;
+    mc.fuzzyAngle = pushC.fuzzyAngle;
     mc.seed       = prd.seed;
     executeCallableEXT(2, 0);
+    prd.seed         = mc.seed;
+    prd.attenuation  = mc.reflectance;
+    prd.rayOrigin    = worldPos;
+    prd.rayDirection = mc.emission;
+    prd.done         = false;
+  }
+
+  if((matProb & 8) != 0){
+    mc.position   = worldPos;
+    mc.seed       = prd.seed;
+    executeCallableEXT(3, 0);
     prd.seed         = mc.seed;
     prd.attenuation  = mc.reflectance;
     prd.rayOrigin    = worldPos;

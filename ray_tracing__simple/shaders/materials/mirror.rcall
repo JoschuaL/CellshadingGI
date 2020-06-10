@@ -83,8 +83,6 @@ void main()
   }
   else
   {
-
-
     vec3  normalDisk = reflect(mc.outDir, mc.normal);
     vec3  center     = mc.position + normalDisk;
     float radius     = sin(mc.fuzzyAngle) / sin((M_PI / 2.0f) - mc.fuzzyAngle);

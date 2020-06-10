@@ -64,6 +64,7 @@ static void onErrorCallback(int error, const char* description)
 void renderUI(HelloVulkan& helloVk)
 {
   static int item = 1;
+  bool changed = false;
   if(ImGui::Combo("Up Vector", &item, "X\0Y\0Z\0\0"))
   {
     nvmath::vec3f pos, eye, up;
@@ -71,16 +72,19 @@ void renderUI(HelloVulkan& helloVk)
     up = nvmath::vec3f(item == 0, item == 1, item == 2);
     CameraManip.setLookat(pos, eye, up);
   }
-  ImGui::SliderFloat3("Light Position", &helloVk.m_pushConstant.lightPosition.x, -20.f, 20.f);
-  ImGui::ColorEdit4("Light Color", guiLightColor);
+  changed |= ImGui::SliderFloat3("Light Position", &helloVk.m_pushConstant.lightPosition.x, -20.f, 20.f);
+  changed |=ImGui::ColorEdit4("Light Color", guiLightColor);
   helloVk.m_pushConstant.lightColor = {guiLightColor[0], guiLightColor[1], guiLightColor[2], guiLightColor[3]};
-  ImGui::RadioButton("Point", reinterpret_cast<int*>(&helloVk.m_pushConstant.lightType), 0);
+  changed |=ImGui::RadioButton("Point", reinterpret_cast<int*>(&helloVk.m_pushConstant.lightType), 0);
   ImGui::SameLine();
-  ImGui::RadioButton("Infinite", reinterpret_cast<int*>(&helloVk.m_pushConstant.lightType), 1);
-  ImGui::InputFloat("fuzzy angle", &helloVk.m_fuzzyAngle, 0.01, 0.01);
-  ImGui::InputInt("Area Samples", &helloVk.m_numAreaSamples);
-  ImGui::InputInt("Per Frame Samples", &helloVk.m_numSamples);
+  changed |=ImGui::RadioButton("Infinite", reinterpret_cast<int*>(&helloVk.m_pushConstant.lightType), 1);
+  changed |=ImGui::InputFloat("fuzzy angle", &helloVk.m_fuzzyAngle, 0.01, 0.01);
+  changed |=ImGui::InputInt("Area Samples", &helloVk.m_numAreaSamples);
+  changed |=ImGui::InputInt("Per Frame Samples", &helloVk.m_numSamples);
   ImGui::Value("Frames", helloVk.m_FrameCount);
+  if(changed){
+    helloVk.resetFrame();
+  }
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -182,9 +186,10 @@ int main(int argc, char** argv)
 
   // Creation of the example
   //helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Original.obj", defaultSearchPaths));
-  //helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Sphere.obj", defaultSearchPaths));
+  helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Sphere.obj", defaultSearchPaths));
   //helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Glossy.obj", defaultSearchPaths));
-  helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Mirror.obj", defaultSearchPaths));
+  //helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Mirror.obj", defaultSearchPaths));
+  //helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Water.obj", defaultSearchPaths));
   //helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Glossy-Floor.obj", defaultSearchPaths));
   //helloVk.loadModel(nvh::findFile("media/scenes/plane.obj", defaultSearchPaths));
 

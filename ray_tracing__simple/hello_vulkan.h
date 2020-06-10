@@ -184,6 +184,6 @@ public:
     int numAreaSamples = 1;
     int frame = 0;
     int numSamples = 1;
-    float fuzzyAngle;
+    float fuzzyAngle = 0.1;
   } m_rtPushConstants;
 };
