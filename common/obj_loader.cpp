@@ -104,20 +104,33 @@ void ObjLoader::loadModel(const std::string& filename)
         const float* vc = &attrib.colors[3 * index.vertex_index];
         vertex.color    = {*(vc + 0), *(vc + 1), *(vc + 2)};
       }
-
-      MaterialObj mat = m_materials[shape.mesh.material_ids[i / 3]];
-      if((mat.diffuse.x > 0.0 || mat.diffuse.y > 0.0 || mat.diffuse.z > 0.0) && mat.illum >= 1){
-        vertex.mat |= 0x01;
+      int         id  = shape.mesh.material_ids[i / 3];
+      if(id >= 0)
+      {
+        MaterialObj mat = m_materials[shape.mesh.material_ids[i / 3]];
+        if((mat.diffuse.x > 0.0 || mat.diffuse.y > 0.0 || mat.diffuse.z > 0.0) && mat.illum >= 1)
+        {
+          vertex.mat |= 0x01;
+        }
+        if((mat.specular.x > 0.0 || mat.specular.y > 0.0 || mat.specular.z > 0.0) && mat.illum == 2)
+        {
+          vertex.mat |= 0x02;
+        }
+        if((mat.specular.x > 0.0 || mat.specular.y > 0.0 || mat.specular.z > 0.0) && mat.illum >= 3
+           && mat.illum < 6)
+        {
+          vertex.mat |= 0x04;
+        }
+        if(mat.illum >= 6)
+        {
+          vertex.mat |= 0x08;
+        }
+        if(mat.emission.x > 0.0 || mat.emission.y > 0.0 || mat.emission.z > 0.0)
+        {
+          vertex.mat |= 0x10;
+        }
       }
-      if((mat.specular.x > 0.0 || mat.specular.y > 0.0 || mat.specular.z > 0.0) && mat.illum >= 2){
-        vertex.mat |= 0x02;
-      }
-      if((mat.specular.x > 0.0 || mat.specular.y > 0.0 || mat.specular.z > 0.0) && mat.illum >= 3 && mat.illum < 6){
-        vertex.mat |= 0x04;
-      }
-      if(mat.illum >= 6){
-        vertex.mat |= 0x08;
-      }
+     
 
 
 

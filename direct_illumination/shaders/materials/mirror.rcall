@@ -1,0 +1,99 @@
+#version 460 core
+#extension GL_EXT_ray_tracing : enable
+#extension GL_GOOGLE_include_directive : enable
+#extension GL_EXT_nonuniform_qualifier : enable
+#extension GL_EXT_scalar_block_layout : enable
+#include "../random.glsl"
+#include "../raycommon.glsl"
+#include "../wavefront.glsl"
+
+layout(location = 0) callableDataInEXT materialCall mc;
+
+layout(binding = 1, set = 1, scalar) buffer MatColorBufferObject
+{
+  WaveFrontMaterial m[];
+}
+materials[];
+
+layout(binding = 2, set = 1, scalar) buffer ScnDesc
+{
+  sceneDesc i[];
+}
+scnDesc;
+
+layout(binding = 3, set = 1) uniform sampler2D textureSamplers[];
+layout(binding = 4, set = 1) buffer MatIndexColorBuffer
+{
+  int i[];
+}
+matIndex[];
+
+layout(push_constant) uniform Constants
+{
+  vec4  clearColor;
+  vec3  lightPosition;
+  float lightIntensity;
+  vec3  lightDirection;
+  float lightSpotCutoff;
+  float lightSpotOuterCutoff;
+  int   lightType;
+};
+
+
+vec3 orth(vec3 v)
+{
+  float mx = abs(v.x);
+  float my = abs(v.y);
+  float mz = abs(v.z);
+
+  float sx, sy, sz;
+  if(mx <= my && mx <= mz)
+  {
+    sx = 0;
+    sy = -v.z;
+    sz = v.y;
+  }
+  else if(my <= mx && my <= mz)
+  {
+    sx = -v.z;
+    sy = 0;
+    sz = v.x;
+  }
+  else
+  {
+    sx = -v.y;
+    sy = v.x;
+    sz = 0;
+  }
+
+  return vec3(sx, sy, sz);
+}
+
+void main()
+{
+
+
+  int               matIdx = matIndex[nonuniformEXT(mc.objId)].i[mc.pId];
+  WaveFrontMaterial mat    = materials[nonuniformEXT(mc.objId)].m[matIdx];
+
+  if(mc.fuzzyAngle <= 0.0)
+  {
+    mc.emission    = reflect(mc.outDir, mc.normal);
+    mc.reflectance = mat.specular;
+  }
+  else
+  {
+    vec3  normalDisk = reflect(mc.outDir, mc.normal);
+    vec3  center     = mc.position + normalDisk;
+    float radius     = sin(mc.fuzzyAngle) / sin((M_PI / 2.0f) - mc.fuzzyAngle);
+    float theta      = rnd(mc.seed) * 2 * M_PI;
+    float r          = sqrt(rnd(mc.seed)) * radius;
+    vec3  in_disc1   = normalize(orth(normalDisk));
+    vec3  in_disc2   = cross(normalDisk, in_disc1);
+    vec3  theta_v    = sin(theta) * in_disc1 + cos(theta) * in_disc2;
+    vec3  p          = center + r * theta_v;
+
+    mc.emission    = normalize(p - mc.position);
+    mc.reflectance = mat.specular;
+  }
+}

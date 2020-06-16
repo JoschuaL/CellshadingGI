@@ -1,0 +1,78 @@
+#version 460 core
+#extension GL_EXT_ray_tracing : enable
+#extension GL_GOOGLE_include_directive : enable
+#extension GL_EXT_nonuniform_qualifier : enable
+#extension GL_EXT_scalar_block_layout : enable
+#include "../random.glsl"
+#include "../raycommon.glsl"
+#include "../wavefront.glsl"
+
+layout(location = 0) callableDataInEXT materialCall mc;
+
+layout(binding = 1, set = 1, scalar) buffer MatColorBufferObject
+{
+  WaveFrontMaterial m[];
+}
+materials[];
+
+layout(binding = 2, set = 1, scalar) buffer ScnDesc
+{
+  sceneDesc i[];
+}
+scnDesc;
+
+layout(binding = 3, set = 1) uniform sampler2D textureSamplers[];
+layout(binding = 4, set = 1) buffer MatIndexColorBuffer
+{
+  int i[];
+}
+matIndex[];
+
+layout(push_constant) uniform Constants
+{
+  vec4  clearColor;
+  vec3  lightPosition;
+  float lightIntensity;
+  vec3  lightDirection;
+  float lightSpotCutoff;
+  float lightSpotOuterCutoff;
+  int   lightType;
+};
+
+
+vec3 orth(vec3 v)
+{
+  float mx = abs(v.x);
+  float my = abs(v.y);
+  float mz = abs(v.z);
+
+  float sx, sy, sz;
+  if(mx <= my && mx <= mz)
+  {
+    sx = 0;
+    sy = -v.z;
+    sz = v.y;
+  }
+  else if(my <= mx && my <= mz)
+  {
+    sx = -v.z;
+    sy = 0;
+    sz = v.x;
+  }
+  else
+  {
+    sx = -v.y;
+    sy = v.x;
+    sz = 0;
+  }
+
+  return vec3(sx, sy, sz);
+}
+
+void main()
+{
+
+
+  mc.eval_color = vec3(0,0,0);
+  
+}

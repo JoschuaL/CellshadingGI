@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 2.8)
 project(vk_raytracing_tutorial)
+set(CMAKE_CONFIGURATION_TYPES "Debug;Release;" CACHE STRING "limited config" FORCE)
 
 #####################################################################################
 # look for shared_sources 1) as a sub-folder 2) at some other locations
@@ -34,8 +35,8 @@ _add_shared_sources_lib()
 
 add_subdirectory(ray_tracing__advance) 
 add_subdirectory(ray_tracing__before) 
-add_subdirectory(ray_tracing__simple)
-
+add_subdirectory(direct_illumination)
+add_subdirectory(pathtracing)
 add_subdirectory(ray_tracing_animation)
 add_subdirectory(ray_tracing_anyhit)
 add_subdirectory(ray_tracing_callable)
