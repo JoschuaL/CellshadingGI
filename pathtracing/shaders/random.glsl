@@ -4,9 +4,9 @@ const vec3 luminance = vec3(0.2126f, 0.7152f, 0.0722f);
 
 uint tea(uint val0, uint val1)
 {
-  uint v0 = val0;
-  uint v1 = val1;
-  uint s0 = 0;
+   uint v0 = val0;
+   uint v1 = val1;
+   uint s0 = 0;
 
   for(uint n = 0; n < 16; n++)
   {
@@ -21,8 +21,8 @@ uint tea(uint val0, uint val1)
 // Generate random unsigned int in [0, 2^24)
 uint lcg(inout uint prev)
 {
-  uint LCG_A = 1664525u;
-  uint LCG_C = 1013904223u;
+  const uint LCG_A = 1664525u;
+  const uint LCG_C = 1013904223u;
   prev       = (LCG_A * prev + LCG_C);
   return prev & 0x00FFFFFF;
 }
@@ -45,8 +45,8 @@ vec2 rnd2(inout uint prev)
   return vec2(rnd(prev), rnd(prev));
 }
 
-float russian_roulette(vec3 c, float mx)
+float russian_roulette(vec3 c)
 {
-  return min(mx, dot(c, luminance) * 2.0);
+  return dot(c, luminance) * 2.0;
 }
 

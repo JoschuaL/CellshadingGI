@@ -77,9 +77,9 @@ const float int_scale   = 256.0;
 
 vec3 offset_ray(vec3 p, vec3 n)
 {
-  ivec3 of_i = ivec3(int_scale * n.x, int_scale * n.y, int_scale * n.z);
+  const ivec3 of_i = ivec3(int_scale * n.x, int_scale * n.y, int_scale * n.z);
 
-  vec3 p_i = vec3(intBitsToFloat(floatBitsToInt(p.x) + ((p.x < 0) ? -of_i.x : of_i.x)),
+  const vec3 p_i = vec3(intBitsToFloat(floatBitsToInt(p.x) + ((p.x < 0) ? -of_i.x : of_i.x)),
                   intBitsToFloat(floatBitsToInt(p.y) + ((p.y < 0) ? -of_i.y : of_i.y)),
                   intBitsToFloat(floatBitsToInt(p.z) + ((p.z < 0) ? -of_i.z : of_i.z)));
 
@@ -127,7 +127,7 @@ void make_sample(vec3 dir, float pdf, vec3 color, vec3 n, inout materialCall mc)
 
 
 const float PiOver4 = 0.78539816339744830961;
-    const float PiOver2 = 1.57079632679489661923;
+const float PiOver2 = 1.57079632679489661923;
     
 
 void sample_cosine_hemisphere(LocalCoords coords, float u, float v, inout materialCall mc)
@@ -137,7 +137,7 @@ void sample_cosine_hemisphere(LocalCoords coords, float u, float v, inout materi
   // "u" and "v" are random numbers between [0, 1].
 
 
-    vec2  s         = vec2(u, v) * 2 - vec2(1, 1);
+  const vec2  s         = vec2(u, v) * 2 - vec2(1, 1);
   vec2  d;
   float r, theta;
   if(s == vec2(0, 0))
@@ -156,20 +156,20 @@ void sample_cosine_hemisphere(LocalCoords coords, float u, float v, inout materi
       r     = s.y;
       theta = PiOver2 - PiOver4 * (s.x / s.y);
     }
-    d =  r * vec2(cos(theta), sin(theta));
+    d = s == vec2(0,0) ? s :  r * vec2(cos(theta), sin(theta));
   }
-  float z       = sqrt(max(0, 1 - d.x * d.x - d.y * d.y));
+  const float z       = sqrt(max(0, 1 - d.x * d.x - d.y * d.y));
   mc.sample_in = d.x * coords.t + d.y * coords.bt + z * coords.n;
-  mc.sample_pdf = cos(theta) / M_PI;
+  mc.sample_pdf = abs(z) / M_PI;
 }
 
 LocalCoords gen_local_coords(vec3 n)
 {
   // From "Building an Orthonormal Basis, Revisited", Duff et al.
-  float sign = n.z < 0.0 ? -1.0 : 1.0;
-  float a    = -1.0f / (sign + n.z);
-  float b    = n.x * n.y * a;
-  vec3      t = normalize(vec3(1.0f + sign * n.x * n.x * a, sign * b, -sign * n.x));
-  vec3      bt = normalize(vec3(b, sign + n.y * n.y * a, -n.y));
+  const float sign = n.z < 0.0 ? -1.0 : 1.0;
+  const float a    = -1.0f / (sign + n.z);
+  const float b    = n.x * n.y * a;
+  const vec3      t = normalize(vec3(1.0f + sign * n.x * n.x * a, sign * b, -sign * n.x));
+  const vec3      bt = normalize(vec3(b, sign + n.y * n.y * a, -n.y));
   return LocalCoords(n, t, bt);
 }

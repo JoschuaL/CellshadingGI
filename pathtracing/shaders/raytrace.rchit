@@ -43,29 +43,29 @@ layout(push_constant) uniform Constants
 pushC;
 
 layout(location = 0) callableDataEXT materialCall mc;
-layout(location = 2) callableDataEXT emissionCall ec;
-layout(location = 3) callableDataEXT directSampleCall dsc;
+layout(location = 1) callableDataEXT emissionCall ec;
+layout(location = 2) callableDataEXT directSampleCall dsc;
 
 
 void main()
 {
 
-    uint  flags  = gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsOpaqueEXT
+   const uint  flags  = gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsOpaqueEXT
                      | gl_RayFlagsSkipClosestHitShaderEXT;
    // Object of this instance
-  uint objId = scnDesc.i[gl_InstanceID].objId;
+  const uint objId = scnDesc.i[gl_InstanceID].objId;
   //init_rnd(prd.seed);
 
   // Indices of the triangle
-  ivec3 ind = ivec3(indices[nonuniformEXT(objId)].i[3 * gl_PrimitiveID + 0],   //
+  const ivec3 ind = ivec3(indices[nonuniformEXT(objId)].i[3 * gl_PrimitiveID + 0],   //
                     indices[nonuniformEXT(objId)].i[3 * gl_PrimitiveID + 1],   //
                     indices[nonuniformEXT(objId)].i[3 * gl_PrimitiveID + 2]);  //
   // Vertex of the triangle
-  Vertex v0 = vertices[nonuniformEXT(objId)].v[ind.x];
-  Vertex v1 = vertices[nonuniformEXT(objId)].v[ind.y];
-  Vertex v2 = vertices[nonuniformEXT(objId)].v[ind.z];
+  const Vertex v0 = vertices[nonuniformEXT(objId)].v[ind.x];
+  const Vertex v1 = vertices[nonuniformEXT(objId)].v[ind.y];
+  const Vertex v2 = vertices[nonuniformEXT(objId)].v[ind.z];
 
-  int matProb = v0.mat;
+  const int matProb = v0.mat;
 
   const vec3 barycentrics = vec3(1.0 - attribs.x - attribs.y, attribs.x, attribs.y);
 
@@ -73,30 +73,16 @@ void main()
   vec3 normal = v0.nrm * barycentrics.x + v1.nrm * barycentrics.y + v2.nrm * barycentrics.z;
   // Transforming the normal to world space
   normal        = normalize(vec3(scnDesc.i[gl_InstanceID].transfoIT * vec4(normal, 0.0)));
-  int lightType = floatBitsToInt(pushC.lightPosition.w);
 
-  // Computing the coordinates of the hit position
-  vec3 worldPos = v0.pos * barycentrics.x + v1.pos * barycentrics.y + v2.pos * barycentrics.z;
-  // Transforming the position to world space
-  worldPos = vec3(scnDesc.i[gl_InstanceID].transfo * vec4(worldPos, 1.0));
-
-  float inanglecos = dot(gl_WorldRayDirectionEXT, normal);
-  vec3  gn;
-  if(inanglecos < 0)
-  {
-    gn = normal;
-  }
-  else
-  {
-    gn = -normal;
-  }
-  worldPos = offset_ray(worldPos, gn);
+ 
+  const vec3 gn = dot(gl_WorldRayDirectionEXT, normal) < 0 ? normal : -normal;
+  const vec3 worldPos = offset_ray(vec3(scnDesc.i[gl_InstanceID].transfo * vec4( v0.pos * barycentrics.x + v1.pos * barycentrics.y + v2.pos * barycentrics.z, 1.0)), gn);
 
  
 
   //Material of the object
-  int               matIdx = matIndex[nonuniformEXT(objId)].i[gl_PrimitiveID];
-  WaveFrontMaterial mat    = materials[nonuniformEXT(objId)].m[matIdx];
+  const int               matIdx = matIndex[nonuniformEXT(objId)].i[gl_PrimitiveID];
+  const WaveFrontMaterial mat    = materials[nonuniformEXT(objId)].m[matIdx];
 
 
   mc.objId  = objId;
@@ -125,11 +111,11 @@ void main()
   if((matProb & 16) != 0)
   {
     
-    int lightType = 1;
-    int call = 4 + lightType;
+    const int lightType = 1;
+    const int call = 4 + lightType;
     ec.dir = -gl_WorldRayDirectionEXT;
     ec.li = AreaLight(vec4(mat.emission,1), vec4(v0.pos,0),vec4(v1.pos,0),vec4(v2.pos,0));
-    executeCallableEXT(call, 2);
+    executeCallableEXT(call, 1);
     if(prd.specular)
     {
       prd.color +=  ec.intensity * prd.weight;
@@ -137,10 +123,10 @@ void main()
     }
     else
     {
-      vec3  r   = gl_WorldRayOriginEXT - worldPos;
-      float pne = (ec.pdf_area * dot(r, r)) / (dot(-gl_WorldRayDirectionEXT, gn) * pushC.numLights);
-      float p_bsdf     = prd.last_bsdf_pdf;
-      float mis_weight = p_bsdf / (p_bsdf + pne);
+      const vec3  r   = gl_WorldRayOriginEXT - worldPos;
+      const float pne = (ec.pdf_area * dot(r, r)) / (dot(-gl_WorldRayDirectionEXT, gn) * pushC.numLights);
+      const float p_bsdf     = prd.last_bsdf_pdf;
+      const float mis_weight = p_bsdf / (p_bsdf + pne);
       prd.color     +=  ec.intensity * mis_weight * prd.weight;
       
     }
@@ -151,7 +137,7 @@ void main()
   
 
   prd.specular = (matProb & 12) != 0;
-  bool diffuse = (matProb & 3) != 0;
+  const bool diffuse = (matProb & 3) != 0;
 
 
 
@@ -181,46 +167,52 @@ void main()
   mc.normal = gn;
 
   mc.position   = worldPos;
-  mc.seed       = prd.seed;
+ 
   mc.fuzzyAngle = pushC.ior;
   mc.inDir = vec3(1,0,0);
-
-  executeCallableEXT(0,0);
-
-  prd.seed         = mc.seed;
-
+ 
    
    
   
-  if(diffuse)
-  {
-    float mis_weight;
-    int cl = min(int(rnd(prd.seed) * pushC.numLights), pushC.numLights - 1);
-    AreaLight li = lights.l[cl];
-    vec3 e1        = li.v1.xyz - li.v0.xyz;
-    vec3 e2        = li.v2.xyz - li.v0.xyz;
-    vec3 ln        = normalize(cross(e1, e2));
-    float u = rnd(prd.seed);
-    float v = rnd(prd.seed);
-    vec3 lpos = u + v < 1.0 ? li.v0.xyz + (u * e1) + (v * e2) :
+ 
+    
+    const int cl = min(int(rnd(prd.seed) * pushC.numLights), pushC.numLights - 1);
+   const  AreaLight li = lights.l[cl];
+    const vec3 e1        = li.v1.xyz - li.v0.xyz;
+    const vec3 e2        = li.v2.xyz - li.v0.xyz;
+    const vec3 ln        = normalize(cross(e1, e2));
+    const float u = rnd(prd.seed);
+    const float v = rnd(prd.seed);
+    const vec3 lpos = u + v < 1.0 ? li.v0.xyz + (u * e1) + (v * e2) :
                                   li.v0.xyz + ((1.0 - u) * e1) + ((1.0 - v) * e2);
-    vec3 pos = offset_ray(offset_ray(lpos, ln), ln);
+    const vec3 pos = offset_ray(offset_ray(lpos, ln), ln);
     
     dsc.seed = prd.seed;
     dsc.li = li;
     dsc.from = worldPos;
     dsc.pos = pos;
-    int lightType = 1;
-    int call = 6 + lightType;
-    executeCallableEXT(call, 3);
+   const  int lightType = 1;
+   const  int call = 6 + lightType;
+    executeCallableEXT(call, 2);
     prd.seed = dsc.seed;
 
-    vec3 dir = worldPos - dsc.pos;
-    float d2 = dot(dir,dir);
-    float dist = sqrt(d2);
-    vec3 rayDir = dir / dist;
-    float cos_hit = dot(rayDir, gn);
-    if(cos_hit < 0){
+
+    
+  const   vec3 dir = worldPos - dsc.pos;
+  const   float d2 = dot(dir,dir);
+  const   float dist = sqrt(d2);
+  const   vec3 rayDir = dir / dist;
+  const   float cos_hit = dot(rayDir, gn);
+     mc.inDir       = -rayDir;
+        mc.eval_color = vec3(0, 0, 0);
+
+      mc.seed       = prd.seed;
+  executeCallableEXT(mask,0);
+
+  prd.seed         = mc.seed;
+
+
+    
       isShadowed = true;
 
 
@@ -233,30 +225,22 @@ void main()
                   dsc.pos,    // ray origin
                   0.0,         // ray min range
                   rayDir,      // ray direction
-                  dist,        // ray max range
+                  cos_hit < 0 ? dist : 0,        // ray max range
                   1            // payload (location = 1)
       );
 
-      if(!isShadowed)
-      {
-        mc.inDir       = -rayDir;
-        mc.eval_color = vec3(0, 0, 0);
+     
+       
      
 
+     
+       const  float pne = ((dsc.pdf_area * d2) / (dsc.cos_v * pushC.numLights));
+       
 
-        float pne = ((dsc.pdf_area * d2) / (dsc.cos_v * pushC.numLights));
-        float ww = 1.0;
-        int mask = matProb;
-        if((mask & 3) == 3){
-            mask = rnd(prd.seed) > 0.5 ? 2 : 1;
-            ww *= 2;
-        }
-        mask -= 1;
-        executeCallableEXT(mask,0);
-
-        float p_bsdf = mc.pdf_pdf;
-        mis_weight   = pne / (pne + p_bsdf);
-        prd.color +=  ww * 
+        const   float p_bsdf = mc.pdf_pdf;
+        const float mis_weight   = pne / (pne + p_bsdf);
+        
+        prd.color += int(!isShadowed) *  ww * 
                       li.color.xyz * 
                       mis_weight * 
                       (
@@ -275,16 +259,16 @@ void main()
                       );
        
         
-      }
+      
         
         
-    }
-  }
+    
+  
 
 
-
-  float p = russian_roulette(prd.weight, pushC.maxRussian);
-  if(rnd(prd.seed) > p)
+ 
+  const float p = russian_roulette(prd.weight);
+  if( rnd(prd.seed) > p || mc.sample_color == vec3(0, 0, 0) || mc.sample_pdf <= 0.0)
   {
     prd.done = true;
     return;
@@ -300,11 +284,7 @@ void main()
   
 
   prd.last_bsdf_pdf = mc.sample_pdf;
-  if(mc.sample_color == vec3(0, 0, 0) || mc.sample_pdf <= 0.0)
-  {
-    prd.done = true;
-    return;
-  }
+  
 
  
 

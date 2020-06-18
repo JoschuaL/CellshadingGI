@@ -41,28 +41,28 @@ layout(push_constant) uniform Constants
 
 void main()
 {
-    vec3 d1        = dsc.li.v1.xyz - dsc.li.v0.xyz;
-    vec3 d2        = dsc.li.v2.xyz - dsc.li.v0.xyz;
+    const vec3 d1        = dsc.li.v1.xyz - dsc.li.v0.xyz;
+    const vec3 d2        = dsc.li.v2.xyz - dsc.li.v0.xyz;
     vec3 n = cross(d1, d2);
-    float len = length(n);
-    float area = len * 0.5;
-    float inv_area = 1.0 / area;
+    const float len = length(n);
+    const float area = len * 0.5;
+    const float inv_area = 1.0 / area;
     n *= inv_area * 0.5;
       
      
 
-      float u = rnd(dsc.seed);
-      float v = rnd(dsc.seed);
+      const float u = rnd(dsc.seed);
+      const float v = rnd(dsc.seed);
 
-      vec3 lpos = u + v < 1.0 ? dsc.li.v0.xyz + (u * d1) + (v * d2) :
+      const vec3 lpos = u + v < 1.0 ? dsc.li.v0.xyz + (u * d1) + (v * d2) :
                                   dsc.li.v0.xyz + ((1.0 - u) * d1) + ((1.0 - v) * d2);
 
 
-      vec3 pos = offset_ray(offset_ray(lpos, n), n);
+      const vec3 pos = offset_ray(offset_ray(lpos, n), n);
 
-      vec3 dir = dsc.from - pos;
+      const vec3 dir = dsc.from - pos;
 
-      float cos_v = dot(dir, n) / length(dir);
+     const  float cos_v = dot(dir, n) / length(dir);
 
       make_direct_sample(pos, dsc.li.color.xyz, inv_area, cos_v / M_PI, cos_v, dsc);
 }

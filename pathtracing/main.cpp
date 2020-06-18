@@ -115,7 +115,7 @@ int main(int argc, char** argv)
 
   // Setup camera
   CameraManip.setWindowSize(SAMPLE_WIDTH, SAMPLE_HEIGHT);
-  CameraManip.setLookat(nvmath::vec3f(0, -1, 4), nvmath::vec3f(0, 0, 1), nvmath::vec3f(0, 1, 0));
+  CameraManip.setLookat(nvmath::vec3f(0, 0, 4), nvmath::vec3f(0, 0, 1), nvmath::vec3f(0, 1, 0));
 
   // Setup Vulkan
   if(!glfwVulkanSupported())
@@ -133,6 +133,7 @@ int main(int argc, char** argv)
       PROJECT_ABSDIRECTORY "../",
       NVPSystem::exePath() + std::string(PROJECT_RELDIRECTORY),
       NVPSystem::exePath() + std::string(PROJECT_RELDIRECTORY) + std::string("../"),
+  		NVPSystem::exePath()
   };
 
 

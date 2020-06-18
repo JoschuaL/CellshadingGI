@@ -40,18 +40,18 @@ void main()
   prd.seed       = tea(gl_LaunchIDEXT.y * gl_LaunchSizeEXT.x + gl_LaunchIDEXT.x, pushC.frame);
   vec3 hitValues = vec3(0);
 
-  for(int smpl = 0; smpl < pushC.numSamples; smpl++)
+  for(int smpl = 0; smpl < 2; smpl++)
   {
 
-    float r1 = rnd(prd.seed);
-    float r2 = rnd(prd.seed);
+    const float r1 = rnd(prd.seed);
+    const float r2 = rnd(prd.seed);
     // Subpixel jitter: send the ray through a different position inside the pixel
     // each time, to provide antialiasing.
-    vec2 subpixel_jitter = pushC.frame == 0 ? vec2(0.5f, 0.5f) : vec2(r1, r2);
+    const vec2 subpixel_jitter = pushC.frame == 0 ? vec2(0.5f, 0.5f) : vec2(r1, r2);
 
     const vec2 pixelCenter = vec2(gl_LaunchIDEXT.xy) + subpixel_jitter;
     const vec2 inUV        = pixelCenter / vec2(gl_LaunchSizeEXT.xy);
-    vec2       d           = inUV * 2.0 - 1.0;
+    const vec2       d           = inUV * 2.0 - 1.0;
 
     vec4 origin    = cam.viewInverse * vec4(0, 0, 0, 1);
     vec4 target    = cam.projInverse * vec4(d.x, d.y, 1, 1);
@@ -65,16 +65,12 @@ void main()
     prd.last_bsdf_pdf = 1.0;
     prd.specular      = true;
 
-    int i             = 0;
+    
     prd.color = vec3(0,0,0);
-    for(;;)
+    for(int i = 0;i <= 64 && !prd.done;i++)
     {
-      i++;
-       if(prd.done || i > pushC.maxBounces)
-      {
-        hitValues +=  prd.color;
-        break;
-      }
+
+      
       
       traceRayEXT(topLevelAS,     // acceleration structure
                   rayFlags,       // rayFlags
@@ -93,14 +89,15 @@ void main()
       origin.xyz    = prd.rayOrigin;
       direction.xyz = prd.rayDirection;
     }
+     hitValues +=  prd.color;
   }
-  prd.color = hitValues / pushC.numSamples;
+  prd.color = hitValues / 2;
 
   // Do accumulation over time
   if(pushC.frame > 0)
   {
-    float a         = 1.0f / float(pushC.frame + 1);
-    vec3  old_color = imageLoad(image, ivec2(gl_LaunchIDEXT.xy)).xyz;
+    const float a         = 1.0f / float(pushC.frame + 1);
+    const vec3  old_color = imageLoad(image, ivec2(gl_LaunchIDEXT.xy)).xyz;
     imageStore(image, ivec2(gl_LaunchIDEXT.xy), vec4(mix(old_color, prd.color, a), 1.f));
   }
   else

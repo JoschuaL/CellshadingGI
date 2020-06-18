@@ -41,11 +41,11 @@ layout(push_constant) uniform Constants
 void main()
 {
     vec3 n = cross(mc.li.v1.xyz - mc.li.v0.xyz, mc.li.v2.xyz - mc.li.v0.xyz);
-    float len = length(n);
-    float area = len * 0.5;
-    float inv_area = 1.0 / area;
+    const float len = length(n);
+    const float area = len * 0.5;
+    const float inv_area = 1.0 / area;
     n *= inv_area * 0.5;
-    float cos_v = dot(mc.dir, n) / M_PI;
+    const float cos_v = dot(mc.dir, n) / M_PI;
     if(cos_v > 0){
         mc.intensity = mc.li.color.xyz;
         mc.pdf_area = inv_area;

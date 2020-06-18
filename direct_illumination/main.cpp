@@ -131,6 +131,7 @@ int main(int argc, char** argv)
       PROJECT_ABSDIRECTORY "../",
       NVPSystem::exePath() + std::string(PROJECT_RELDIRECTORY),
       NVPSystem::exePath() + std::string(PROJECT_RELDIRECTORY) + std::string("../"),
+  	NVPSystem::exePath()
   };
 
 

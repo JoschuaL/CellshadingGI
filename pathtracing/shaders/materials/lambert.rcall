@@ -43,19 +43,19 @@ void main()
 {
 
 
-  int               matIdx  = matIndex[nonuniformEXT(mc.objId)].i[mc.pId];
-  WaveFrontMaterial mat     = materials[nonuniformEXT(mc.objId)].m[matIdx];
+  const int               matIdx  = matIndex[nonuniformEXT(mc.objId)].i[mc.pId];
+  const WaveFrontMaterial mat     = materials[nonuniformEXT(mc.objId)].m[matIdx];
   uint              txtId   = 0;
-  vec3              diffuse = mat.diffuse;
+   vec3              diffuse = mat.diffuse;
   if(mat.textureId >= 0)
   {
     txtId = mat.textureId + scnDesc.i[mc.instID].txtOffset;
     diffuse *= texture(textureSamplers[nonuniformEXT(txtId)], mc.texCoord).xyz;
   }
   mc.eval_color = diffuse * max(dot(mc.normal, mc.inDir), 0.0) / M_PI;
-  LocalCoords coords = gen_local_coords(mc.normal);
+  const LocalCoords coords = gen_local_coords(mc.normal);
   sample_cosine_hemisphere(coords, rnd(mc.seed), rnd(mc.seed), mc);
-  vec3 color = diffuse * (max(dot(mc.sample_in, coords.n), 0.0f));
+  const vec3 color = diffuse * (max(dot(mc.sample_in, coords.n), 0.0f));
   
   make_sample(mc.sample_in, mc.sample_pdf, color, mc.normal, mc);
   mc.pdf_pdf = dot(mc.inDir, mc.normal) / M_PI;
