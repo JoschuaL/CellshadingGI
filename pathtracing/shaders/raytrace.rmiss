@@ -15,6 +15,4 @@ void main()
 
   //prd.color = clearColor.xyz;
   prd.done = true;
-  prd.weight = vec3(0);
-  prd.color = vec3(0);
 }
