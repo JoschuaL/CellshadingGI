@@ -3,6 +3,7 @@
 #extension GL_GOOGLE_include_directive : enable
 #extension GL_EXT_nonuniform_qualifier : enable
 #extension GL_EXT_scalar_block_layout : enable
+#include "../random.glsl"
 #include "../raycommon.glsl"
 #include "../wavefront.glsl"
 
@@ -38,23 +39,28 @@ layout(push_constant) uniform Constants
   int   lightType;
 };
 
+float reflect_cosine(vec3 inDir, vec3 n, vec3 outDir)
+{
+  return max(dot(inDir, reflect(outDir, n)), 0.0);
+}
+
 void main()
 {
 
 
-  int               matIdx = matIndex[nonuniformEXT(mc.objId)].i[mc.pId];
-  WaveFrontMaterial mat    = materials[nonuniformEXT(mc.objId)].m[matIdx];
+  const int               matIdx = matIndex[nonuniformEXT(mc.objId)].i[mc.pId];
+  const WaveFrontMaterial mat    = materials[nonuniformEXT(mc.objId)].m[matIdx];
+  mc.eval_color = mat.specular * pow(reflect_cosine(mc.inDir, mc.normal, mc.outDir), mat.shininess);
 
 
-  // Compute specular only if not in shadow
-  const float kPi        = 3.14159265;
-  const float kShininess = max(mat.shininess, 4.0);
+  const LocalCoords coords = gen_local_coords(mc.normal);
+  sample_cosine_power_hemisphere(coords, mat.shininess, rnd(mc.seed), rnd(mc.seed), mc);
+  float p = reflect_cosine(mc.sample_in, mc.normal, mc.outDir);
+  make_sample(mc.sample_in, mc.sample_pdf,
+              mat.specular * (max(dot(mc.sample_in, mc.normal), 0.0) * pow(p, mat.shininess)),
+              mc.normal, mc);
 
-  // Specular
-  const float kEnergyConservation = (2.0 + kShininess) / (2.0 * kPi);
-  vec3        V                   = normalize(-mc.outDir);
-  vec3        R                   = reflect(-mc.inDir, mc.normal);
-  float       specular            = kEnergyConservation * pow(max(dot(V, R), 0.0), kShininess);
 
-  mc.eval_color += vec3(mat.specular * specular);
+  mc.pdf_pdf =
+      cosine_power_hemisphere_pdf(reflect_cosine(mc.inDir, mc.normal, mc.outDir), mat.shininess);
 }

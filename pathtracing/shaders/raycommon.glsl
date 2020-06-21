@@ -139,7 +139,7 @@ void sample_cosine_hemisphere(LocalCoords coords, float u, float v, inout materi
   // cos(theta). The hemisphere is defined by the coordinate system "coords".
   // "u" and "v" are random numbers between [0, 1].
 
-
+  /*
   const vec2 s = vec2(u, v) * 2 - vec2(1, 1);
   vec2       d;
   float      r, theta;
@@ -163,7 +163,32 @@ void sample_cosine_hemisphere(LocalCoords coords, float u, float v, inout materi
   }
   const float z = sqrt(max(0, 1 - d.x * d.x - d.y * d.y));
   mc.sample_in  = d.x * coords.t + d.y * coords.bt + z * coords.n;
-  mc.sample_pdf = abs(z) / M_PI;
+  mc.sample_pdf = abs(z) / M_PI;*/
+
+  float phi = 2.0 * M_PI * u;
+  float cos_theta = sqrt(v);
+  float theta = acos(cos_theta);
+
+  vec3 du = normalize(cos(phi) * coords.t + sin(phi) * coords.bt);
+  vec3 dir = normalize(cos_theta * coords.n + sin(theta) * du);
+  mc.sample_in = dir;
+  mc.sample_pdf = cos_theta / M_PI;
+}
+
+  float cosine_power_hemisphere_pdf(float c, float k){
+    return pow(c,k) * ((k+1.0) / (2.0 * M_PI));
+  }
+
+
+  void sample_cosine_power_hemisphere(LocalCoords coords, float k, float u, float v, inout materialCall mc){
+  float phi = 2.0 * M_PI * u;
+  float cos_theta = pow(v, 1.0 / (k + 1.0f));
+  float theta = acos(cos_theta);
+  float p = cosine_power_hemisphere_pdf(cos_theta, k);
+  vec3 vec = normalize(cos(phi) * coords.t + sin(phi) * coords.bt);
+  vec3 dir = normalize(cos_theta * coords.n + sin(theta) * vec);
+  mc.sample_in = dir;
+  mc.sample_pdf = p;
 }
 
 LocalCoords gen_local_coords(vec3 n)

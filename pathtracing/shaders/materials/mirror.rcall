@@ -39,40 +39,14 @@ layout(push_constant) uniform Constants
   int   lightType;
 };
 
-
-vec3 orth(vec3 v)
+float reflect_cosine(vec3 inDir, vec3 n, vec3 outDir)
 {
-  float mx = abs(v.x);
-  float my = abs(v.y);
-  float mz = abs(v.z);
-
-  float sx, sy, sz;
-  if(mx <= my && mx <= mz)
-  {
-    sx = 0;
-    sy = -v.z;
-    sz = v.y;
-  }
-  else if(my <= mx && my <= mz)
-  {
-    sx = -v.z;
-    sy = 0;
-    sz = v.x;
-  }
-  else
-  {
-    sx = -v.y;
-    sy = v.x;
-    sz = 0;
-  }
-
-  return vec3(sx, sy, sz);
+  return max(dot(inDir, reflect(outDir, n)), 0.0);
 }
 
 void main()
 {
-
-
-  mc.eval_color = vec3(0,0,0);
-  
+  mc.eval_color = vec3(0);
+  make_sample(reflect(mc.outDir, mc.normal), 1.0, vec3(1), mc.normal, mc);
+  mc.pdf_pdf = 1.0;
 }

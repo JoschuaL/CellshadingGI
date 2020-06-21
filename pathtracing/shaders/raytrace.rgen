@@ -86,7 +86,6 @@ void main()
 
     origin.xyz    = prd.rayOrigin;
     direction.xyz = prd.rayDirection;
-
   }
 
 
