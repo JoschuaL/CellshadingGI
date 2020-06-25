@@ -72,12 +72,12 @@ void renderUI(HelloVulkan& helloVk)
     up = nvmath::vec3f(item == 0, item == 1, item == 2);
     CameraManip.setLookat(pos, eye, up);
   }
-  changed |= ImGui::SliderFloat3("Light Position", &helloVk.m_pushConstant.lightPosition.x, -20.f, 20.f);
+  changed |= ImGui::InputFloat3("Light Position", &helloVk.m_LightPosition.x);
   changed |=ImGui::ColorEdit4("Light Color", guiLightColor);
   helloVk.m_pushConstant.lightColor = {guiLightColor[0], guiLightColor[1], guiLightColor[2], guiLightColor[3]};
-  changed |=ImGui::RadioButton("Point", reinterpret_cast<int*>(&helloVk.m_pushConstant.lightType), 0);
+  changed |=ImGui::RadioButton("Point", reinterpret_cast<int*>(&helloVk.m_LightType), 0);
   ImGui::SameLine();
-  changed |=ImGui::RadioButton("Infinite", reinterpret_cast<int*>(&helloVk.m_pushConstant.lightType), 1);
+  changed |=ImGui::RadioButton("Infinite", reinterpret_cast<int*>(&helloVk.m_LightType), 1);
   changed |=ImGui::InputFloat("fuzzy angle", &helloVk.m_fuzzyAngle, 0.01f, 0.01f);
   changed |=ImGui::InputFloat("IOR", &helloVk.m_IOR, 0.01f, 0.01f);
   changed |=ImGui::InputInt("Area Samples", &helloVk.m_numAreaSamples);
@@ -189,11 +189,12 @@ int main(int argc, char** argv)
   // Creation of the example
   //helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Original.obj", defaultSearchPaths));
   //helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Sphere.obj", defaultSearchPaths));
-  helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Glossy.obj", defaultSearchPaths));
+  //helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Glossy.obj", defaultSearchPaths));
   //helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Mirror.obj", defaultSearchPaths));
   //helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Water.obj", defaultSearchPaths));
   //helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Glossy-Floor.obj", defaultSearchPaths));
   //helloVk.loadModel(nvh::findFile("media/scenes/plane.obj", defaultSearchPaths));
+  helloVk.loadModel(nvh::findFile("media/scenes/ladies/untitled.obj", defaultSearchPaths));
 
 
   helloVk.createOffscreenRender();

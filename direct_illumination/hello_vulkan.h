@@ -174,13 +174,15 @@ public:
   int m_numSamples = 4;
   int m_FrameCount = 0;
   float m_IOR = 0.0f;
+	LightType m_LightType = LightType::Infinite;
+  nvmath::vec3f                                       m_LightPosition       = {0, 0, 1};
 
   struct RtPushConstant
   {
     nvmath::vec4f clearColor;
     nvmath::vec4f lightColor;
-    nvmath::vec3f lightPosition;
-    LightType     lightType;
+    nvmath::vec3f lightPosition = {0,0,1};
+    LightType     lightType = LightType::Infinite;
     int           numObjs;
     int numAreaSamples = 1;
     int frame = 0;

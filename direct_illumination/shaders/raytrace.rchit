@@ -84,8 +84,21 @@ void main()
   }
   worldPos = offset_ray(worldPos, gn);
 
+
+  mc.objId  = objId;
+  mc.pId    = gl_PrimitiveID;
+  mc.instID = gl_InstanceID;
+  mc.texCoord =
+      v0.texCoord * barycentrics.x + v1.texCoord * barycentrics.y + v2.texCoord * barycentrics.z;
+  ;
+  mc.normal        = gn;
+  mc.outDir        = gl_WorldRayDirectionEXT;
+  mc.reflectance   = vec3(0, 0, 0);
+  mc.emission      = vec3(0, 0, 0);
+  vec3 lightsColor = vec3(0.0, 0.0, 0.0);
+
   // Vector toward the light
-  /*vec3  L;
+  vec3  L;
   vec4  lightColor    = pushC.lightColor;
   float lightDistance = 100000.0;
   // Point light
@@ -107,24 +120,33 @@ void main()
 
 
   // Diffuse
-  vec3 diffuse = computeDiffuse(mat, L, normal);
-  if(mat.textureId >= 0)
-  {
-    uint txtId = mat.textureId + scnDesc.i[gl_InstanceID].txtOffset;
-    vec2 texCoord =
-        v0.texCoord * barycentrics.x + v1.texCoord * barycentrics.y + v2.texCoord * barycentrics.z;
-    diffuse *= texture(textureSamplers[nonuniformEXT(txtId)], texCoord).xyz;
-  }
+  
+  
+  vec3 lcolor = vec3(0);
 
-  vec3  specular    = vec3(0);
-  float attenuation = 1;
+  mc.inDir          = L;
+        mc.reflectance    = vec3(0, 0, 0);
+        mc.emission       = vec3(0, 0, 0);
+        if((matProb & 1) != 0)
+        {
+          executeCallableEXT(0, 0);
+        }
+        if((matProb & 2) != 0)
+        {
+          executeCallableEXT(1, 0);
+        }
+        if((matProb & 32) != 0)
+        {
+          executeCallableEXT(4, 0);
+        }
+ 
+    vec3 emission = mc.emission;
 
   // Tracing shadow ray only if the light is visible from the surface
-  if(dot(normal, L) > 0)
+  if(dot(gn, L) > 0)
   {
-    float tMin   = 0.01;
+    float tMin   = 0.00;
     float tMax   = lightDistance;
-    vec3  origin = gl_WorldRayOriginEXT + gl_WorldRayDirectionEXT * gl_HitTEXT;
     vec3  rayDir = L;
     uint  flags  = gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsOpaqueEXT
                  | gl_RayFlagsSkipClosestHitShaderEXT;
@@ -135,35 +157,27 @@ void main()
                 0,           // sbtRecordOffset
                 0,           // sbtRecordStride
                 1,           // missIndex
-                origin,      // ray origin
+                worldPos,      // ray origin
                 tMin,        // ray min range
                 rayDir,      // ray direction
                 tMax,        // ray max range
                 1            // payload (location = 1)
     );
     int cell_levels = 10;
-    if(isShadowed)
-    {
-      attenuation = 0.3;
-    }
-    else
-    {
-      specular = computeSpecular(mat, gl_WorldRayDirectionEXT, L, normal);
-    }
-  }*/
 
 
-  mc.objId  = objId;
-  mc.pId    = gl_PrimitiveID;
-  mc.instID = gl_InstanceID;
-  mc.texCoord =
-      v0.texCoord * barycentrics.x + v1.texCoord * barycentrics.y + v2.texCoord * barycentrics.z;
-  ;
-  mc.normal        = gn;
-  mc.outDir        = gl_WorldRayDirectionEXT;
-  mc.reflectance   = vec3(0, 0, 0);
-  mc.emission      = vec3(0, 0, 0);
-  vec3 lightsColor = vec3(0.0, 0.0, 0.0);
+     vec3 specular = vec3(0, 0, 0);
+
+
+        float attenuation = isShadowed ? 0.0 : 1;
+        
+        lcolor += mc.reflectance * lightColor.xyz * attenuation;
+  }
+    
+  
+
+
+  
 
   for(int i = 0; i < pushC.numObjs; i++)
   {
@@ -238,9 +252,20 @@ void main()
                     1            // payload (location = 1)
         );
         vec3 specular = vec3(0, 0, 0);
+      if(isShadowed)
+        {
+          if(floatBitsToInt(li.v2.w) == 1)
+          {
+            break;
+          }
+          else
+          {
+            continue;
+          }
+        }
 
 
-        float attenuation = isShadowed ? 0.0 : 0.1;
+        
         mc.inDir          = L;
         mc.reflectance    = vec3(0, 0, 0);
         mc.emission       = vec3(0, 0, 0);
@@ -252,7 +277,11 @@ void main()
         {
           executeCallableEXT(1, 0);
         }
-        tempColor += mc.emission + mc.reflectance * (li.color.xyz * attenuation) / (dist * dist);
+        if((matProb & 32) != 0)
+        {
+          executeCallableEXT(4, 0);
+        }
+        tempColor += mc.reflectance * li.color.xyz  / (dist * dist);
       }
 
 
@@ -292,5 +321,5 @@ void main()
   
 
 
-  prd.hitValue = lightsColor;
+  prd.hitValue = lcolor + lightsColor + emission;
 }
