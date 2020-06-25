@@ -174,7 +174,7 @@ public:
   int m_numAreaSamples = 1;
   int m_numSamples = 1;
   int m_FrameCount = 0;
-  float m_IOR = 0.0f;
+  float m_IOR = 0.3f;
   int                                                 m_maxBounces          = 64;
   float                                               m_maxRussian = 1.0;
 
@@ -189,7 +189,7 @@ public:
     int frame = 0;
     int numSamples = 1;
     float fuzzyAngle = 0.1f;
-    float ior = 0.0f;
+    float ior = 0.3f;
     int           numLights;
     int           maxBounces = 1;
     float         max_russian = 0.75;

@@ -76,6 +76,7 @@ void main()
 {
 
 
+
   int               matIdx = matIndex[nonuniformEXT(mc.objId)].i[mc.pId];
   WaveFrontMaterial mat    = materials[nonuniformEXT(mc.objId)].m[matIdx];
 
@@ -104,4 +105,7 @@ void main()
 
   mc.emission    = direction;
   mc.reflectance = 2 * color;
+
+
+  
 }

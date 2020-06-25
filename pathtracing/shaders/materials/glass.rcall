@@ -72,9 +72,39 @@ float fresnel(const vec3 indir, const vec3 normal, const float eta)
   }
 }
 
+float fresnel_factor(float k, float cos_i, float cos_t)
+{
+  float R_s = (k * cos_i - cos_t) / (k * cos_i + cos_t);
+  float R_p = (cos_i - k * cos_t) / (cos_i + k * cos_t);
+  return (R_s * R_s + R_p * R_p) * 0.5f;
+}
+
 void main()
 {
+  mc.eval_color = vec3(0);
+  mc.pdf_pdf    = 1.0;
 
 
-  mc.eval_color = vec3(0,0,0);
+  int               matIdx = matIndex[nonuniformEXT(mc.objId)].i[mc.pId];
+  WaveFrontMaterial mat    = materials[nonuniformEXT(mc.objId)].m[matIdx];
+  float             ior    = mc.ior;
+  float             F      = 1.0;
+  float             eta    = 1.0 / ior;
+  float             cos_i  = (dot(mc.outDir, mc.normal));
+  float             k      = eta;
+  float             cos2_t = (1.0f - k * k * (1.0f - cos_i * cos_i));
+  if(cos2_t > 0)
+  {
+    // Refraction
+    float cos_t = sqrt(cos2_t);
+    F           = fresnel_factor(k, cos_i, cos_t);
+    if(rnd(mc.seed) > F)
+    {
+      vec3  t            = normalize((k * cos_i - cos_t) * mc.normal - k * mc.outDir);
+      float adjoint_term = k * k;
+      make_sample(t, 1.0f, mat.specular * adjoint_term, mc.normal, mc);
+      return;
+    }
+  }
+  make_sample(reflect(mc.outDir, mc.normal), 1.0f, mat.specular, mc.normal, mc);
 }

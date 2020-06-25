@@ -62,9 +62,11 @@ void main()
   const vec3 barycentrics = vec3(1.0 - attribs.x - attribs.y, attribs.x, attribs.y);
 
   // Computing the normal at hit position
-  vec3 normal = v0.nrm * barycentrics.x + v1.nrm * barycentrics.y + v2.nrm * barycentrics.z;
+  vec3 snormal = v0.nrm * barycentrics.x + v1.nrm * barycentrics.y + v2.nrm * barycentrics.z;
+  vec3 gnormal = normalize(cross(v1.pos - v0.pos, v2.pos - v0.pos));
   // Transforming the normal to world space
-  normal        = normalize(vec3(scnDesc.i[gl_InstanceID].transfoIT * vec4(normal, 0.0)));
+  snormal       = normalize(vec3(scnDesc.i[gl_InstanceID].transfoIT * vec4(snormal, 0.0)));
+  gnormal       = normalize(vec3(scnDesc.i[gl_InstanceID].transfoIT * vec4(gnormal, 0.0)));
   int lightType = floatBitsToInt(pushC.lightPosition.w);
 
   // Computing the coordinates of the hit position
@@ -72,17 +74,17 @@ void main()
   // Transforming the position to world space
   worldPos = vec3(scnDesc.i[gl_InstanceID].transfo * vec4(worldPos, 1.0));
 
-  float inanglecos = dot(gl_WorldRayDirectionEXT, normal);
-  vec3  gn;
+  float inanglecos = dot(gl_WorldRayDirectionEXT, gnormal);
+
   if(inanglecos < 0)
   {
-    gn = normal;
+    gnormal = gnormal;
   }
   else
   {
-    gn = -normal;
+    gnormal = -gnormal;
   }
-  worldPos = offset_ray(worldPos, gn);
+  worldPos = offset_ray(worldPos, gnormal);
 
   // Vector toward the light
   /*vec3  L;
@@ -159,7 +161,7 @@ void main()
   mc.texCoord =
       v0.texCoord * barycentrics.x + v1.texCoord * barycentrics.y + v2.texCoord * barycentrics.z;
   ;
-  mc.normal        = gn;
+  mc.normal        = snormal;
   mc.outDir        = gl_WorldRayDirectionEXT;
   mc.reflectance   = vec3(0, 0, 0);
   mc.emission      = vec3(0, 0, 0);
@@ -202,7 +204,7 @@ void main()
         float dist = length(ldir);
         vec3  L    = normalize(ldir);
 
-        float outanglecos = dot(-L, gn);
+        float outanglecos = dot(-L, gnormal);
 
         if(inanglecos < 0 && outanglecos > 0 || inanglecos > 0 && outanglecos < 0)
         {
@@ -276,7 +278,8 @@ void main()
     prd.rayOrigin    = worldPos;
     prd.rayDirection = mc.emission;
     prd.done         = false;
-  } else if((matProb & 4) != 0)
+  }
+  else if((matProb & 4) != 0)
   {
     mc.position   = worldPos;
     mc.fuzzyAngle = pushC.fuzzyAngle;
@@ -288,8 +291,6 @@ void main()
     prd.rayDirection = mc.emission;
     prd.done         = false;
   }
-
-  
 
 
   prd.hitValue = lightsColor;

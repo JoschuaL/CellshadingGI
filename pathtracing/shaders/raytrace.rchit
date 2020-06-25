@@ -70,17 +70,22 @@ void main()
   const vec3 barycentrics = vec3(1.0 - attribs.x - attribs.y, attribs.x, attribs.y);
 
   // Computing the normal at hit position
-  vec3 normal = v0.nrm * barycentrics.x + v1.nrm * barycentrics.y + v2.nrm * barycentrics.z;
+  vec3 snormal = v0.nrm * barycentrics.x + v1.nrm * barycentrics.y + v2.nrm * barycentrics.z;
+  vec3 gnormal = normalize(cross(v1.pos - v0.pos, v2.pos - v0.pos));
   // Transforming the normal to world space
-  normal = normalize(vec3(scnDesc.i[gl_InstanceID].transfoIT * vec4(normal, 0.0)));
+  snormal = normalize(vec3(scnDesc.i[gl_InstanceID].transfoIT * vec4(snormal, 0.0)));
+  gnormal = normalize(vec3(scnDesc.i[gl_InstanceID].transfoIT * vec4(gnormal, 0.0)));
 
+  bool entering = dot(gl_WorldRayDirectionEXT, gnormal) < 0;
 
-  const vec3 gn       = dot(gl_WorldRayDirectionEXT, normal) < 0 ? normal : -normal;
+  mc.entering = entering;
+  gnormal       = entering ? gnormal : -gnormal;
+  snormal       = entering ? snormal : -snormal;
   const vec3 worldPos = offset_ray(
       vec3(
           scnDesc.i[gl_InstanceID].transfo
           * vec4(v0.pos * barycentrics.x + v1.pos * barycentrics.y + v2.pos * barycentrics.z, 1.0)),
-      gn);
+      gnormal);
 
 
   //Material of the object
@@ -93,7 +98,7 @@ void main()
   mc.instID = gl_InstanceID;
   mc.texCoord =
       v0.texCoord * barycentrics.x + v1.texCoord * barycentrics.y + v2.texCoord * barycentrics.z;
-  mc.normal = gn;
+  mc.normal = snormal;
   mc.outDir = gl_WorldRayDirectionEXT;
 
 
@@ -125,7 +130,7 @@ void main()
     {
       const vec3  r = gl_WorldRayOriginEXT - worldPos;
       const float pne =
-          (ec.pdf_area * dot(r, r)) / (dot(-gl_WorldRayDirectionEXT, gn) * pushC.numLights);
+          (ec.pdf_area * dot(r, r)) / (dot(-gl_WorldRayDirectionEXT, snormal) * pushC.numLights);
       const float p_bsdf     = prd.last_bsdf_pdf;
       const float mis_weight = p_bsdf / (p_bsdf + pne);
       prd.color += ec.intensity * mis_weight * prd.weight;
@@ -183,11 +188,12 @@ void main()
   mc.instID = gl_InstanceID;
   mc.texCoord =
       v0.texCoord * barycentrics.x + v1.texCoord * barycentrics.y + v2.texCoord * barycentrics.z;
-  mc.normal = gn;
+  mc.normal = snormal;
 
   mc.position = worldPos;
 
-  mc.fuzzyAngle = pushC.ior;
+  mc.fuzzyAngle = pushC.fuzzyAngle;
+  mc.ior        = pushC.ior;
   mc.inDir      = vec3(1, 0, 0);
 
 
@@ -216,7 +222,7 @@ void main()
   const float d2      = dot(dir, dir);
   const float dist    = sqrt(d2);
   const vec3  rayDir  = dir / dist;
-  const float cos_hit = dot(rayDir, gn);
+  const float cos_hit = dot(rayDir, snormal);
   mc.inDir            = -rayDir;
   mc.eval_color       = vec3(0, 0, 0);
 
@@ -265,7 +271,7 @@ void main()
   prd.last_bsdf_pdf = mc.sample_pdf;
 
 
-  prd.weight *= (mc.sample_color * abs(dot(mc.sample_in, gn))) / (mc.sample_pdf * p);
+  prd.weight *= (mc.sample_color * abs(dot(mc.sample_in, snormal))) / (mc.sample_pdf * p);
 
 
   prd.rayOrigin    = worldPos;
