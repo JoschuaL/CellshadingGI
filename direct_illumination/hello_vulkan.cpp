@@ -720,7 +720,7 @@ void HelloVulkan::createBottomLevelAS()
     // We could add more geometry in each BLAS, but we add only one for now
     allBlas.emplace_back(blas);
   }
-  m_rtBuilder.buildBlas(allBlas, vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastTrace);
+  m_rtBuilder.buildBlas(allBlas, vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastTrace | vk::BuildAccelerationStructureFlagBitsKHR::eAllowCompaction);
 }
 
 void HelloVulkan::createTopLevelAS()
@@ -860,6 +860,9 @@ void HelloVulkan::createRtPipeline()
 
   vk::ShaderModule glassSM = nvvk::createShaderModule(m_device, nvh::loadFile("shaders/glass.rcall.spv", true, paths));
 
+	vk::ShaderModule cellSM =
+      nvvk::createShaderModule(m_device, nvh::loadFile("shaders/cell.rcall.spv", true, paths));
+
   stages.push_back({{}, vk::ShaderStageFlagBits::eCallableKHR, lambertSM, "main"});
   cg.setGeneralShader(static_cast<uint32_t>(stages.size() - 1));
   m_rtShaderGroups.push_back(cg);
@@ -873,6 +876,10 @@ void HelloVulkan::createRtPipeline()
   m_rtShaderGroups.push_back(cg);
 
   stages.push_back({{}, vk::ShaderStageFlagBits::eCallableKHR, glassSM, "main"});
+  cg.setGeneralShader(static_cast<uint32_t>(stages.size() - 1));
+  m_rtShaderGroups.push_back(cg);
+
+	stages.push_back({{}, vk::ShaderStageFlagBits::eCallableKHR, cellSM, "main"});
   cg.setGeneralShader(static_cast<uint32_t>(stages.size() - 1));
   m_rtShaderGroups.push_back(cg);
 
@@ -975,6 +982,8 @@ void HelloVulkan::raytrace(const vk::CommandBuffer& cmdBuf, const nvmath::vec4f&
   m_rtPushConstants.numSamples = m_numSamples;
   m_rtPushConstants.fuzzyAngle = m_fuzzyAngle;
   m_rtPushConstants.ior = m_IOR;
+  m_rtPushConstants.lightType      = m_LightType;
+  m_rtPushConstants.lightPosition  = m_LightPosition;
 
   cmdBuf.bindPipeline(vk::PipelineBindPoint::eRayTracingKHR, m_rtPipeline);
   cmdBuf.bindDescriptorSets(vk::PipelineBindPoint::eRayTracingKHR, m_rtPipelineLayout, 0,

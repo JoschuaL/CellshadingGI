@@ -129,6 +129,10 @@ void ObjLoader::loadModel(const std::string& filename)
         {
           vertex.mat |= 0x10;
         }
+        if(mat.illum == 10)
+        {
+          vertex.mat = 0x20;
+        }
       }
      
 
