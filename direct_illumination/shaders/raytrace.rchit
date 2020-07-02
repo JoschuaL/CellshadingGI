@@ -75,15 +75,12 @@ void main()
   worldPos = vec3(scnDesc.i[gl_InstanceID].transfo * vec4(worldPos, 1.0));
 
   float inanglecos = dot(gl_WorldRayDirectionEXT, gnormal);
+  float ins = dot(gl_WorldRayDirectionEXT, snormal);
 
-  if(inanglecos < 0)
-  {
-    gnormal = gnormal;
-  }
-  else
-  {
-    gnormal = -gnormal;
-  }
+  gnormal *= -sign(inanglecos);
+  snormal *= -sign(ins);
+
+  
   worldPos = offset_ray(worldPos, gnormal);
 
 
@@ -165,15 +162,9 @@ void main()
                 tMax,        // ray max range
                 1            // payload (location = 1)
     );
-    int cell_levels = 10;
-
-
-
-
-
-        float attenuation = isShadowed ? 0.0 : 1;
+   
         
-        lcolor += mc.reflectance * lightColor.xyz * attenuation;
+        lcolor += mc.reflectance * lightColor.xyz * float(!isShadowed);
   }
     
   
