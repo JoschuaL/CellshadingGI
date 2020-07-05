@@ -34,7 +34,7 @@
 #include "nvvk/descriptorsets_vk.hpp"
 
 // #VKRay
-#include "AreaLight.h"
+#include "Lights.h"
 #include "nvvk/raytraceKHR_vk.hpp"
 
 //--------------------------------------------------------------------------------------------------
@@ -156,6 +156,7 @@ public:
   void raytrace(const vk::CommandBuffer& cmdBuf, const nvmath::vec4f& clearColor);
   void resetFrame();
   void updateFrame();
+  void addPointLight(PointLight p);
 
 
   vk::PhysicalDeviceRayTracingPropertiesKHR           m_rtProperties;
@@ -171,11 +172,14 @@ public:
   float m_fuzzyAngle = 0.1f;
   std::vector<std::vector<AreaLight>>     m_AreaLightsPerObject = {};
   int m_numAreaSamples = 1;
-  int m_numSamples = 4;
+  int m_numSamples = 1;
   int m_FrameCount = 0;
   float m_IOR = 0.0f;
 	LightType m_LightType = LightType::Infinite;
   nvmath::vec3f                                       m_LightPosition       = {0, 0, 1};
+
+	std::vector<PointLight> m_PointLights = {};
+  nvvk::Buffer            m_pointLightBuffer;
 
   struct RtPushConstant
   {
@@ -189,5 +193,10 @@ public:
     int numSamples = 1;
     float fuzzyAngle = 0.1f;
     float ior = 0.0f;
+    int           numPointLights;
+    float         celramp = 0.9;
+    int           celsteps = 10;
+    bool          celatten = false;
+  	
   } m_rtPushConstants;
 };

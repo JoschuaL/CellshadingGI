@@ -104,7 +104,7 @@ void main()
   }
 
   mc.emission    = direction;
-  mc.reflectance = 2 * color;
+  mc.inR = 2 * color;
 
 
   

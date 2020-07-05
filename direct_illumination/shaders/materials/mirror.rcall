@@ -88,5 +88,5 @@ void main()
   vec3  p          = center + r * theta_v;
 
   mc.emission    = normalize(p - mc.position);
-  mc.reflectance = mat.specular;
+  mc.inR = mat.specular;
 }

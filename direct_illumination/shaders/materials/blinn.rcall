@@ -56,5 +56,5 @@ void main()
   vec3        R                   = reflect(-mc.inDir, mc.normal);
   float       specular            = kEnergyConservation * pow(max(dot(V, R), 0.0), kShininess);
 
-  mc.reflectance += vec3(mat.specular * specular);
+  mc.outR += mc.inR * vec3(mat.specular * specular);
 }

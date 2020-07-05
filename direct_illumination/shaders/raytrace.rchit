@@ -22,6 +22,7 @@ layout(binding = 4, set = 1)  buffer MatIndexColorBuffer { int i[]; } matIndex[]
 layout(binding = 5, set = 1, scalar) buffer Vertices { Vertex v[]; } vertices[];
 layout(binding = 6, set = 1) buffer Indices { uint i[]; } indices[];
 layout(binding = 7, set = 1) buffer AreaLightsBuffer { AreaLight l[]; } lights[];
+layout(binding = 8, set = 1) buffer PointLightsBuffer { PointLight l[]; } plights;
 
 // clang-format on
 
@@ -36,6 +37,7 @@ layout(push_constant) uniform Constants
   int   numSamples;
   float fuzzyAngle;
   float ior;
+  int numPointLights;
 }
 pushC;
 
@@ -44,12 +46,14 @@ layout(location = 0) callableDataEXT materialCall mc;
 
 void main()
 {
+  
+
   // Object of this instance
-  uint objId = scnDesc.i[gl_InstanceID].objId;
+  const uint objId = scnDesc.i[gl_InstanceID].objId;
   //init_rnd(prd.seed);
 
   // Indices of the triangle
-  ivec3 ind = ivec3(indices[nonuniformEXT(objId)].i[3 * gl_PrimitiveID + 0],   //
+  const ivec3 ind = ivec3(indices[nonuniformEXT(objId)].i[3 * gl_PrimitiveID + 0],   //
                     indices[nonuniformEXT(objId)].i[3 * gl_PrimitiveID + 1],   //
                     indices[nonuniformEXT(objId)].i[3 * gl_PrimitiveID + 2]);  //
   // Vertex of the triangle
@@ -57,7 +61,7 @@ void main()
   Vertex v1 = vertices[nonuniformEXT(objId)].v[ind.y];
   Vertex v2 = vertices[nonuniformEXT(objId)].v[ind.z];
 
-  int matProb = v0.mat;
+  const int matProb = v0.mat;
 
   const vec3 barycentrics = vec3(1.0 - attribs.x - attribs.y, attribs.x, attribs.y);
 
@@ -67,15 +71,15 @@ void main()
   // Transforming the normal to world space
   snormal       = normalize(vec3(scnDesc.i[gl_InstanceID].transfoIT * vec4(snormal, 0.0)));
   gnormal       = normalize(vec3(scnDesc.i[gl_InstanceID].transfoIT * vec4(gnormal, 0.0)));
-  int lightType = floatBitsToInt(pushC.lightPosition.w);
+  const int lightType = floatBitsToInt(pushC.lightPosition.w);
 
   // Computing the coordinates of the hit position
   vec3 worldPos = v0.pos * barycentrics.x + v1.pos * barycentrics.y + v2.pos * barycentrics.z;
   // Transforming the position to world space
   worldPos = vec3(scnDesc.i[gl_InstanceID].transfo * vec4(worldPos, 1.0));
 
-  float inanglecos = dot(gl_WorldRayDirectionEXT, gnormal);
-  float ins = dot(gl_WorldRayDirectionEXT, snormal);
+  const float inanglecos = dot(gl_WorldRayDirectionEXT, gnormal);
+  const float ins = dot(gl_WorldRayDirectionEXT, snormal);
 
   gnormal *= -sign(inanglecos);
   snormal *= -sign(ins);
@@ -83,7 +87,7 @@ void main()
   
   worldPos = offset_ray(worldPos, gnormal);
 
-
+  mc.celcounter = 0;
   mc.objId  = objId;
   mc.pId    = gl_PrimitiveID;
   mc.instID = gl_InstanceID;
@@ -92,62 +96,64 @@ void main()
   ;
   mc.normal        = snormal;
   mc.outDir        = gl_WorldRayDirectionEXT;
-  mc.reflectance   = vec3(0, 0, 0);
+  mc.inR   = vec3(0, 0, 0);
+  mc.outR = vec3(0,0,0);
   mc.emission      = vec3(0, 0, 0);
+  mc.celradiance = vec3(0);
+  mc.celfaccounter = 1;
   vec3 lightsColor = vec3(0.0, 0.0, 0.0);
 
   // Vector toward the light
   vec3  L;
-  vec4  lightColor    = pushC.lightColor;
+  vec3  lightColor    = pushC.lightColor.xyz;
   float lightDistance = 100000.0;
   // Point light
   if(lightType == 0)
   {
-    vec3 lDir      = pushC.lightPosition.xyz - worldPos;
+    const vec3 lDir      = pushC.lightPosition.xyz - worldPos;
     lightDistance  = length(lDir);
-    lightColor.xyz = pushC.lightColor.xyz / (lightDistance * lightDistance);
-    L              = normalize(lDir);
+    lightColor = pushC.lightColor.xyz / (lightDistance * lightDistance);
+    L              = lDir / lightDistance;
   }
   else  // Directional light
   {
-    L = normalize(pushC.lightPosition.xyz - vec3(0));
+    L = normalize(pushC.lightPosition.xyz);
   }
 
   // Material of the object
-  int               matIdx = matIndex[nonuniformEXT(objId)].i[gl_PrimitiveID];
-  WaveFrontMaterial mat    = materials[nonuniformEXT(objId)].m[matIdx];
+  const int               matIdx = matIndex[nonuniformEXT(objId)].i[gl_PrimitiveID];
+  const WaveFrontMaterial mat    = materials[nonuniformEXT(objId)].m[matIdx];
 
 
   // Diffuse
   
   
   vec3 lcolor = vec3(0);
-
-  mc.inDir          = L;
-        mc.reflectance    = vec3(0, 0, 0);
+   mc.inDir          = L;
+        mc.inR    = lightColor.xyz;
         mc.emission       = vec3(0, 0, 0);
-        if((matProb & 1) != 0)
-        {
-          executeCallableEXT(0, 0);
-        }
-        if((matProb & 2) != 0)
-        {
-          executeCallableEXT(1, 0);
-        }
-        if((matProb & 32) != 0)
-        {
-          executeCallableEXT(4, 0);
-        }
+    int call = 0;
+    float fac = 1.0;
+  switch(matProb){
+    case 1:{call = 0; break;}
+    case 2:{call = 1; break;}
+    case 3:{call = rnd(prd.seed) > 0.5 ? 1 : 0; fac *= 2; break;}
+    case 32:{call = 4; break;}
+  }
+       
+          executeCallableEXT(call, 0);
+ 
+       
  
     vec3 emission = mc.emission;
 
   // Tracing shadow ray only if the light is visible from the surface
-  if(dot(gnormal, L) > 0)
+  if(dot(snormal, L) > 0)
   {
-    float tMin   = 0.00;
-    float tMax   = lightDistance;
-    vec3  rayDir = L;
-    uint  flags  = gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsOpaqueEXT
+    const float tMin   = 0.00;
+    const float tMax   = lightDistance;
+    const vec3  rayDir = L;
+    const uint  flags  = gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsOpaqueEXT
                  | gl_RayFlagsSkipClosestHitShaderEXT;
     isShadowed = true;
     traceRayEXT(topLevelAS,  // acceleration structure
@@ -162,14 +168,101 @@ void main()
                 tMax,        // ray max range
                 1            // payload (location = 1)
     );
+  
+        
+
+           lcolor = mc.outR * fac * float(!isShadowed);
+  
+    }
    
         
-        lcolor += mc.reflectance * lightColor.xyz * float(!isShadowed);
-  }
+       
     
+
+
+  for(int i = 0; i < pushC.numPointLights; i++){
+   
+   PointLight li = plights.l[i];
+      
+      if(li.color.x + li.color.y + li.color.z <= 0.0)
+      {
+       
+          continue;
+        
+      }
+     
+
+       
+
+        vec3 pos = li.pos.xyz;
+
+        vec3  ldir = pos - worldPos;
+        float dist = length(ldir);
+        vec3  L    = ldir / dist;
+
+        float outanglecos = dot(L, gnormal);
+
+        if(outanglecos < 0)
+        {
+          continue;
+        }
+       
+
+        float tMin   = 0.000;
+        float tMax   = dist;
+        vec3  rayDir = L;
+        uint  flags  = gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsOpaqueEXT
+                     | gl_RayFlagsSkipClosestHitShaderEXT;
+        isShadowed = true;
+
+
+        traceRayEXT(topLevelAS,  // acceleration structure
+                    flags,       // rayFlags
+                    0xFF,        // cullMask
+                    0,           // sbtRecordOffset
+                    0,           // sbtRecordStride
+                    1,           // missIndex
+                    worldPos,    // ray origin
+                    tMin,        // ray min range
+                    rayDir,      // ray direction
+                    tMax,        // ray max range
+                    1            // payload (location = 1)
+        );
+        
+        
+        if(isShadowed){
+            continue;
+        }
+
+        
+        mc.inDir          = L;
+        mc.inR    = li.color.xyz / (dist * dist);
+       
+       
+
+
+         int call = 0;
+         float fac = 1.0;
+  switch(matProb){
+    case 1:{call = 0; break;}
+    case 2:{call = 1; break;}
+    case 3:{executeCallableEXT(0, 0); call = 1;break;}
+    case 32:{call = 4; break;}
+  }
+       
+        executeCallableEXT(call, 0);
+        
+      
+
+
+       
+
+      
+
+
+  }
   
-
-
+  
 
 
   for(int i = 0; i < pushC.numObjs; i++)
@@ -177,7 +270,7 @@ void main()
     int j = 0;
     while(true)
     {
-      AreaLight li = lights[0].l[j];
+      AreaLight li = lights[i].l[j];
       j++;
       if(li.color.x + li.color.y + li.color.z <= 0.0)
       {
@@ -194,8 +287,7 @@ void main()
       vec3 d2        = li.v2.xyz - li.v0.xyz;
       vec3 ln        = normalize(cross(d1, d2));
       vec3 tempColor = vec3(0, 0, 0);
-      for(int k = 0; k < pushC.numAreaSamples; k++)
-      {
+      
         float u = rnd(prd.seed);
         float v = rnd(prd.seed);
 
@@ -207,11 +299,11 @@ void main()
 
         vec3  ldir = pos - worldPos;
         float dist = length(ldir);
-        vec3  L    = normalize(ldir);
+        vec3  L    = ldir / dist;
 
-        float outanglecos = dot(-L, gnormal);
+        float outanglecos = dot(L, gnormal);
 
-        if(inanglecos < 0 && outanglecos > 0 || inanglecos > 0 && outanglecos < 0)
+        if(outanglecos < 0)
         {
           if(floatBitsToInt(li.v2.w) == 1)
           {
@@ -260,25 +352,20 @@ void main()
 
         
         mc.inDir          = L;
-        mc.reflectance    = vec3(0, 0, 0);
+        mc.inR    = li.color.xyz / (dist * dist);
         mc.emission       = vec3(0, 0, 0);
-        if((matProb & 1) != 0)
-        {
-          executeCallableEXT(0, 0);
-        }
-        if((matProb & 2) != 0)
-        {
-          executeCallableEXT(1, 0);
-        }
-        if((matProb & 32) != 0)
-        {
-          executeCallableEXT(4, 0);
-        }
-        tempColor += mc.reflectance * li.color.xyz  / (dist * dist);
-      }
+        float fac = 1.0;
+         int call = 0;
 
-
-      lightsColor += tempColor / pushC.numAreaSamples;
+  switch(matProb){
+    case 1:{call = 0; break;}
+    case 2:{call = 1; break;}
+    case 3:{executeCallableEXT(0,0); call = 1; break;}
+    case 32:{call = 4; break;}
+  }
+       
+          executeCallableEXT(call, 0);
+        
 
       if(floatBitsToInt(li.v2.w) == 1)
       {
@@ -294,7 +381,7 @@ void main()
     mc.fuzzyAngle = pushC.ior;
     executeCallableEXT(3, 0);
     prd.seed         = mc.seed;
-    prd.attenuation  = mc.reflectance;
+    prd.attenuation  = mc.inR;
     prd.rayOrigin    = worldPos;
     prd.rayDirection = mc.emission;
     prd.done         = false;
@@ -306,12 +393,12 @@ void main()
     mc.seed       = prd.seed;
     executeCallableEXT(2, 0);
     prd.seed         = mc.seed;
-    prd.attenuation  = mc.reflectance;
+    prd.attenuation  = mc.inR;
     prd.rayOrigin    = worldPos;
     prd.rayDirection = mc.emission;
     prd.done         = false;
   }
 
 
-  prd.hitValue = lcolor + lightsColor + emission;
+  prd.hitValue = lcolor + mc.outR + emission;
 }

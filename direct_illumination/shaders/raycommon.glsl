@@ -18,6 +18,12 @@ struct AreaLight
   vec4 v2;
 };
 
+struct PointLight
+{
+  vec4 color;
+  vec4 pos;
+};
+
 struct materialCall
 {
   uint  objId;
@@ -29,9 +35,13 @@ struct materialCall
   vec3  inDir;
   vec3  outDir;
   vec3  position;
-  vec3  reflectance;
+  vec3  inR;
+  vec3  outR;
   vec3  emission;
   float fuzzyAngle;
+  float celfaccounter;
+  int   celcounter;
+  vec3  celradiance;
 };
 
 const float origin      = 1.0 / 32.0;

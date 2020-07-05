@@ -30,6 +30,7 @@
 // at the top of imgui.cpp.
 
 #include <array>
+#include <iostream>
 #include <vulkan/vulkan.hpp>
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
@@ -52,7 +53,7 @@ VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 // Default search path for shaders
 std::vector<std::string> defaultSearchPaths;
 
-float guiLightColor[4] = {3.f,3.f,3.f, 1.f};
+float guiLightColor[4] = {0.f,0.f,0.f, 1.f};
 
 // GLFW Callback functions
 static void onErrorCallback(int error, const char* description)
@@ -73,7 +74,7 @@ void renderUI(HelloVulkan& helloVk)
     CameraManip.setLookat(pos, eye, up);
   }
   changed |= ImGui::InputFloat3("Light Position", &helloVk.m_LightPosition.x);
-  changed |=ImGui::ColorEdit4("Light Color", guiLightColor);
+  changed |=ImGui::ColorEdit4("Light Color", guiLightColor, ImGuiColorEditFlags_Float);
   helloVk.m_pushConstant.lightColor = {guiLightColor[0], guiLightColor[1], guiLightColor[2], guiLightColor[3]};
   changed |=ImGui::RadioButton("Point", reinterpret_cast<int*>(&helloVk.m_LightType), 0);
   ImGui::SameLine();
@@ -82,6 +83,9 @@ void renderUI(HelloVulkan& helloVk)
   changed |=ImGui::InputFloat("IOR", &helloVk.m_IOR, 0.01f, 0.01f);
   changed |=ImGui::InputInt("Area Samples", &helloVk.m_numAreaSamples);
   changed |=ImGui::InputInt("Per Frame Samples", &helloVk.m_numSamples);
+  changed |= ImGui::InputFloat("Celramp", &helloVk.m_rtPushConstants.celramp, 0.1);
+  changed |= ImGui::InputInt("Celsteps", &helloVk.m_rtPushConstants.celsteps, 1);
+  changed |= ImGui::Checkbox("cel attenuation", &helloVk.m_rtPushConstants.celatten);
   ImGui::Value("Frames", helloVk.m_FrameCount);
   if(changed){
     helloVk.resetFrame();
@@ -113,7 +117,7 @@ int main(int argc, char** argv)
 
   // Setup camera
   CameraManip.setWindowSize(SAMPLE_WIDTH, SAMPLE_HEIGHT);
-  CameraManip.setLookat(nvmath::vec3f(5, 4, -4), nvmath::vec3f(0, 1, 0), nvmath::vec3f(0, 1, 0));
+  CameraManip.setLookat(nvmath::vec3f(1.75987, 2.95187, 5.11106), nvmath::vec3f(-1.79285, 1.1968, 2.52467), nvmath::vec3f(0, 1, 0));
 
   // Setup Vulkan
   if(!glfwVulkanSupported())
@@ -195,7 +199,20 @@ int main(int argc, char** argv)
   //helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Glossy-Floor.obj", defaultSearchPaths));
   //helloVk.loadModel(nvh::findFile("media/scenes/plane.obj", defaultSearchPaths));
 
-  helloVk.loadModel(nvh::findFile("media/scenes/ladies/untitled.obj", defaultSearchPaths));
+  helloVk.loadModel(nvh::findFile("media/scenes/ladies/separatewalls.obj", defaultSearchPaths));
+
+  nvmath::vec4f plc = {10, 10, 10,1};
+  nvmath::vec4f b = {0, 0, 0, 1};
+	
+  helloVk.addPointLight({plc, {3.5, 3, 2.5, 1}});
+  helloVk.addPointLight({plc, {-3.5, 3, 2.5, 1}});
+  helloVk.addPointLight({plc, {3.5, 3, 6.5, 1}});
+  helloVk.addPointLight({plc, {-3.5, 3, 6.5, 1}});
+  helloVk.addPointLight({plc, {0, 3, -0.5, 1}});
+  helloVk.addPointLight({plc, {0, 3, 9, 1}});
+	
+
+	
 
 
 
@@ -219,7 +236,7 @@ int main(int argc, char** argv)
   helloVk.updatePostDescriptorSet();
 
 
-  nvmath::vec4f clearColor   = nvmath::vec4f(0.01, 0, 0, 1.00f);
+  nvmath::vec4f clearColor   = nvmath::vec4f(0.0, 0, 0, 1.00f);
   bool          useRaytracer = true;
 
 
@@ -239,9 +256,14 @@ int main(int argc, char** argv)
 
     // Updating camera buffer
     helloVk.updateUniformBuffer();
+    nvmath::vec3f eye, up, lookat;
+    CameraManip.getLookat(eye, lookat, up);
+    std::cout << "eye: (" << eye.x << ", " << eye.y << ", " << eye.z <<"), ";
+    std::cout << "up: (" << up.x << ", " << up.y << ", " << up.z << "), ";
+    std::cout << "lookat: (" << lookat.x << ", " << lookat.y << ", " << lookat.z << ")" << std::endl;
 
     // Show UI window.
-    if(1 == 1)
+    if(!helloVk.m_uiHide)
     {
       ImGui::ColorEdit3("Clear color", reinterpret_cast<float*>(&clearColor));
       ImGui::Checkbox("Ray Tracer mode", &useRaytracer);  // Switch between raster and ray tracing

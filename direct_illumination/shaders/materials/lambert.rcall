@@ -51,6 +51,6 @@ void main()
     txtId = mat.textureId + scnDesc.i[mc.instID].txtOffset;
     diffuse *= texture(textureSamplers[nonuniformEXT(txtId)], mc.texCoord).xyz;
   }
-  mc.reflectance += diffuse * max(dot(mc.normal, mc.inDir), 0.0) / M_PI;
-  mc.emission += mat.emission;
+  mc.outR += mc.inR * diffuse * max(dot(mc.normal, mc.inDir), 0.0) / M_PI;
+  mc.emission = mat.emission;
 }
