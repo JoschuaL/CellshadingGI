@@ -117,7 +117,7 @@ int main(int argc, char** argv)
 
   // Setup camera
   CameraManip.setWindowSize(SAMPLE_WIDTH, SAMPLE_HEIGHT);
-  CameraManip.setLookat(nvmath::vec3f(1.75987, 2.95187, 5.11106), nvmath::vec3f(-1.79285, 1.1968, 2.52467), nvmath::vec3f(0, 1, 0));
+  CameraManip.setLookat(nvmath::vec3f(-0.3, 6.7, 16), nvmath::vec3f(0.5, 4.5, 1.5), nvmath::vec3f(0, 1, 0));
 
   // Setup Vulkan
   if(!glfwVulkanSupported())
@@ -199,17 +199,17 @@ int main(int argc, char** argv)
   //helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Glossy-Floor.obj", defaultSearchPaths));
   //helloVk.loadModel(nvh::findFile("media/scenes/plane.obj", defaultSearchPaths));
 
-  helloVk.loadModel(nvh::findFile("media/scenes/ladies/separatewalls.obj", defaultSearchPaths));
-
+  //helloVk.loadModel(nvh::findFile("media/scenes/ladies/separatewalls.obj", defaultSearchPaths));
+  helloVk.loadModel(nvh::findFile("media/scenes/ladies/gumi.obj", defaultSearchPaths));
   nvmath::vec4f plc = {10, 10, 10,1};
   nvmath::vec4f b = {0, 0, 0, 1};
 	
-  helloVk.addPointLight({plc, {3.5, 3, 2.5, 1}});
-  helloVk.addPointLight({plc, {-3.5, 3, 2.5, 1}});
-  helloVk.addPointLight({plc, {3.5, 3, 6.5, 1}});
-  helloVk.addPointLight({plc, {-3.5, 3, 6.5, 1}});
-  helloVk.addPointLight({plc, {0, 3, -0.5, 1}});
-  helloVk.addPointLight({plc, {0, 3, 9, 1}});
+  helloVk.addPointLight({plc, {3.5, 10, 2.5, 1}});
+  helloVk.addPointLight({plc, {-3.5, 10, 2.5, 1}});
+  helloVk.addPointLight({plc, {3.5, 10, 6.5, 1}});
+  helloVk.addPointLight({plc, {-3.5, 10, 6.5, 1}});
+  helloVk.addPointLight({plc, {0, 10, -0.5, 1}});
+  helloVk.addPointLight({plc, {0, 10, 9, 1}});
 	
 
 	

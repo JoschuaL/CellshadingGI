@@ -46,6 +46,7 @@ layout(location = 0) callableDataEXT materialCall mc;
 
 void main()
 {
+  prd.depth = gl_HitTEXT;
   
 
   // Object of this instance
@@ -84,6 +85,8 @@ void main()
   gnormal *= -sign(inanglecos);
   snormal *= -sign(ins);
 
+  prd.normal = (snormal + vec3(1)) / 2;
+
   
   worldPos = offset_ray(worldPos, gnormal);
 
@@ -96,6 +99,7 @@ void main()
   ;
   mc.normal        = snormal;
   mc.outDir        = gl_WorldRayDirectionEXT;
+  mc.origin = gl_WorldRayOriginEXT;
   mc.inR   = vec3(0, 0, 0);
   mc.outR = vec3(0,0,0);
   mc.emission      = vec3(0, 0, 0);

@@ -760,6 +760,8 @@ void HelloVulkan::createRtDescriptorSet()
   m_rtDescSetLayoutBind.addBinding(
       vkDSLB(1, vkDT::eStorageImage, 1, vkSS::eRaygenKHR));  // Output image
 
+  m_rtDescSetLayoutBind.addBinding(vkDSLB(2, vkDT::eStorageImage, 1, vkSS::eRaygenKHR));
+
   m_rtDescPool      = m_rtDescSetLayoutBind.createPool(m_device);
   m_rtDescSetLayout = m_rtDescSetLayoutBind.createLayout(m_device);
   m_rtDescSet       = m_device.allocateDescriptorSets({m_rtDescPool, 1, &m_rtDescSetLayout})[0];
@@ -895,7 +897,8 @@ void HelloVulkan::createRtPipeline()
   // Push constant: we want to be able to update constants used by the shaders
   vk::PushConstantRange pushConstant{vk::ShaderStageFlagBits::eRaygenKHR
                                          | vk::ShaderStageFlagBits::eClosestHitKHR
-                                         | vk::ShaderStageFlagBits::eMissKHR,
+                                         | vk::ShaderStageFlagBits::eMissKHR
+  											| vk::ShaderStageFlagBits::eCallableKHR,
                                      0, sizeof(RtPushConstant)};
   pipelineLayoutCreateInfo.setPushConstantRangeCount(1);
   pipelineLayoutCreateInfo.setPPushConstantRanges(&pushConstant);

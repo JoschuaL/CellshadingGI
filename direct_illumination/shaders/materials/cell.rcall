@@ -64,10 +64,10 @@ void main()
   mc.emission = pushC.celatten ?  diffuse / celsteps : vec3(0);
   float cellfac = ceil(dot(mc.normal, mc.inDir) * celsteps) / celsteps;
   cellfac = max(step(celramp, cellfac) * 1, 0.3);
-  mc.celfaccounter = min(cellfac,mc.celfaccounter);
+  mc.celfaccounter = max(cellfac,mc.celfaccounter);
   mc.celradiance += mc.inR;
   mc.celcounter += 1;
-  mc.outR = mc.celradiance * diffuse * mc.celfaccounter;
+  mc.outR += mc.inR * diffuse * mc.celfaccounter;
 
   
 }

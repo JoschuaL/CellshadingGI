@@ -8,6 +8,8 @@ struct hitPayload
   vec3 rayDirection;
   uint seed;
   bool done;
+  float depth;
+  vec3  normal;
 };
 
 struct AreaLight
@@ -35,6 +37,7 @@ struct materialCall
   vec3  inDir;
   vec3  outDir;
   vec3  position;
+  vec3  origin;
   vec3  inR;
   vec3  outR;
   vec3  emission;

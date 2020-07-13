@@ -12,5 +12,8 @@ layout(push_constant) uniform Constants
 
 void main()
 {
-  prd.hitValue = clearColor.xyz * 0.8;
+  prd.hitValue = clearColor.xyz;
+  prd.normal = vec3(-1);
+  prd.depth = 3.402823466e+38;
+
 }
