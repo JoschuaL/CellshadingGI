@@ -258,9 +258,9 @@ int main(int argc, char** argv)
     helloVk.updateUniformBuffer();
     nvmath::vec3f eye, up, lookat;
     CameraManip.getLookat(eye, lookat, up);
-    std::cout << "eye: (" << eye.x << ", " << eye.y << ", " << eye.z <<"), ";
+    /*std::cout << "eye: (" << eye.x << ", " << eye.y << ", " << eye.z <<"), ";
     std::cout << "up: (" << up.x << ", " << up.y << ", " << up.z << "), ";
-    std::cout << "lookat: (" << lookat.x << ", " << lookat.y << ", " << lookat.z << ")" << std::endl;
+    std::cout << "lookat: (" << lookat.x << ", " << lookat.y << ", " << lookat.z << ")" << std::endl;*/
 
     // Show UI window.
     if(!helloVk.m_uiHide)

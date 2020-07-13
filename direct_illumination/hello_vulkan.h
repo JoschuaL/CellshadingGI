@@ -139,10 +139,22 @@ public:
   vk::PipelineLayout          m_postPipelineLayout;
   vk::RenderPass              m_offscreenRenderPass;
   vk::Framebuffer             m_offscreenFramebuffer;
+
+  nvvk::Image                 m_offscreenColorImage;
   nvvk::Texture               m_offscreenColor;
   vk::Format                  m_offscreenColorFormat{vk::Format::eR32G32B32A32Sfloat};
+
+  nvvk::Image                 m_offscreenDepthImage;
   nvvk::Texture               m_offscreenDepth;
   vk::Format                  m_offscreenDepthFormat{vk::Format::eD32Sfloat};
+
+  nvvk::Image                 m_offscreenDepthImageRT;
+  nvvk::Texture               m_offscreenDepthRT;
+  vk::Format                  m_offscreenDepthFormatRT{vk::Format::eR32G32B32A32Sfloat};
+
+  nvvk::Image                 m_offscreenNormalImage;
+  nvvk::Texture m_offscreenNormal;
+  vk::Format m_offscreenNormalFormat{vk::Format::eR32G32B32A32Sfloat};
 
   // #VKRay
   void                             initRayTracing();

@@ -437,6 +437,8 @@ void HelloVulkan::destroyResources()
   m_device.destroy(m_postDescSetLayout);
   m_alloc.destroy(m_offscreenColor);
   m_alloc.destroy(m_offscreenDepth);
+  m_alloc.destroy(m_offscreenDepthRT);
+  m_alloc.destroy(m_offscreenNormal);
   m_device.destroy(m_offscreenRenderPass);
   m_device.destroy(m_offscreenFramebuffer);
 
@@ -503,6 +505,8 @@ void HelloVulkan::createOffscreenRender()
 {
   m_alloc.destroy(m_offscreenColor);
   m_alloc.destroy(m_offscreenDepth);
+  m_alloc.destroy(m_offscreenNormal);
+  m_alloc.destroy(m_offscreenDepthRT);
 
   // Creating the color image
   {
@@ -512,11 +516,40 @@ void HelloVulkan::createOffscreenRender()
                                                            | vk::ImageUsageFlagBits::eStorage);
 
 
-    nvvk::Image             image  = m_alloc.createImage(colorCreateInfo);
-    vk::ImageViewCreateInfo ivInfo = nvvk::makeImageViewCreateInfo(image.image, colorCreateInfo);
-    m_offscreenColor               = m_alloc.createTexture(image, ivInfo, vk::SamplerCreateInfo());
+    m_offscreenColorImage  = m_alloc.createImage(colorCreateInfo);
+    vk::ImageViewCreateInfo ivInfo = nvvk::makeImageViewCreateInfo(m_offscreenColorImage.image, colorCreateInfo);
+    m_offscreenColor               = m_alloc.createTexture(m_offscreenColorImage, ivInfo, vk::SamplerCreateInfo());
     m_offscreenColor.descriptor.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
   }
+
+  {
+    auto normalCreateInfo = nvvk::makeImage2DCreateInfo(m_size, m_offscreenNormalFormat,
+                                                       vk::ImageUsageFlagBits::eColorAttachment
+                                                       | vk::ImageUsageFlagBits::eSampled
+                                                       | vk::ImageUsageFlagBits::eStorage);
+
+
+    m_offscreenNormalImage  = m_alloc.createImage(normalCreateInfo);
+    vk::ImageViewCreateInfo ivInfo = nvvk::makeImageViewCreateInfo(m_offscreenNormalImage.image, normalCreateInfo);
+    m_offscreenNormal               = m_alloc.createTexture(m_offscreenNormalImage, ivInfo, vk::SamplerCreateInfo());
+    m_offscreenNormal.descriptor.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+  }
+
+  {
+    auto depthCreateInfoRT = nvvk::makeImage2DCreateInfo(m_size, m_offscreenDepthFormatRT,
+                                                        vk::ImageUsageFlagBits::eColorAttachment
+                                                        | vk::ImageUsageFlagBits::eSampled
+                                                        | vk::ImageUsageFlagBits::eStorage);
+
+
+    m_offscreenDepthImageRT  = m_alloc.createImage(depthCreateInfoRT);
+    vk::ImageViewCreateInfo ivInfo = nvvk::makeImageViewCreateInfo(m_offscreenDepthImageRT.image, depthCreateInfoRT);
+    m_offscreenDepthRT               = m_alloc.createTexture(m_offscreenDepthImageRT, ivInfo, vk::SamplerCreateInfo());
+    m_offscreenDepthRT.descriptor.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+  }
+
+
+
 
   // Creating the depth buffer
   auto depthCreateInfo =
@@ -540,9 +573,15 @@ void HelloVulkan::createOffscreenRender()
     auto              cmdBuf = genCmdBuf.createCommandBuffer();
     nvvk::cmdBarrierImageLayout(cmdBuf, m_offscreenColor.image, vk::ImageLayout::eUndefined,
                                 vk::ImageLayout::eGeneral);
+
+    nvvk::cmdBarrierImageLayout(cmdBuf, m_offscreenNormal.image, vk::ImageLayout::eUndefined,
+                                vk::ImageLayout::eGeneral);
+    nvvk::cmdBarrierImageLayout(cmdBuf, m_offscreenDepthRT.image, vk::ImageLayout::eUndefined,
+                                vk::ImageLayout::eGeneral);
     nvvk::cmdBarrierImageLayout(cmdBuf, m_offscreenDepth.image, vk::ImageLayout::eUndefined,
                                 vk::ImageLayout::eDepthStencilAttachmentOptimal,
                                 vk::ImageAspectFlagBits::eDepth);
+
 
     genCmdBuf.submitAndWait(cmdBuf);
   }
@@ -551,18 +590,20 @@ void HelloVulkan::createOffscreenRender()
   if(!m_offscreenRenderPass)
   {
     m_offscreenRenderPass =
-        nvvk::createRenderPass(m_device, {m_offscreenColorFormat}, m_offscreenDepthFormat, 1, true,
+        nvvk::createRenderPass(m_device, {m_offscreenColorFormat,m_offscreenColorFormat,m_offscreenColorFormat}, m_offscreenDepthFormat, 1, true,
                                true, vk::ImageLayout::eGeneral, vk::ImageLayout::eGeneral);
   }
 
   // Creating the frame buffer for offscreen
   std::vector<vk::ImageView> attachments = {m_offscreenColor.descriptor.imageView,
+                                            m_offscreenNormal.descriptor.imageView,
+                                            m_offscreenDepthRT.descriptor.imageView,
                                             m_offscreenDepth.descriptor.imageView};
 
   m_device.destroy(m_offscreenFramebuffer);
   vk::FramebufferCreateInfo info;
   info.setRenderPass(m_offscreenRenderPass);
-  info.setAttachmentCount(2);
+  info.setAttachmentCount(4);
   info.setPAttachments(attachments.data());
   info.setWidth(m_size.width);
   info.setHeight(m_size.height);
@@ -611,6 +652,8 @@ void HelloVulkan::createPostDescriptor()
   using vkSS = vk::ShaderStageFlagBits;
 
   m_postDescSetLayoutBind.addBinding(vkDS(0, vkDT::eCombinedImageSampler, 1, vkSS::eFragment));
+  m_postDescSetLayoutBind.addBinding(vkDS(1, vkDT::eCombinedImageSampler, 1, vkSS::eFragment));
+  m_postDescSetLayoutBind.addBinding(vkDS(2, vkDT::eCombinedImageSampler, 1, vkSS::eFragment));
   m_postDescSetLayout = m_postDescSetLayoutBind.createLayout(m_device);
   m_postDescPool      = m_postDescSetLayoutBind.createPool(m_device);
   m_postDescSet       = nvvk::allocateDescriptorSet(m_device, m_postDescPool, m_postDescSetLayout);
@@ -621,9 +664,21 @@ void HelloVulkan::createPostDescriptor()
 //
 void HelloVulkan::updatePostDescriptorSet()
 {
-  vk::WriteDescriptorSet writeDescriptorSets =
-      m_postDescSetLayoutBind.makeWrite(m_postDescSet, 0, &m_offscreenColor.descriptor);
-  m_device.updateDescriptorSets(writeDescriptorSets, nullptr);
+  {
+    vk::WriteDescriptorSet writeDescriptorSets =
+        m_postDescSetLayoutBind.makeWrite(m_postDescSet, 0, &m_offscreenColor.descriptor);
+    m_device.updateDescriptorSets(writeDescriptorSets, nullptr);
+  }
+  {
+    vk::WriteDescriptorSet writeDescriptorSets =
+        m_postDescSetLayoutBind.makeWrite(m_postDescSet, 1, &m_offscreenNormal.descriptor);
+    m_device.updateDescriptorSets(writeDescriptorSets, nullptr);
+  }
+  {
+    vk::WriteDescriptorSet writeDescriptorSets =
+        m_postDescSetLayoutBind.makeWrite(m_postDescSet, 2, &m_offscreenDepthRT.descriptor);
+    m_device.updateDescriptorSets(writeDescriptorSets, nullptr);
+  }
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -762,6 +817,8 @@ void HelloVulkan::createRtDescriptorSet()
 
   m_rtDescSetLayoutBind.addBinding(vkDSLB(2, vkDT::eStorageImage, 1, vkSS::eRaygenKHR));
 
+  m_rtDescSetLayoutBind.addBinding(vkDSLB(3, vkDT::eStorageImage, 1, vkSS::eRaygenKHR));
+
   m_rtDescPool      = m_rtDescSetLayoutBind.createPool(m_device);
   m_rtDescSetLayout = m_rtDescSetLayoutBind.createLayout(m_device);
   m_rtDescSet       = m_device.allocateDescriptorSets({m_rtDescPool, 1, &m_rtDescSetLayout})[0];
@@ -773,10 +830,20 @@ void HelloVulkan::createRtDescriptorSet()
   vk::DescriptorImageInfo imageInfo{
       {}, m_offscreenColor.descriptor.imageView, vk::ImageLayout::eGeneral};
 
+
+
+  vk::DescriptorImageInfo normalInfo{
+      {}, m_offscreenNormal.descriptor.imageView, vk::ImageLayout::eGeneral};
+
+  vk::DescriptorImageInfo depthInfo{
+      {}, m_offscreenDepthRT.descriptor.imageView, vk::ImageLayout::eGeneral};
+
   std::vector<vk::WriteDescriptorSet> writes;
-  writes.emplace_back(m_rtDescSetLayoutBind.makeWrite(m_rtDescSet, 0, &descASInfo));
+  //writes.emplace_back(m_rtDescSetLayoutBind.makeWrite(m_rtDescSet, 0, &descASInfo));
   writes.emplace_back(m_rtDescSetLayoutBind.makeWrite(m_rtDescSet, 0, &descASInfo));
   writes.emplace_back(m_rtDescSetLayoutBind.makeWrite(m_rtDescSet, 1, &imageInfo));
+  writes.emplace_back(m_rtDescSetLayoutBind.makeWrite(m_rtDescSet, 2, &normalInfo));
+  writes.emplace_back(m_rtDescSetLayoutBind.makeWrite(m_rtDescSet, 3, &depthInfo));
   m_device.updateDescriptorSets(static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
 }
 
@@ -794,6 +861,18 @@ void HelloVulkan::updateRtDescriptorSet()
       {}, m_offscreenColor.descriptor.imageView, vk::ImageLayout::eGeneral};
   vk::WriteDescriptorSet wds{m_rtDescSet, 1, 0, 1, vkDT::eStorageImage, &imageInfo};
   m_device.updateDescriptorSets(wds, nullptr);
+
+  vk::DescriptorImageInfo normalInfo{
+      {}, m_offscreenNormal.descriptor.imageView, vk::ImageLayout::eGeneral};
+  vk::WriteDescriptorSet nds{m_rtDescSet, 2, 0, 1, vkDT::eStorageImage, &normalInfo};
+  m_device.updateDescriptorSets(nds, nullptr);
+
+  vk::DescriptorImageInfo depthInfo{
+      {}, m_offscreenDepthRT.descriptor.imageView, vk::ImageLayout::eGeneral};
+  vk::WriteDescriptorSet dds{m_rtDescSet, 3, 0, 1, vkDT::eStorageImage, &depthInfo};
+  m_device.updateDescriptorSets(dds, nullptr);
+
+
 }
 
 
