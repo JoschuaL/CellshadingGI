@@ -10,6 +10,7 @@ struct hitPayload
   bool done;
   float depth;
   vec3  normal;
+  int   object;
 };
 
 struct AreaLight

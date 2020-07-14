@@ -14,6 +14,7 @@ void main()
 {
   prd.hitValue = clearColor.xyz;
   prd.normal = vec3(-1);
-  prd.depth = 3.402823466e+38;
+  prd.depth = 10000;
+  prd.object = 0;
 
 }

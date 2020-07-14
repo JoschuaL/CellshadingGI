@@ -86,6 +86,7 @@ void renderUI(HelloVulkan& helloVk)
   changed |= ImGui::InputFloat("Celramp", &helloVk.m_rtPushConstants.celramp, 0.1);
   changed |= ImGui::InputInt("Celsteps", &helloVk.m_rtPushConstants.celsteps, 1);
   changed |= ImGui::Checkbox("cel attenuation", &helloVk.m_rtPushConstants.celatten);
+  changed |= ImGui::InputFloat("cel threshold", &helloVk.m_postPushConstants.threshold, 0.01f, 0.01f);
   ImGui::Value("Frames", helloVk.m_FrameCount);
   if(changed){
     helloVk.resetFrame();
@@ -95,8 +96,8 @@ void renderUI(HelloVulkan& helloVk)
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
-static int const SAMPLE_WIDTH  = 1920;
-static int const SAMPLE_HEIGHT = 1080;
+static int const SAMPLE_WIDTH  = 1920 / 2;
+static int const SAMPLE_HEIGHT = 1080 / 2;
 
 //--------------------------------------------------------------------------------------------------
 // Application Entry

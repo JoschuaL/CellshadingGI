@@ -86,6 +86,7 @@ void main()
   snormal *= -sign(ins);
 
   prd.normal = (snormal + vec3(1)) / 2;
+  prd.object = v0.id;
 
   
   worldPos = offset_ray(worldPos, gnormal);

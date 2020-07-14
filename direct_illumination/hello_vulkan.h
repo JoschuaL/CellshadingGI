@@ -156,6 +156,10 @@ public:
   nvvk::Texture m_offscreenNormal;
   vk::Format m_offscreenNormalFormat{vk::Format::eR32G32B32A32Sfloat};
 
+nvvk::Image   m_offscreenIdImage;
+nvvk::Texture m_offscreenId;
+vk::Format    m_offscreenIdFormat{vk::Format::eR32G32B32A32Sfloat};
+
   // #VKRay
   void                             initRayTracing();
   nvvk::RaytracingBuilderKHR::Blas objectToVkGeometryKHR(const ObjModel& model);
@@ -211,4 +215,12 @@ public:
     bool          celatten = false;
   	
   } m_rtPushConstants;
+
+	struct PostPushConstant
+	{
+    float aspectRatio;
+    int   width;
+    int   height;
+    float threshold = 0.7;
+	} m_postPushConstants;
 };

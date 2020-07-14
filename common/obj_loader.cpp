@@ -18,6 +18,8 @@
 #define WRONG_PATH_SEP '\\'
 #endif
 
+int ObjLoader::id_counter = 1;
+
 static inline std::string get_path(const std::string& file)
 {
   std::string dir;
@@ -74,6 +76,7 @@ void ObjLoader::loadModel(const std::string& filename)
 
   for(const auto& shape : reader.GetShapes())
   {
+    id_counter++;
     int i = -1;
     m_vertices.reserve(shape.mesh.indices.size() + m_vertices.size());
     m_indices.reserve(shape.mesh.indices.size() + m_indices.size());
@@ -134,6 +137,7 @@ void ObjLoader::loadModel(const std::string& filename)
           vertex.mat = 0x20;
         }
       }
+      vertex.id = id_counter;
      
 
 

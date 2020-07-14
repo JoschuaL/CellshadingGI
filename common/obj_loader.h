@@ -10,6 +10,8 @@
 #include <unordered_map>
 #include <vector>
 
+
+
 // Structure holding the material
 struct MaterialObj
 {
@@ -33,6 +35,7 @@ struct VertexObj
   nvmath::vec3f color;
   nvmath::vec2f texCoord;
   int mat = 0;
+  int           id  = 0;
 };
 
 
@@ -53,4 +56,8 @@ public:
   std::vector<MaterialObj> m_materials;
   std::vector<std::string> m_textures;
   std::vector<uint32_t>    m_matIndx;
+
+
+private:
+  static int id_counter;
 };

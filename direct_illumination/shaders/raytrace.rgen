@@ -8,6 +8,7 @@ layout(binding = 0, set = 0) uniform accelerationStructureEXT topLevelAS;
 layout(binding = 1, set = 0, rgba32f) uniform image2D image;
 layout(binding = 2, set = 0, rgba32f) uniform image2D normalImage;
 layout(binding = 3, set = 0, rgba32f) uniform image2D depthImage;
+layout(binding = 4, set = 0, rgba32f) uniform image2D idImage;
 
 layout(location = 0) rayPayloadEXT hitPayload prd;
 
@@ -108,5 +109,6 @@ void main()
     imageStore(image, ivec2(gl_LaunchIDEXT.xy), vec4(prd.hitValue, 1.f));
     imageStore(depthImage, ivec2(gl_LaunchIDEXT.xy), vec4(vec3(ddd), 1.f));
     imageStore(normalImage, ivec2(gl_LaunchIDEXT.xy), vec4(nnn, 1.f));
+    imageStore(idImage, ivec2(gl_LaunchIDEXT.xy), vec4(vec3(prd.object), 1.f));
   }
 }
