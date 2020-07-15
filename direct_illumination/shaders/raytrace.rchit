@@ -12,6 +12,7 @@ hitAttributeEXT vec2 attribs;
 // clang-format off
 layout(location = 0) rayPayloadInEXT hitPayload prd;
 layout(location = 1) rayPayloadEXT bool isShadowed;
+layout(location = 2) rayPayloadEXT celPayload cel;
 
 layout(binding = 0, set = 0) uniform accelerationStructureEXT topLevelAS;
 
@@ -94,6 +95,7 @@ void main()
   worldPos = offset_ray(worldPos, gnormal);
 
   mc.celcounter = 0;
+  prd.celid = (matProb & 32) != 0 ? v0.celid : 0;
   mc.objId  = objId;
   mc.pId    = gl_PrimitiveID;
   mc.instID = gl_InstanceID;

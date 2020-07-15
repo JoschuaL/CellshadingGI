@@ -37,16 +37,75 @@ layout(push_constant) uniform Constants
     int           celsteps;
     bool          celatten;
   	int numids;
+    float r;
+    float cut;
 }
 pushC;
 
+
+
+const float gaussian_k[25] = {
+            0.024, 0.034, 0.038, 0.034, 0.024,
+            0.034, 0.049, 0.055, 0.049, 0.034,
+            0.038, 0.055, 0.063, 0.055, 0.038,
+            0.034, 0.049, 0.055, 0.049, 0.034,
+            0.024, 0.034, 0.038, 0.034, 0.024
+    };
+
+
+     const float sobel_x[9] = {
+            1, 0, -1,
+            2, 0, -2,
+            1, 0, -1
+    };
+
+    const float sobel_y[9] = {
+            1, 2, 1,
+            0, 0, 0,
+            -1, -2, -1
+    };
+
+    const float just_scalingx[9] = {
+            0, 0, 0,
+            -1, 0, 1,
+            0, 0, 0
+    };
+
+    const float just_scalingy[9] = {
+            0, -1, 0,
+            0, 0, 0,
+            0, 1, 0
+    };
+
+
+
+
+
+
 void main()
 {
+   vec2 m[9] = vec2[](
+    vec2(-pushC.r, pushC.r),
+    vec2(0, pushC.r),
+    vec2(pushC.r, pushC.r),
+    vec2(-pushC.r, 0),
+    vec2(0, 0),
+    vec2(pushC.r, 0),
+    vec2(-pushC.r, -pushC.r),
+    vec2(0, -pushC.r),
+    vec2(pushC.r, -pushC.r)
+  );
+
+ 
+  vec4 c[9];
   // Initialize the random number
   prd.seed        = tea(gl_LaunchIDEXT.y * gl_LaunchSizeEXT.x + gl_LaunchIDEXT.x, pushC.frame);
   vec3  hitValues = vec3(0);
   float ddd       = 0;
   vec3  nnn       = vec3(0);
+  vec4 origin;
+  vec4 direction;
+  uint  rayFlags  = gl_RayFlagsOpaqueEXT;
   for(int smpl = 0; smpl < pushC.numSamples; smpl++)
   {
 
@@ -60,11 +119,11 @@ void main()
     const vec2 inUV        = pixelCenter / vec2(gl_LaunchSizeEXT.xy);
     vec2       d           = inUV * 2.0 - 1.0;
 
-    vec4 origin    = cam.viewInverse * vec4(0, 0, 0, 1);
+    origin    = cam.viewInverse * vec4(0, 0, 0, 1);
     vec4 target    = cam.projInverse * vec4(d.x, d.y, 1, 1);
-    vec4 direction = cam.viewInverse * vec4(normalize(target.xyz), 0);
+    direction = cam.viewInverse * vec4(normalize(target.xyz), 0);
 
-    uint  rayFlags  = gl_RayFlagsOpaqueEXT;
+    
     float tMin      = 0.001;
     float tMax      = 10000.0;
     prd.done        = true;
@@ -98,7 +157,60 @@ void main()
       direction.xyz = prd.rayDirection;
     }
   }
-  prd.hitValue = hitValues / pushC.numSamples;
+
+  float outlines = 1;
+
+  if(prd.celid != 0){
+    for(int i = 0; i < 9; i++){
+        vec4 o = vec4(origin.xy + m[i], origin.zw);
+        traceRayEXT(topLevelAS,     // acceleration structure
+                  rayFlags,       // rayFlags
+                  prd.celid,           // cullMask
+                  0,              // sbtRecordOffset
+                  0,              // sbtRecordStride
+                  0,              // missIndex
+                  o.xyz,     // ray origin
+                  0,           // ray min range
+                  direction.xyz,  // ray direction
+                  10000,           // ray max range
+                  0               // payload (location = 0)
+      );
+      c[i] = vec4(prd.normal, prd.depth);
+
+      vec4 devx = vec4(0);
+  vec4 devy = vec4(0);
+
+  {
+  int w_k = 3;
+  int h_k = 3;
+        int a = ((w_k + 1) / 2) - 1;
+        int b = ((h_k + 1) / 2) - 1;
+
+
+       
+        for(int j = 0; j < h_k; j++){
+            for(int i = 0; i < w_k; i++){
+                float kernelpixx = sobel_x[(j * w_k) + i];
+                float kernelpixy = sobel_y[(j * w_k) + i];
+                devx += kernelpixx * c[(j * w_k) + i];
+                devy += kernelpixy * c[(j * w_k) + i];
+            }
+        }
+       
+
+ }
+
+
+ 
+ 
+                
+        vec4 mag = sqrt(devx * devx + devy * devy);
+        mag = step(pushC.cut, mag);
+
+        outlines = (1 - mag.r) * (1-mag.g) * (1 - mag.b) *  (1 - mag.a);
+    }
+  }
+  prd.hitValue = outlines * hitValues / pushC.numSamples;
 
 
   // Do accumulation over time
@@ -112,7 +224,7 @@ void main()
   {
     // First frame, replace the value in the buffer
     imageStore(image, ivec2(gl_LaunchIDEXT.xy), vec4(prd.hitValue, 1.f));
-    imageStore(depthImage, ivec2(gl_LaunchIDEXT.xy), vec4(vec3(ddd), 1.f));
+    imageStore(depthImage, ivec2(gl_LaunchIDEXT.xy), vec4(vec3(ddd) , 1.f));
     imageStore(normalImage, ivec2(gl_LaunchIDEXT.xy), vec4(nnn, 1.f));
     imageStore(idImage, ivec2(gl_LaunchIDEXT.xy), vec4(vec3(prd.object) / float(pushC.numids), 1.f));
   }

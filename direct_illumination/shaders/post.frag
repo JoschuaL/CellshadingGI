@@ -13,6 +13,7 @@ layout(push_constant) uniform shaderInformation
   int width;
   int height;
   float threshold;
+  int useSobel;
 }
 pushc;
 
@@ -163,22 +164,20 @@ const float gaussian_k[25] = {
   //fragColor   = pow(vec4(blury(uv), 1.f), vec4(gamma));
 
   
-
-
-
-
- fragColor = pow(
-    vec4(
-        texture(noisyTxt, uv).rgb * 
-            sobel(
+  
+  
+ float outlines = pushc.useSobel == 1 ? sobel(
                 idTxt, uv, 0.1
             ) * 
             sobel(
                 normalTxt, uv, pushc.threshold
             )
-         * sobel(depthTxt, uv, pushc.threshold)
+         * sobel(depthTxt, uv, pushc.threshold) : 1;
+ fragColor =  pow(
+    vec4(
+        texture(noisyTxt, uv).rgb * outlines
          , 1.0), vec4(gamma));
 
-
+         
   
 }

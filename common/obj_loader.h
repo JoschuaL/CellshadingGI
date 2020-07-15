@@ -36,6 +36,7 @@ struct VertexObj
   nvmath::vec2f texCoord;
   int mat = 0;
   int           id  = 0;
+  int celid = 0;
 };
 
 
@@ -49,7 +50,7 @@ struct shapeObj
 class ObjLoader
 {
 public:
-  void loadModel(const std::string& filename);
+  void loadModel(const std::string& filename, int celid);
 
   std::vector<VertexObj>   m_vertices;
   std::vector<uint32_t>    m_indices;

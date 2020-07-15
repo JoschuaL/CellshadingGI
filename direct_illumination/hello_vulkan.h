@@ -196,6 +196,7 @@ vk::Format    m_offscreenIdFormat{vk::Format::eR32G32B32A32Sfloat};
 
 	std::vector<PointLight> m_PointLights = {};
   nvvk::Buffer            m_pointLightBuffer;
+	int m_modelNumber = 0;
 
   struct RtPushConstant
   {
@@ -214,6 +215,8 @@ vk::Format    m_offscreenIdFormat{vk::Format::eR32G32B32A32Sfloat};
     int           celsteps = 10;
     bool          celatten = false;
   	int numids;
+  	float r = 0;
+  	float cut = 1;
   	
   } m_rtPushConstants;
 
@@ -223,5 +226,6 @@ vk::Format    m_offscreenIdFormat{vk::Format::eR32G32B32A32Sfloat};
     int   width;
     int   height;
     float threshold = 1.5;
+    int useSobel = 1;
 	} m_postPushConstants;
 };

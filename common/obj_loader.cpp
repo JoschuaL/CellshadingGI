@@ -33,7 +33,7 @@ static inline std::string get_path(const std::string& file)
   return dir;
 }
 
-void ObjLoader::loadModel(const std::string& filename)
+void ObjLoader::loadModel(const std::string& filename, int celid)
 {
   tinyobj::ObjReader reader;
   reader.ParseFromFile(filename);
@@ -138,6 +138,7 @@ void ObjLoader::loadModel(const std::string& filename)
         }
       }
       vertex.id = id_counter;
+   vertex.celid = celid;
      
 
 

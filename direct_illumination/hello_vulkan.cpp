@@ -224,7 +224,7 @@ void HelloVulkan::loadModel(const std::string& filename, nvmath::mat4f transform
   using vkBU = vk::BufferUsageFlagBits;
 
   ObjLoader loader;
-  loader.loadModel(filename);
+  loader.loadModel(filename, 1 << m_modelNumber);
 
   // Converting from Srgb to linear
   for(auto& m : loader.m_materials)
@@ -829,6 +829,7 @@ void HelloVulkan::createTopLevelAS()
     rayInst.blasId     = m_objInstance[i].objIndex;
     rayInst.hitGroupId = 0;  // We will use the same hit group for all objects
     rayInst.flags      = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
+  	rayInst.mask = 1 << m_modelNumber++;
     tlas.emplace_back(rayInst);
   }
   m_rtBuilder.buildTlas(tlas, vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastTrace);

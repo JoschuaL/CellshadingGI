@@ -6,6 +6,7 @@ struct Vertex
   vec2 texCoord;
   int mat;
   int  id;
+  int celid;
 };
 
 struct WaveFrontMaterial

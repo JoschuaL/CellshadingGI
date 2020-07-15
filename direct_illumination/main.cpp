@@ -87,6 +87,10 @@ void renderUI(HelloVulkan& helloVk)
   changed |= ImGui::InputInt("Celsteps", &helloVk.m_rtPushConstants.celsteps, 1);
   changed |= ImGui::Checkbox("cel attenuation", &helloVk.m_rtPushConstants.celatten);
   changed |= ImGui::InputFloat("cel threshold", &helloVk.m_postPushConstants.threshold, 0.01f, 0.01f);
+	changed |= ImGui::InputInt("use Sobel Edges", &helloVk.m_postPushConstants.useSobel);
+
+	changed |= ImGui::InputFloat("cel radius", &helloVk.m_rtPushConstants.r, 0.001, 0.0001);
+changed |= ImGui::InputFloat("cel cut", &helloVk.m_rtPushConstants.cut, 0.01f, 0.01f);
   ImGui::Value("Frames", helloVk.m_FrameCount);
   if(changed){
     helloVk.resetFrame();
@@ -201,7 +205,9 @@ int main(int argc, char** argv)
   //helloVk.loadModel(nvh::findFile("media/scenes/plane.obj", defaultSearchPaths));
 
   //helloVk.loadModel(nvh::findFile("media/scenes/ladies/separatewalls.obj", defaultSearchPaths));
-  helloVk.loadModel(nvh::findFile("media/scenes/ladies/gumi.obj", defaultSearchPaths));
+  //helloVk.loadModel(nvh::findFile("media/scenes/ladies/gumi.obj", defaultSearchPaths));
+  helloVk.loadModel(nvh::findFile("media/scenes/ladies/gumi_alone.obj", defaultSearchPaths));
+	helloVk.loadModel(nvh::findFile("media/scenes/ladies/walls.obj", defaultSearchPaths) );
   nvmath::vec4f plc = {10, 10, 10,1};
   nvmath::vec4f b = {0, 0, 0, 1};
 	
