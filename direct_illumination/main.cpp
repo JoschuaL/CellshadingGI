@@ -96,8 +96,8 @@ void renderUI(HelloVulkan& helloVk)
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
-static int const SAMPLE_WIDTH  = 1920 / 2;
-static int const SAMPLE_HEIGHT = 1080 / 2;
+static int const SAMPLE_WIDTH  = 1920;
+static int const SAMPLE_HEIGHT = 1080;
 
 //--------------------------------------------------------------------------------------------------
 // Application Entry
@@ -272,9 +272,9 @@ int main(int argc, char** argv)
       renderUI(helloVk);
       ImGui::Text("Application average %.3f ms/frame (%.1f FPS)",
                   1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-      ImGui::Render();
+      
     }
-
+    ImGui::Render();
     // Start rendering the scene
     helloVk.prepareFrame();
 

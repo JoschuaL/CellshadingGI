@@ -105,15 +105,15 @@ const float gaussian_k[25] = {
 
     float sobel(sampler2D Txt, vec2 uv){
         vec3 blurred[9] = vec3[9](
-    blury(uv + vec2(-1,-1), Txt),
-    blury(uv + vec2(0,-1), Txt),
-    blury(uv + vec2(1,-1), Txt),
-    blury(uv + vec2(-1,0), Txt),
-    blury(uv, Txt),
-    blury(uv + vec2(1,0), Txt),
-    blury(uv + vec2(-1,1), Txt),
-    blury(uv + vec2(0,1), Txt),
-    blury(uv + vec2(1,1), Txt)
+    texture(Txt, uv + vec2(-1,-1)).rgb,
+    texture(Txt, uv + vec2(0,-1)).rgb,
+    texture(Txt, uv + vec2(1,-1)).rgb,
+    texture(Txt, uv + vec2(-1,0)).rgb,
+    texture(Txt, uv).rgb,
+    texture(Txt, uv + vec2(1,0)).rgb,
+    texture(Txt, uv + vec2(-1,1)).rgb,
+    texture(Txt, uv + vec2(0,1)).rgb,
+    texture(Txt, uv + vec2(1,1)).rgb
   );
 
   vec3 devx = vec3(0);

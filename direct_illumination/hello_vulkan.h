@@ -221,6 +221,6 @@ vk::Format    m_offscreenIdFormat{vk::Format::eR32G32B32A32Sfloat};
     float aspectRatio;
     int   width;
     int   height;
-    float threshold = 0.7;
+    float threshold = 1.5;
 	} m_postPushConstants;
 };
