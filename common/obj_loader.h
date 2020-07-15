@@ -58,6 +58,6 @@ public:
   std::vector<uint32_t>    m_matIndx;
 
 
-private:
+
   static int id_counter;
 };

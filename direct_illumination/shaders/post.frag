@@ -103,7 +103,7 @@ const float gaussian_k[25] = {
     }
 
 
-    float sobel(sampler2D Txt, vec2 uv){
+    float sobel(sampler2D Txt, vec2 uv, float t){
         vec3 blurred[9] = vec3[9](
     texture(Txt, uv + vec2(-1,-1)).rgb,
     texture(Txt, uv + vec2(0,-1)).rgb,
@@ -144,8 +144,8 @@ const float gaussian_k[25] = {
  
                 
         vec3 mag = sqrt(devx * devx + devy * devy);
-
-        mag = step(pushc.threshold, mag);
+        float d = texture(depthTxt, uv).r;
+        mag = step(t, mag * d * d);
 
         return (1 - mag.r) * (1-mag.g) * (1 - mag.b);
     }
@@ -167,7 +167,17 @@ const float gaussian_k[25] = {
 
 
 
- fragColor = pow(vec4( texture(noisyTxt, uv).rgb * sobel(idTxt, uv) * sobel(normalTxt, uv) * sobel(depthTxt, uv), 1.0), vec4(gamma));
+ fragColor = pow(
+    vec4(
+        texture(noisyTxt, uv).rgb * 
+            sobel(
+                idTxt, uv, 0.1
+            ) * 
+            sobel(
+                normalTxt, uv, pushc.threshold
+            )
+         * sobel(depthTxt, uv, pushc.threshold)
+         , 1.0), vec4(gamma));
 
 
   

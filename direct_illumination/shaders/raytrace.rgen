@@ -23,15 +23,20 @@ cam;
 
 layout(push_constant) uniform Constants
 {
-  vec4  clearColor;
-  vec4  lightColor;
-  vec4  lightPosition;
-  int   numObjs;
-  int   numAreaSamples;
-  int   frame;
-  int   numSamples;
-  float fuzzyAngle;
-  float ior;
+  vec4 clearColor;
+  vec4 lightColor;
+  vec4 lightPosition;
+    int           numObjs;
+    int numAreaSamples;
+    int frame;
+    int numSamples;
+    float fuzzyAngle;
+    float ior;
+    int           numPointLights;
+    float         celramp ;
+    int           celsteps;
+    bool          celatten;
+  	int numids;
 }
 pushC;
 
@@ -109,6 +114,6 @@ void main()
     imageStore(image, ivec2(gl_LaunchIDEXT.xy), vec4(prd.hitValue, 1.f));
     imageStore(depthImage, ivec2(gl_LaunchIDEXT.xy), vec4(vec3(ddd), 1.f));
     imageStore(normalImage, ivec2(gl_LaunchIDEXT.xy), vec4(nnn, 1.f));
-    imageStore(idImage, ivec2(gl_LaunchIDEXT.xy), vec4(vec3(prd.object), 1.f));
+    imageStore(idImage, ivec2(gl_LaunchIDEXT.xy), vec4(vec3(prd.object) / float(pushC.numids), 1.f));
   }
 }

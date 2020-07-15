@@ -1118,6 +1118,7 @@ void HelloVulkan::raytrace(const vk::CommandBuffer& cmdBuf, const nvmath::vec4f&
   m_rtPushConstants.lightType      = m_LightType;
   m_rtPushConstants.lightPosition  = m_LightPosition;
   m_rtPushConstants.numPointLights = m_PointLights.size();
+	m_rtPushConstants.numids = ObjLoader::id_counter;
 
   cmdBuf.bindPipeline(vk::PipelineBindPoint::eRayTracingKHR, m_rtPipeline);
   cmdBuf.bindDescriptorSets(vk::PipelineBindPoint::eRayTracingKHR, m_rtPipelineLayout, 0,

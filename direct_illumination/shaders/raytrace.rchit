@@ -46,7 +46,7 @@ layout(location = 0) callableDataEXT materialCall mc;
 
 void main()
 {
-  prd.depth = gl_HitTEXT;
+  
   
 
   // Object of this instance
@@ -63,6 +63,8 @@ void main()
   Vertex v2 = vertices[nonuniformEXT(objId)].v[ind.z];
 
   const int matProb = v0.mat;
+
+  prd.depth = (matProb & 32) != 0 ? max(200 - gl_HitTEXT, 0) / 200 : 0;
 
   const vec3 barycentrics = vec3(1.0 - attribs.x - attribs.y, attribs.x, attribs.y);
 
@@ -85,8 +87,8 @@ void main()
   gnormal *= -sign(inanglecos);
   snormal *= -sign(ins);
 
-  prd.normal = (snormal + vec3(1)) / 2;
-  prd.object = v0.id;
+  prd.normal = (matProb & 32) != 0 ? (snormal + vec3(1)) / 2 : vec3(-1);
+  prd.object = (matProb & 32) != 0 ? v0.id : 0;
 
   
   worldPos = offset_ray(worldPos, gnormal);
