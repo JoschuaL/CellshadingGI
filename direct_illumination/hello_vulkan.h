@@ -215,8 +215,8 @@ vk::Format    m_offscreenIdFormat{vk::Format::eR32G32B32A32Sfloat};
     int           celsteps = 10;
     bool          celatten = false;
   	int numids;
-  	float r = 0;
-  	float cut = 1;
+  	float r = 0.005;
+  	float cut = 0.7;
   	
   } m_rtPushConstants;
 

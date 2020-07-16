@@ -59,7 +59,7 @@ const float gaussian_k[25] = {
     
 
 
-    vec3 blury(vec2 uv, sampler2D txt) {
+    vec3 blury( sampler2D txt, vec2 uv) {
 
         int w = pushc.width;
         int h = pushc.height;
@@ -115,6 +115,17 @@ const float gaussian_k[25] = {
     texture(Txt, uv + vec2(-1,1)).rgb,
     texture(Txt, uv + vec2(0,1)).rgb,
     texture(Txt, uv + vec2(1,1)).rgb
+
+     /*vec3 blurred[9] = vec3[9](
+    blury(Txt, uv + vec2(-1,-1)).rgb,
+    blury(Txt, uv + vec2(0,-1)).rgb,
+    blury(Txt, uv + vec2(1,-1)).rgb,
+    blury(Txt, uv + vec2(-1,0)).rgb,
+    blury(Txt, uv).rgb,
+    blury(Txt, uv + vec2(1,0)).rgb,
+    blury(Txt, uv + vec2(-1,1)).rgb,
+    blury(Txt, uv + vec2(0,1)).rgb,
+    blury(Txt, uv + vec2(1,1)).rgb*/
   );
 
   vec3 devx = vec3(0);

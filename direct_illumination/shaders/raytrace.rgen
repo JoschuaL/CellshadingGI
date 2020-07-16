@@ -11,6 +11,7 @@ layout(binding = 3, set = 0, rgba32f) uniform image2D depthImage;
 layout(binding = 4, set = 0, rgba32f) uniform image2D idImage;
 
 layout(location = 0) rayPayloadEXT hitPayload prd;
+layout(location = 1) rayPayloadEXT celPayload cel;
 
 layout(binding = 0, set = 1) uniform CameraProperties
 {
@@ -142,6 +143,7 @@ void main()
                   tMax,           // ray max range
                   0               // payload (location = 0)
       );
+      
       hitValues += prd.hitValue * prd.attenuation;
 
       ddd = smpl == 0 ? prd.depth : ddd;
@@ -160,22 +162,24 @@ void main()
 
   float outlines = 1;
 
+  
+
   if(prd.celid != 0){
     for(int i = 0; i < 9; i++){
         vec4 o = vec4(origin.xy + m[i], origin.zw);
         traceRayEXT(topLevelAS,     // acceleration structure
                   rayFlags,       // rayFlags
                   prd.celid,           // cullMask
-                  0,              // sbtRecordOffset
+                  1,              // sbtRecordOffset
                   0,              // sbtRecordStride
-                  0,              // missIndex
+                  2,              // missIndex
                   o.xyz,     // ray origin
                   0,           // ray min range
                   direction.xyz,  // ray direction
                   10000,           // ray max range
-                  0               // payload (location = 0)
+                  1               // payload (location = 0)
       );
-      c[i] = vec4(prd.normal, prd.depth);
+      c[i] = vec4(cel.normal, cel.depth);
 
       vec4 devx = vec4(0);
   vec4 devy = vec4(0);
@@ -210,7 +214,7 @@ void main()
         outlines = (1 - mag.r) * (1-mag.g) * (1 - mag.b) *  (1 - mag.a);
     }
   }
-  prd.hitValue = outlines * hitValues / pushC.numSamples;
+  prd.hitValue = hitValues * vec3(outlines) / pushC.numSamples;
 
 
   // Do accumulation over time

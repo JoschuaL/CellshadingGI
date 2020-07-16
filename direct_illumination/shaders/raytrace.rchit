@@ -12,7 +12,7 @@ hitAttributeEXT vec2 attribs;
 // clang-format off
 layout(location = 0) rayPayloadInEXT hitPayload prd;
 layout(location = 1) rayPayloadEXT bool isShadowed;
-layout(location = 2) rayPayloadEXT celPayload cel;
+
 
 layout(binding = 0, set = 0) uniform accelerationStructureEXT topLevelAS;
 
