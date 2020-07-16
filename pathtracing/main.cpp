@@ -115,7 +115,7 @@ int main(int argc, char** argv)
 
   // Setup camera
   CameraManip.setWindowSize(SAMPLE_WIDTH, SAMPLE_HEIGHT);
-  CameraManip.setLookat(nvmath::vec3f(0, 0, 4), nvmath::vec3f(0, 0, 1), nvmath::vec3f(0, 1, 0));
+  CameraManip.setLookat(nvmath::vec3f(-0.3, 6.7, 16), nvmath::vec3f(0.5, 4.5, 1.5), nvmath::vec3f(0, 1, 0));
 
   // Setup Vulkan
   if(!glfwVulkanSupported())
@@ -190,13 +190,24 @@ int main(int argc, char** argv)
 
   // Creation of the example
   //helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Empty-White.obj", defaultSearchPaths));
-  //helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Original.obj", defaultSearchPaths));
+  helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Original.obj", defaultSearchPaths));
   //helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Sphere.obj", defaultSearchPaths));
   //helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Glossy.obj", defaultSearchPaths));
-  helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Mirror.obj", defaultSearchPaths));
+  //helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Mirror.obj", defaultSearchPaths));
   //helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Water.obj", defaultSearchPaths));
   //helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Glossy-Floor.obj", defaultSearchPaths));
   //helloVk.loadModel(nvh::findFile("media/scenes/plane.obj", defaultSearchPaths));
+  /*helloVk.loadModel(nvh::findFile("media/scenes/ladies/gumi_alone.obj", defaultSearchPaths));
+  helloVk.loadModel(nvh::findFile("media/scenes/ladies/walls.obj", defaultSearchPaths) );
+  nvmath::vec4f plc = {10, 10, 10,1};
+  nvmath::vec4f b = {0, 0, 0, 1};
+
+  helloVk.addPointLight({plc, {3.5, 10, 2.5, 1}});
+  helloVk.addPointLight({plc, {-3.5, 10, 2.5, 1}});
+  helloVk.addPointLight({plc, {3.5, 10, 6.5, 1}});
+  helloVk.addPointLight({plc, {-3.5, 10, 6.5, 1}});
+  helloVk.addPointLight({plc, {0, 10, -0.5, 1}});
+  helloVk.addPointLight({plc, {0, 10, 9, 1}});*/
 
 	helloVk.postModelSetup();
 

@@ -22,6 +22,7 @@ layout(binding = 4, set = 1)  buffer MatIndexColorBuffer { int i[]; } matIndex[]
 layout(binding = 5, set = 1, scalar) buffer Vertices { Vertex v[]; } vertices[];
 layout(binding = 6, set = 1) buffer Indices { uint i[]; } indices[];
 layout(binding = 7, set = 1) buffer AreaLightsBuffer { AreaLight l[]; } lights;
+layout(binding = 8, set = 1) buffer PointLightsBuffer { PointLight l[]; } Plights;
 
 // clang-format on
 
@@ -36,9 +37,10 @@ layout(push_constant) uniform Constants
   int   numSamples;
   float fuzzyAngle;
   float ior;
-  int   numLights;
+  int   numAreaLights;
   int   maxBounces;
   float maxRussian;
+  int numPointLights;
 }
 pushC;
 
@@ -49,6 +51,7 @@ layout(location = 2) callableDataEXT directSampleCall dsc;
 
 void main()
 {
+
 
   const uint flags =
       gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsOpaqueEXT | gl_RayFlagsSkipClosestHitShaderEXT;
@@ -130,7 +133,7 @@ void main()
     {
       const vec3  r = gl_WorldRayOriginEXT - worldPos;
       const float pne =
-          (ec.pdf_area * dot(r, r)) / (dot(-gl_WorldRayDirectionEXT, snormal) * pushC.numLights);
+          (ec.pdf_area * dot(r, r)) / (dot(-gl_WorldRayDirectionEXT, snormal) * (pushC.numAreaLights + pushC.numPointLights));
       const float p_bsdf     = prd.last_bsdf_pdf;
       const float mis_weight = p_bsdf / (p_bsdf + pne);
       prd.color += ec.intensity * mis_weight * prd.weight;
@@ -181,7 +184,16 @@ void main()
       ww *= 2;
       break;
     }
-    
+    case 16: {
+        mask = 0;
+        break;
+    }
+    case 32: {
+        mask = 0;
+        ww = 1;
+        break;
+    }
+
   }
 
   mc.objId  = objId;
@@ -198,22 +210,35 @@ void main()
   mc.inDir      = vec3(1, 0, 0);
 
 
-  const int       cl   = min(int(rnd(prd.seed) * pushC.numLights), pushC.numLights - 1);
-  const AreaLight li   = lights.l[cl];
-  const vec3      e1   = li.v1.xyz - li.v0.xyz;
-  const vec3      e2   = li.v2.xyz - li.v0.xyz;
-  const vec3      ln   = normalize(cross(e1, e2));
-  const float     u    = rnd(prd.seed);
-  const float     v    = rnd(prd.seed);
-  const vec3      lpos = u + v < 1.0 ? li.v0.xyz + (u * e1) + (v * e2) :
-                                  li.v0.xyz + ((1.0 - u) * e1) + ((1.0 - v) * e2);
-  const vec3 pos = offset_ray(offset_ray(lpos, ln), ln);
+  const int       cl   = min(int(rnd(prd.seed) * (pushC.numAreaLights + pushC.numPointLights)), pushC.numAreaLights + pushC.numPointLights - 1);
+  vec3 pos;
+  int lightType;
+
+  if(cl < pushC.numAreaLights){
+ const AreaLight li   = lights.l[cl];
+   const vec3      e1   = li.v1.xyz - li.v0.xyz;
+   const vec3      e2   = li.v2.xyz - li.v0.xyz;
+   const vec3      ln   = normalize(cross(e1, e2));
+   const float     u    = rnd(prd.seed);
+   const float     v    = rnd(prd.seed);
+   const vec3      lpos = u + v < 1.0 ? li.v0.xyz + (u * e1) + (v * e2) :
+                                   li.v0.xyz + ((1.0 - u) * e1) + ((1.0 - v) * e2);
+   pos = offset_ray(offset_ray(lpos, ln), ln);
+    dsc.li              = li;
+     lightType = 1;
+  } else {
+    const PointLight p = Plights.l[cl - pushC.numAreaLights];
+    pos = p.pos.xyz;
+    lightType = 0;
+    dsc.p = p;
+  }
+
 
   dsc.seed            = prd.seed;
-  dsc.li              = li;
+
   dsc.from            = worldPos;
   dsc.pos             = pos;
-  const int lightType = 1;
+
   const int call      = 6 + lightType;
   executeCallableEXT(call, 2);
   prd.seed = dsc.seed;
@@ -248,16 +273,20 @@ void main()
               cos_hit < 0 ? dist : 0,  // ray max range
               1                        // payload (location = 1)
   );
+  float mis_weight;
+  if(cl < pushC.numAreaLights){
+   const float pne = ((dsc.pdf_area * d2) / (dsc.cos_v * (pushC.numAreaLights + pushC.numPointLights)));
 
 
-  const float pne = ((dsc.pdf_area * d2) / (dsc.cos_v * pushC.numLights));
+    const float p_bsdf     = mc.pdf_pdf;
+    mis_weight = pne / (pne + p_bsdf);
+  } else {
+    mis_weight = 1.0;
+  }
 
 
-  const float p_bsdf     = mc.pdf_pdf;
-  const float mis_weight = pne / (pne + p_bsdf);
-
-  prd.color += float(!isShadowed) * ww * li.color.xyz * mis_weight
-               * ((prd.weight * mc.eval_color * dsc.cos_v * pushC.numLights * abs(cos_hit))
+  prd.color += float(!isShadowed) * ww * dsc.intensity.xyz * mis_weight
+               * ((prd.weight * mc.eval_color * dsc.cos_v * (pushC.numAreaLights + pushC.numPointLights) * abs(cos_hit))
                   / (d2 * dsc.pdf_area));
 
 

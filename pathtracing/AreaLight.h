@@ -16,5 +16,11 @@ struct AreaLight
 
 };
 
+struct PointLight
+{
+  nvmath::vec4f color;
+  nvmath::vec4f pos;
+};
+
 
 #endif  //VK_RAYTRACING_TUTORIAL_AREALIGHT_H

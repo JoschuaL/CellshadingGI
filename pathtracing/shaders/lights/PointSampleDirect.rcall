@@ -40,5 +40,5 @@ layout(push_constant) uniform Constants
 
 void main()
 {
-    make_direct_sample(dsc.li.v0.xyz, dsc.li.color.xyz, 1.0f, 1.0 / (4.0 * M_PI), 1.0f, dsc);
+    make_direct_sample(dsc.p.pos.xyz, dsc.p.color.xyz, 1.0f, 1.0 / (4.0 * M_PI), 1.0f, dsc);
 }

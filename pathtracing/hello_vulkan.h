@@ -156,6 +156,7 @@ public:
   void raytrace(const vk::CommandBuffer& cmdBuf, const nvmath::vec4f& clearColor);
   void resetFrame();
   void updateFrame();
+  void addPointLight(PointLight p);
 
 
   vk::PhysicalDeviceRayTracingPropertiesKHR           m_rtProperties;
@@ -178,6 +179,8 @@ public:
   int                                                 m_maxBounces          = 64;
   float                                               m_maxRussian = 1.0;
 int m_modelId = 0;
+  std::vector<PointLight> m_PointLights = {};
+  nvvk::Buffer            m_pointLightBuffer;
 
   struct RtPushConstant
   {
@@ -194,5 +197,6 @@ int m_modelId = 0;
     int           numLights;
     int           maxBounces = 1;
     float         max_russian = 0.75;
+    int numPointLights;
   } m_rtPushConstants;
 };

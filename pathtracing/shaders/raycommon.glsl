@@ -20,6 +20,12 @@ struct AreaLight
   vec4 v2;
 };
 
+struct PointLight
+{
+  vec4 color;
+  vec4 pos;
+};
+
 struct materialCall
 {
   uint  objId;
@@ -60,6 +66,7 @@ struct directSampleCall
   float     pdf_dir;
   float     cos_v;
   AreaLight li;
+  PointLight p;
   uint      seed;
   vec3      from;
 };

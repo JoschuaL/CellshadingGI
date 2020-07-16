@@ -123,6 +123,8 @@ void HelloVulkan::createDescriptorSetLayout()
       vkDS(6, vkDT::eStorageBuffer, nbObj, vkSS::eClosestHitKHR));
 
   m_descSetLayoutBind.addBinding(vkDS(7, vkDT::eStorageBuffer, 1, vkSS::eClosestHitKHR));
+  // Point Lights (binding = 8)
+  m_descSetLayoutBind.addBinding(vkDS(8, vkDT::eStorageBuffer, 1, vkSS::eClosestHitKHR));
 
 
   m_descSetLayout = m_descSetLayoutBind.createLayout(m_device);
@@ -170,6 +172,8 @@ vk::DescriptorBufferInfo lights{m_areaLightsBuffer.buffer, 0, VK_WHOLE_SIZE};
     diit.push_back(texture.descriptor);
   }
   writes.emplace_back(m_descSetLayoutBind.makeWriteArray(m_descSet, 3, diit.data()));
+  vk::DescriptorBufferInfo dbiPLights{m_pointLightBuffer.buffer, 0, VK_WHOLE_SIZE};
+  writes.emplace_back(m_descSetLayoutBind.makeWrite(m_descSet, 8, &dbiPLights));
 
   // Writing the information
   m_device.updateDescriptorSets(static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
@@ -330,6 +334,7 @@ void HelloVulkan::createSceneDescriptionBuffer()
 
   auto cmdBuf = cmdGen.createCommandBuffer();
   m_sceneDesc = m_alloc.createBuffer(cmdBuf, m_objInstance, vkBU::eStorageBuffer);
+  m_pointLightBuffer = m_alloc.createBuffer(cmdBuf, m_PointLights, vkBU::eStorageBuffer);
   cmdGen.submitAndWait(cmdBuf);
   m_alloc.finalizeAndReleaseStaging();
   m_debug.setObjectName(m_sceneDesc.buffer, "sceneDesc");
@@ -882,6 +887,9 @@ void HelloVulkan::createRtPipeline()
   vk::ShaderModule areaDirectSampleSM =
       nvvk::createShaderModule(m_device, nvh::loadFile("shaders/AreaSampleDirect.rcall.spv", true, paths));
 
+  vk::ShaderModule celSM =
+      nvvk::createShaderModule(m_device, nvh::loadFile("shaders/cel.rcall.spv", true, paths));
+
 	
 
   stages.push_back({{}, vk::ShaderStageFlagBits::eCallableKHR, lambertSM, "main"});
@@ -913,6 +921,10 @@ void HelloVulkan::createRtPipeline()
   m_rtShaderGroups.push_back(cg);
 	
   stages.push_back({{}, vk::ShaderStageFlagBits::eCallableKHR, areaDirectSampleSM, "main"});
+  cg.setGeneralShader(static_cast<uint32_t>(stages.size() - 1));
+  m_rtShaderGroups.push_back(cg);
+
+  stages.push_back({{}, vk::ShaderStageFlagBits::eCallableKHR, celSM, "main"});
   cg.setGeneralShader(static_cast<uint32_t>(stages.size() - 1));
   m_rtShaderGroups.push_back(cg);
 
@@ -956,6 +968,11 @@ void HelloVulkan::createRtPipeline()
   m_device.destroy(blinnSM);
   m_device.destroy(mirrorSM);
   m_device.destroy(glassSM);
+  m_device.destroy(pointDirectSampleSM);
+  m_device.destroy(areaDirectSampleSM);
+  m_device.destroy(pointEmittSM);
+  m_device.destroy(areaEmittSM);
+  m_device.destroy(celSM);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1018,6 +1035,7 @@ void HelloVulkan::raytrace(const vk::CommandBuffer& cmdBuf, const nvmath::vec4f&
   m_rtPushConstants.numLights = m_AreaLightsPerObject.size();
   m_rtPushConstants.maxBounces     = m_maxBounces;
   m_rtPushConstants.max_russian    = m_maxRussian;
+  m_rtPushConstants.numPointLights = m_PointLights.size();
 
   cmdBuf.bindPipeline(vk::PipelineBindPoint::eRayTracingKHR, m_rtPipeline);
   cmdBuf.bindDescriptorSets(vk::PipelineBindPoint::eRayTracingKHR, m_rtPipelineLayout, 0,
@@ -1068,3 +1086,9 @@ void HelloVulkan::updateFrame() {
   }
   m_FrameCount++;
 }
+
+void HelloVulkan::addPointLight(PointLight p)
+{
+  m_PointLights.push_back(p);
+}
+
