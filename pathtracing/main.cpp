@@ -190,10 +190,10 @@ int main(int argc, char** argv)
 
   // Creation of the example
   //helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Empty-White.obj", defaultSearchPaths));
-  helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Original.obj", defaultSearchPaths));
+  //helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Original.obj", defaultSearchPaths));
   //helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Sphere.obj", defaultSearchPaths));
   //helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Glossy.obj", defaultSearchPaths));
-  //helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Mirror.obj", defaultSearchPaths));
+  helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Mirror.obj", defaultSearchPaths));
   //helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Water.obj", defaultSearchPaths));
   //helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Glossy-Floor.obj", defaultSearchPaths));
   //helloVk.loadModel(nvh::findFile("media/scenes/plane.obj", defaultSearchPaths));

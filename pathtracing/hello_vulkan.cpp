@@ -219,7 +219,7 @@ void HelloVulkan::loadModel(const std::string& filename, nvmath::mat4f transform
   using vkBU = vk::BufferUsageFlagBits;
 
   ObjLoader loader;
-  loader.loadModel(filename);
+  loader.loadModel(filename, m_modelId);
 
   // Converting from Srgb to linear
   for(auto& m : loader.m_materials)

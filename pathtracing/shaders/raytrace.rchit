@@ -145,7 +145,7 @@ void main()
 
 
   float ww   = 1.0;
-  int   mask = matProb;
+  int   mask = matProb & 15;
   if(prd.specular && diffuse)
   {
     float r = rnd(prd.seed);
@@ -181,6 +181,7 @@ void main()
       ww *= 2;
       break;
     }
+    
   }
 
   mc.objId  = objId;

@@ -177,6 +177,7 @@ public:
   float m_IOR = 0.3f;
   int                                                 m_maxBounces          = 64;
   float                                               m_maxRussian = 1.0;
+int m_modelId = 0;
 
   struct RtPushConstant
   {
