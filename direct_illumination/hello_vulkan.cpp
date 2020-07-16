@@ -1,3 +1,5 @@
+
+
 /* Copyright (c) 2014-2018, NVIDIA CORPORATION. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -29,10 +31,15 @@
 
 #include <vulkan/vulkan.hpp>
 
+
 extern std::vector<std::string> defaultSearchPaths;
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "fileformats/stb_image.h"
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "fileformats//stb_image_write.h"
+
+
 #include "obj_loader.h"
 
 #include "hello_vulkan.h"
@@ -1226,7 +1233,7 @@ void HelloVulkan::saveImage() {
 		cmdPoolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 		VK_CHECK_RESULT(vkCreateCommandPool(m_device, &cmdPoolInfo, nullptr, &commandPool));
 
-	const char* imagedata;
+	float* imagedata;
   {
     // Create the linear tiled destination image to copy to and to read the memory from
     VkImageCreateInfo imgCreateInfo(vks::initializers::imageCreateInfo());
@@ -1310,8 +1317,22 @@ void HelloVulkan::saveImage() {
     // Map image memory so we can start copying from it
     vkMapMemory(m_device, dstImageMemory, 0, VK_WHOLE_SIZE, 0, (void**)&imagedata);
     imagedata += subResourceLayout.offset;
+    stbi_write_hdr("K:\\testy.hdr", m_size.width, m_size.height, 4, imagedata);
+
+    std::vector<uint8_t> pngdata(m_size.width * m_size.height * 4, 0);
+    for(int i = 0; i < m_size.width * m_size.height * 4; i++){
+      imagedata[i] = std::pow(imagedata[i], 1.0 / 2.2);
+      pngdata[i] = static_cast<uint8_t>(std::min(255.0f, imagedata[i] * 255));
+      if(imagedata[i] < 0.0 || isnan(imagedata[i]))
+      {
+        std::cout << i / 3 << std::endl;
+      }
+    }
+    stbi_write_png("K:\\testy.png", m_size.width, m_size.height, 4, pngdata.data(), 0);
     	return;
   }
+
+
 
   
 	/*
