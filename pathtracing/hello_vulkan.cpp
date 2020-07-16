@@ -144,10 +144,11 @@ void HelloVulkan::updateDescriptorSet()
   writes.emplace_back(m_descSetLayoutBind.makeWrite(m_descSet, 0, &dbiUnif));
   vk::DescriptorBufferInfo dbiSceneDesc{m_sceneDesc.buffer, 0, VK_WHOLE_SIZE};
   writes.emplace_back(m_descSetLayoutBind.makeWrite(m_descSet, 2, &dbiSceneDesc));
-
-vk::DescriptorBufferInfo lights{m_areaLightsBuffer.buffer, 0, VK_WHOLE_SIZE};
-  writes.emplace_back(m_descSetLayoutBind.makeWrite(m_descSet, 7, &lights));
-
+if(m_AreaLightsPerObject.size() > 0)
+  {
+    vk::DescriptorBufferInfo lights{m_areaLightsBuffer.buffer, 0, VK_WHOLE_SIZE};
+    writes.emplace_back(m_descSetLayoutBind.makeWrite(m_descSet, 7, &lights));
+  }
   // All material buffers, 1 buffer per OBJ
   std::vector<vk::DescriptorBufferInfo> dbiMat;
   std::vector<vk::DescriptorBufferInfo> dbiMatIdx;
@@ -258,10 +259,10 @@ void HelloVulkan::loadModel(const std::string& filename, nvmath::mat4f transform
     }
   }
 
-  if(m_AreaLightsPerObject.empty()){
+ /*if(m_AreaLightsPerObject.empty()){
     const AreaLight light = {{0,0,0,0}, {0,0,0,0},{0,0,0,0},{0,0,0,0}};
     m_AreaLightsPerObject.emplace_back(light);
-  }
+  }*/
 
   // Create the buffers on Device and copy vertices, indices and materials
   nvvk::CommandPool cmdBufGet(m_device, m_graphicsQueueIndex);
@@ -294,16 +295,19 @@ void HelloVulkan::loadModel(const std::string& filename, nvmath::mat4f transform
 
 void HelloVulkan::postModelSetup()
 {
+  if(m_AreaLightsPerObject.size() > 0){
     using vkBU = vk::BufferUsageFlagBits;
-	 nvvk::CommandPool cmdBufGet(m_device, m_graphicsQueueIndex);
-  vk::CommandBuffer cmdBuf = cmdBufGet.createCommandBuffer();
-   m_areaLightsBuffer =
-       m_alloc.createBuffer(cmdBuf, m_AreaLightsPerObject,vkBU::eStorageBuffer);
-  cmdBufGet.submitAndWait(cmdBuf);
-	
-  m_alloc.finalizeAndReleaseStaging();
- 
-  m_debug.setObjectName(m_areaLightsBuffer.buffer, (std::string("Arealights").c_str()));
+    nvvk::CommandPool cmdBufGet(m_device, m_graphicsQueueIndex);
+    vk::CommandBuffer cmdBuf = cmdBufGet.createCommandBuffer();
+    m_areaLightsBuffer =
+        m_alloc.createBuffer(cmdBuf, m_AreaLightsPerObject,vkBU::eStorageBuffer);
+    cmdBufGet.submitAndWait(cmdBuf);
+
+    m_alloc.finalizeAndReleaseStaging();
+
+    m_debug.setObjectName(m_areaLightsBuffer.buffer, (std::string("Arealights").c_str()));
+  }
+
 }
 
 

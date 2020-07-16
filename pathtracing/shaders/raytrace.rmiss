@@ -12,7 +12,5 @@ layout(push_constant) uniform Constants
 
 void main()
 {
-
-  //prd.color = clearColor.xyz;
   prd.done = true;
 }

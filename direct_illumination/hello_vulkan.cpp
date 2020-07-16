@@ -26,6 +26,7 @@
  */
 
 #include <sstream>
+
 #include <vulkan/vulkan.hpp>
 
 extern std::vector<std::string> defaultSearchPaths;
@@ -42,6 +43,8 @@ extern std::vector<std::string> defaultSearchPaths;
 #include "nvvk/pipeline_vk.hpp"
 #include "nvvk/renderpasses_vk.hpp"
 #include "nvvk/shaders_vk.hpp"
+#include "VulkanInitializers.hpp"
+#include "VulkanTools.hpp"
 
 
 // Holding the camera matrices
@@ -359,6 +362,8 @@ void HelloVulkan::createTextureImages(const vk::CommandBuffer&        cmdBuf,
     vk::ImageViewCreateInfo ivInfo = nvvk::makeImageViewCreateInfo(image.image, imageCreateInfo);
     texture                        = m_alloc.createTexture(image, ivInfo, samplerCreateInfo);
 
+
+
     // The image format must be in VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
     nvvk::cmdBarrierImageLayout(cmdBuf, texture.image, vk::ImageLayout::eUndefined,
                                 vk::ImageLayout::eShaderReadOnlyOptimal);
@@ -518,13 +523,14 @@ void HelloVulkan::createOffscreenRender()
     auto colorCreateInfo = nvvk::makeImage2DCreateInfo(m_size, m_offscreenColorFormat,
                                                        vk::ImageUsageFlagBits::eColorAttachment
                                                            | vk::ImageUsageFlagBits::eSampled
-                                                           | vk::ImageUsageFlagBits::eStorage);
+                                                           | vk::ImageUsageFlagBits::eStorage
+                                                       | vk::ImageUsageFlagBits::eTransferSrc);
 
 
     m_offscreenColorImage  = m_alloc.createImage(colorCreateInfo);
     vk::ImageViewCreateInfo ivInfo = nvvk::makeImageViewCreateInfo(m_offscreenColorImage.image, colorCreateInfo);
     m_offscreenColor               = m_alloc.createTexture(m_offscreenColorImage, ivInfo, sampler);
-    m_offscreenColor.descriptor.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+    m_offscreenColor.descriptor.imageLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
   }
 
   {
@@ -586,12 +592,14 @@ void HelloVulkan::createOffscreenRender()
     m_offscreenDepth = m_alloc.createTexture(image, depthStencilView);
   }
 
+
+
   // Setting the image layout for both color and depth
   {
     nvvk::CommandPool genCmdBuf(m_device, m_graphicsQueueIndex);
     auto              cmdBuf = genCmdBuf.createCommandBuffer();
     nvvk::cmdBarrierImageLayout(cmdBuf, m_offscreenColor.image, vk::ImageLayout::eUndefined,
-                                vk::ImageLayout::eGeneral);
+                                vk::ImageLayout::eTransferSrcOptimal);
 
     nvvk::cmdBarrierImageLayout(cmdBuf, m_offscreenNormal.image, vk::ImageLayout::eUndefined,
                                 vk::ImageLayout::eGeneral);
@@ -602,6 +610,8 @@ void HelloVulkan::createOffscreenRender()
     nvvk::cmdBarrierImageLayout(cmdBuf, m_offscreenDepth.image, vk::ImageLayout::eUndefined,
                                 vk::ImageLayout::eDepthStencilAttachmentOptimal,
                                 vk::ImageAspectFlagBits::eDepth);
+    nvvk::cmdBarrierImageLayout(cmdBuf, saveImageData.image, vk::ImageLayout::eGeneral,
+                                vk::ImageLayout::eGeneral);
 
 
     genCmdBuf.submitAndWait(cmdBuf);
@@ -1194,5 +1204,162 @@ void HelloVulkan::addPointLight(PointLight p)
   m_PointLights.push_back(p);
 }
 
+uint32_t HelloVulkan::getMemoryTypeIndex(uint32_t typeBits, VkMemoryPropertyFlags properties) {
+		VkPhysicalDeviceMemoryProperties deviceMemoryProperties;
+		vkGetPhysicalDeviceMemoryProperties(m_physicalDevice, &deviceMemoryProperties);
+		for (uint32_t i = 0; i < deviceMemoryProperties.memoryTypeCount; i++) {
+			if ((typeBits & 1) == 1) {
+				if ((deviceMemoryProperties.memoryTypes[i].propertyFlags & properties) == properties) {
+					return i;
+				}
+			}
+			typeBits >>= 1;
+		}
+		return 0;
+	}
+
+void HelloVulkan::saveImage() {
+    VkCommandPool commandPool;
+    VkCommandPoolCreateInfo cmdPoolInfo = {};
+		cmdPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+		cmdPoolInfo.queueFamilyIndex = 1;
+		cmdPoolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+		VK_CHECK_RESULT(vkCreateCommandPool(m_device, &cmdPoolInfo, nullptr, &commandPool));
+
+	const char* imagedata;
+  {
+    // Create the linear tiled destination image to copy to and to read the memory from
+    VkImageCreateInfo imgCreateInfo(vks::initializers::imageCreateInfo());
+    imgCreateInfo.imageType     = VK_IMAGE_TYPE_2D;
+    imgCreateInfo.format        = VK_FORMAT_R32G32B32A32_SFLOAT;
+    imgCreateInfo.extent.width  = m_size.width;
+    imgCreateInfo.extent.height = m_size.height;
+    imgCreateInfo.extent.depth  = 1;
+    imgCreateInfo.arrayLayers   = 1;
+    imgCreateInfo.mipLevels     = 1;
+    imgCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    imgCreateInfo.samples       = VK_SAMPLE_COUNT_1_BIT;
+    imgCreateInfo.tiling        = VK_IMAGE_TILING_LINEAR;
+    imgCreateInfo.usage         = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    // Create the image
+    VkImage dstImage;
+    VK_CHECK_RESULT(vkCreateImage(m_device, &imgCreateInfo, nullptr, &dstImage));
+    // Create memory to back up the image
+    VkMemoryRequirements memRequirements;
+    VkMemoryAllocateInfo memAllocInfo(vks::initializers::memoryAllocateInfo());
+    VkDeviceMemory       dstImageMemory;
+    vkGetImageMemoryRequirements(m_device, dstImage, &memRequirements);
+    memAllocInfo.allocationSize = memRequirements.size;
+    // Memory must be host visible to copy from
+    memAllocInfo.memoryTypeIndex = getMemoryTypeIndex(memRequirements.memoryTypeBits,
+                                                      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+                                                          | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    VK_CHECK_RESULT(vkAllocateMemory(m_device, &memAllocInfo, nullptr, &dstImageMemory));
+    VK_CHECK_RESULT(vkBindImageMemory(m_device, dstImage, dstImageMemory, 0));
+    
+    // Do the actual blit from the offscreen image to our host visible destination image
+    VkCommandBufferAllocateInfo cmdBufAllocateInfo =
+        vks::initializers::commandBufferAllocateInfo(commandPool, VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+                                                     1);
+    nvvk::CommandPool cmdGen(m_device, m_graphicsQueueIndex);
+  std::vector<nvmath::vec4f> img(m_size.width * m_size.height, {0,0,0,0});
+
+  vk::CommandBuffer cmdBuf = cmdGen.createCommandBuffer();
+
+   
+
+    // Transition destination image to transfer destination layout
+    vks::tools::insertImageMemoryBarrier(
+        cmdBuf, dstImage, 0, VK_ACCESS_TRANSFER_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VkImageSubresourceRange{VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1});
+
+    // colorAttachment.image is already in VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, and does not need to be transitioned
+
+    VkImageCopy imageCopyRegion{};
+    imageCopyRegion.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    imageCopyRegion.srcSubresource.layerCount = 1;
+    imageCopyRegion.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    imageCopyRegion.dstSubresource.layerCount = 1;
+    imageCopyRegion.extent.width              = m_size.width;
+    imageCopyRegion.extent.height             = m_size.height;
+    imageCopyRegion.extent.depth              = 1;
+
+    vkCmdCopyImage(cmdBuf, m_offscreenColorImage.image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dstImage,
+                   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopyRegion);
+
+    // Transition destination image to general layout, which is the required layout for mapping the image memory later on
+    vks::tools::insertImageMemoryBarrier(
+        cmdBuf, dstImage, VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_MEMORY_READ_BIT,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL,
+        VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VkImageSubresourceRange{VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1});
+
+    cmdGen.submitAndWait(cmdBuf);
+    	
+
+
+    // Get layout of the image (including row pitch)
+    VkImageSubresource subResource{};
+    subResource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    VkSubresourceLayout subResourceLayout;
+
+    vkGetImageSubresourceLayout(m_device, dstImage, &subResource, &subResourceLayout);
+
+    // Map image memory so we can start copying from it
+    vkMapMemory(m_device, dstImageMemory, 0, VK_WHOLE_SIZE, 0, (void**)&imagedata);
+    imagedata += subResourceLayout.offset;
+    	return;
+  }
+
+  
+	/*
+
+
+
+    auto ci = nvvk::makeImage2DCreateInfo(m_size, m_offscreenColorFormat, vk::ImageUsageFlagBits::eColorAttachment
+                                                                          | vk::ImageUsageFlagBits::eSampled
+                                                                          | vk::ImageUsageFlagBits::eStorage
+                                                                          | vk::ImageUsageFlagBits::eTransferDst);
+    saveImageData = m_alloc.createImage(ci, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+
+
+
+
+
+
+  nvvk::CommandPool cmdGen(m_device, m_graphicsQueueIndex);
+  std::vector<nvmath::vec4f> img(m_size.width * m_size.height, {0,0,0,0});
+
+  vk::CommandBuffer cmdBuf = cmdGen.createCommandBuffer();
+
+  vk::ImageCopy imageCopyRegion{};
+  imageCopyRegion.srcSubresource.aspectMask = vk::ImageAspectFlagBits::eColor;
+  imageCopyRegion.srcSubresource.layerCount = 1;
+  imageCopyRegion.dstSubresource.aspectMask = vk::ImageAspectFlagBits::eColor;
+  imageCopyRegion.dstSubresource.layerCount = 1;
+  imageCopyRegion.extent.width = m_size.width;
+  imageCopyRegion.extent.height = m_size.height;
+  imageCopyRegion.extent.depth = 1;
+  cmdBuf.copyImage(m_offscreenColorImage.image, vk::ImageLayout::eGeneral, saveImageData.image, vk::ImageLayout::eGeneral, imageCopyRegion);
+  cmdGen.submitAndWait(cmdBuf);
+
+  VkImageSubresource subResource{};
+  subResource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  VkSubresourceLayout subResourceLayout;
+
+  vkGetImageSubresourceLayout(m_device, saveImageData.image, &subResource, &subResourceLayout);
+  auto data = img.data();
+  // Map image memory so we can start copying from it
+  vkMapMemory(m_device, saveImageData.allocation, 0, VK_WHOLE_SIZE, 0, (void**) data);
+  data += subResourceLayout.offset;
+  //vkCmdCopyImageToBuffer(cmdBuf, m_offscreenColorImage.image, VK_IMAGE_LAYOUT_GENERAL, buf.buffer, )
+  */
+
+
+
+}
 
 

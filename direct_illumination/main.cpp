@@ -339,7 +339,7 @@ int main(int argc, char** argv)
     cmdBuff.end();
     helloVk.submitFrame();
   }
-
+  helloVk.saveImage();
   // Cleanup
   helloVk.getDevice().waitIdle();
   helloVk.destroyResources();

@@ -212,10 +212,10 @@ void main()
 
   const int       cl   = min(int(rnd(prd.seed) * (pushC.numAreaLights + pushC.numPointLights)), pushC.numAreaLights + pushC.numPointLights - 1);
   vec3 pos;
-  int lightType;
+  int lightType = 0;
 
   if(cl < pushC.numAreaLights){
- const AreaLight li   = lights.l[cl];
+   const AreaLight li   = lights.l[cl];
    const vec3      e1   = li.v1.xyz - li.v0.xyz;
    const vec3      e2   = li.v2.xyz - li.v0.xyz;
    const vec3      ln   = normalize(cross(e1, e2));
@@ -234,14 +234,20 @@ void main()
   }
 
 
+
+
   dsc.seed            = prd.seed;
 
   dsc.from            = worldPos;
-  dsc.pos             = pos;
+
 
   const int call      = 6 + lightType;
+
   executeCallableEXT(call, 2);
   prd.seed = dsc.seed;
+
+  dsc.pos = Plights.l[cl - pushC.numAreaLights].pos.xyz;
+
 
 
   const vec3  dir     = worldPos - dsc.pos;
@@ -286,8 +292,13 @@ void main()
 
 
   prd.color += float(!isShadowed) * ww * dsc.intensity.xyz * mis_weight
-               * ((prd.weight * mc.eval_color * dsc.cos_v * (pushC.numAreaLights + pushC.numPointLights) * abs(cos_hit))
-                  / (d2 * dsc.pdf_area));
+                 * ((prd.weight * mc.eval_color * dsc.cos_v * (pushC.numAreaLights + pushC.numPointLights) * abs(cos_hit))
+                    / (d2 * dsc.pdf_area));
+  prd.done = true;
+  return;
+
+
+
 
 
   const float p = russian_roulette(prd.weight);

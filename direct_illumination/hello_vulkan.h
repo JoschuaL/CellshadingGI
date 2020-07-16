@@ -160,6 +160,9 @@ nvvk::Image   m_offscreenIdImage;
 nvvk::Texture m_offscreenId;
 vk::Format    m_offscreenIdFormat{vk::Format::eR32G32B32A32Sfloat};
 
+	uint32_t getMemoryTypeIndex(uint32_t typeBits, VkMemoryPropertyFlags properties);
+	
+
   // #VKRay
   void                             initRayTracing();
   nvvk::RaytracingBuilderKHR::Blas objectToVkGeometryKHR(const ObjModel& model);
@@ -173,6 +176,7 @@ vk::Format    m_offscreenIdFormat{vk::Format::eR32G32B32A32Sfloat};
   void resetFrame();
   void updateFrame();
   void addPointLight(PointLight p);
+  void saveImage();
 
 
   vk::PhysicalDeviceRayTracingPropertiesKHR           m_rtProperties;
@@ -193,6 +197,8 @@ vk::Format    m_offscreenIdFormat{vk::Format::eR32G32B32A32Sfloat};
   float m_IOR = 0.0f;
 	LightType m_LightType = LightType::Infinite;
   nvmath::vec3f                                       m_LightPosition       = {0, 0, 1};
+
+  nvvk::Image saveImageData;
 
 	std::vector<PointLight> m_PointLights = {};
   nvvk::Buffer            m_pointLightBuffer;

@@ -21,16 +21,18 @@ cam;
 layout(push_constant) uniform Constants
 {
   vec4  clearColor;
-  vec4  lightColor;
-  vec4  lightPosition;
-  int   numObjs;
-  int   numAreaSamples;
-  int   frame;
-  int   numSamples;
-  float fuzzyAngle;
-  float ior;
-  int   numLights;
-  int   maxBounces;
+    vec4  lightColor;
+    vec4  lightPosition;
+    int   numObjs;
+    int   numAreaSamples;
+    int   frame;
+    int   numSamples;
+    float fuzzyAngle;
+    float ior;
+    int   numAreaLights;
+    int   maxBounces;
+    float maxRussian;
+    int numPointLights;
 }
 pushC;
 
@@ -92,6 +94,7 @@ void main()
   // Do accumulation over time
   if(pushC.frame > 0)
   {
+
     const float a         = 1.0f / float(pushC.frame + 1);
     const vec3  old_color = imageLoad(image, ivec2(gl_LaunchIDEXT.xy)).xyz;
     imageStore(image, ivec2(gl_LaunchIDEXT.xy), vec4(mix(old_color, prd.color, a), 1.f));
