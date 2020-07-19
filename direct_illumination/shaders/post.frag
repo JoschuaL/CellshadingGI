@@ -6,6 +6,7 @@ layout(set = 0, binding = 0) uniform sampler2D noisyTxt;
 layout(set = 0, binding = 1) uniform sampler2D normalTxt;
 layout(set = 0, binding = 2) uniform sampler2D depthTxt;
 layout(set = 0, binding = 3) uniform sampler2D idTxt;
+layout(binding = 4, set = 0, rgba32f) uniform image2D save;
 
 layout(push_constant) uniform shaderInformation
 {
@@ -184,10 +185,13 @@ const float gaussian_k[25] = {
                 normalTxt, uv, pushc.threshold
             )
          * sobel(depthTxt, uv, pushc.threshold) : 1;
- fragColor =  pow(
+ vec4 c =  pow(
     vec4(
         texture(noisyTxt, uv).rgb * outlines
          , 1.0), vec4(gamma));
+
+    imageStore(save, ivec2(uv), c);
+    fragColor = c;
 
          
   

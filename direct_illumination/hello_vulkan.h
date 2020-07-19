@@ -160,6 +160,11 @@ nvvk::Image   m_offscreenIdImage;
 nvvk::Texture m_offscreenId;
 vk::Format    m_offscreenIdFormat{vk::Format::eR32G32B32A32Sfloat};
 
+	
+nvvk::Image   m_saveImage;
+nvvk::Texture m_save;
+vk::Format    m_saveFormat{vk::Format::eR32G32B32A32Sfloat};
+
 	uint32_t getMemoryTypeIndex(uint32_t typeBits, VkMemoryPropertyFlags properties);
 	
 

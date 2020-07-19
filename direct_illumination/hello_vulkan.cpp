@@ -452,6 +452,7 @@ void HelloVulkan::destroyResources()
   m_alloc.destroy(m_offscreenDepthRT);
   m_alloc.destroy(m_offscreenNormal);
   m_alloc.destroy(m_offscreenId);
+  m_alloc.destroy(m_save);
   m_device.destroy(m_offscreenRenderPass);
   m_device.destroy(m_offscreenFramebuffer);
 
@@ -580,6 +581,22 @@ void HelloVulkan::createOffscreenRender()
     m_offscreenId.descriptor.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
   }
 
+	{
+    auto idCreateInfo = nvvk::makeImage2DCreateInfo(m_size, m_saveFormat,
+                                                         vk::ImageUsageFlagBits::eColorAttachment
+                                                             | vk::ImageUsageFlagBits::eSampled
+                                                             | vk::ImageUsageFlagBits::eStorage
+    | vk::ImageUsageFlagBits::eTransferSrc);
+
+
+    m_saveImage = m_alloc.createImage(idCreateInfo);
+    vk::ImageViewCreateInfo ivInfo =
+        nvvk::makeImageViewCreateInfo(m_saveImage.image, idCreateInfo);
+    m_save = m_alloc.createTexture(m_saveImage, ivInfo, sampler);
+    m_save.descriptor.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+  }
+
+
 
 
 
@@ -617,6 +634,8 @@ void HelloVulkan::createOffscreenRender()
     nvvk::cmdBarrierImageLayout(cmdBuf, m_offscreenDepth.image, vk::ImageLayout::eUndefined,
                                 vk::ImageLayout::eDepthStencilAttachmentOptimal,
                                 vk::ImageAspectFlagBits::eDepth);
+  	nvvk::cmdBarrierImageLayout(cmdBuf, m_saveImage.image, vk::ImageLayout::eUndefined,
+                                vk::ImageLayout::eTransferSrcOptimal);
     nvvk::cmdBarrierImageLayout(cmdBuf, saveImageData.image, vk::ImageLayout::eGeneral,
                                 vk::ImageLayout::eGeneral);
 
@@ -628,7 +647,7 @@ void HelloVulkan::createOffscreenRender()
   if(!m_offscreenRenderPass)
   {
     m_offscreenRenderPass =
-        nvvk::createRenderPass(m_device, {m_offscreenColorFormat,m_offscreenColorFormat,m_offscreenColorFormat}, m_offscreenDepthFormat, 1, true,
+        nvvk::createRenderPass(m_device, {m_offscreenColorFormat}, m_offscreenDepthFormat, 1, true,
                                true, vk::ImageLayout::eGeneral, vk::ImageLayout::eGeneral);
   }
 
@@ -637,12 +656,13 @@ void HelloVulkan::createOffscreenRender()
                                             m_offscreenNormal.descriptor.imageView,
                                             m_offscreenDepthRT.descriptor.imageView,
                                             m_offscreenId.descriptor.imageView,
-                                            m_offscreenDepth.descriptor.imageView};
+                                            m_offscreenDepth.descriptor.imageView,
+  m_save.descriptor.imageView};
 
   m_device.destroy(m_offscreenFramebuffer);
   vk::FramebufferCreateInfo info;
   info.setRenderPass(m_offscreenRenderPass);
-  info.setAttachmentCount(4);
+  info.setAttachmentCount(6);
   info.setPAttachments(attachments.data());
   info.setWidth(m_size.width);
   info.setHeight(m_size.height);
@@ -696,6 +716,7 @@ void HelloVulkan::createPostDescriptor()
   m_postDescSetLayoutBind.addBinding(vkDS(1, vkDT::eCombinedImageSampler, 1, vkSS::eFragment));
   m_postDescSetLayoutBind.addBinding(vkDS(2, vkDT::eCombinedImageSampler, 1, vkSS::eFragment));
   m_postDescSetLayoutBind.addBinding(vkDS(3, vkDT::eCombinedImageSampler, 1, vkSS::eFragment));
+	 m_postDescSetLayoutBind.addBinding(vkDS(4, vkDT::eStorageImage, 1, vkSS::eFragment));
   m_postDescSetLayout = m_postDescSetLayoutBind.createLayout(m_device);
   m_postDescPool      = m_postDescSetLayoutBind.createPool(m_device);
   m_postDescSet       = nvvk::allocateDescriptorSet(m_device, m_postDescPool, m_postDescSetLayout);
@@ -724,6 +745,11 @@ void HelloVulkan::updatePostDescriptorSet()
   {
     vk::WriteDescriptorSet writeDescriptorSets =
         m_postDescSetLayoutBind.makeWrite(m_postDescSet, 3, &m_offscreenId.descriptor);
+    m_device.updateDescriptorSets(writeDescriptorSets, nullptr);
+  }
+	{
+    vk::WriteDescriptorSet writeDescriptorSets =
+        m_postDescSetLayoutBind.makeWrite(m_postDescSet, 4, &m_save.descriptor);
     m_device.updateDescriptorSets(writeDescriptorSets, nullptr);
   }
 }
@@ -1293,7 +1319,7 @@ void HelloVulkan::saveImage() {
     imageCopyRegion.extent.height             = m_size.height;
     imageCopyRegion.extent.depth              = 1;
 
-    vkCmdCopyImage(cmdBuf, m_offscreenColorImage.image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dstImage,
+    vkCmdCopyImage(cmdBuf, m_saveImage.image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dstImage,
                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopyRegion);
 
     // Transition destination image to general layout, which is the required layout for mapping the image memory later on
