@@ -82,7 +82,6 @@ public:
     nvvk::Buffer indexBuffer;     // Device buffer of the indices forming triangles
     nvvk::Buffer matColorBuffer;  // Device buffer of array of 'Wavefront material'
     nvvk::Buffer matIndexBuffer;  // Device buffer of array of 'Wavefront material'
-    nvvk::Buffer lightBuffer;
   };
 
   // Instance of the OBJ
@@ -182,6 +181,7 @@ vk::Format    m_saveFormat{vk::Format::eR32G32B32A32Sfloat};
   void updateFrame();
   void addPointLight(PointLight p);
   void saveImage();
+  void postModelSetup();
 
 
   vk::PhysicalDeviceRayTracingPropertiesKHR           m_rtProperties;
@@ -195,7 +195,7 @@ vk::Format    m_saveFormat{vk::Format::eR32G32B32A32Sfloat};
   vk::Pipeline                                        m_rtPipeline;
   nvvk::Buffer                                        m_rtSBTBuffer;
   float m_fuzzyAngle = 0.1f;
-  std::vector<std::vector<AreaLight>>     m_AreaLightsPerObject = {};
+  std::vector<AreaLight>     m_AreaLightsPerObject = {};
   int m_numAreaSamples = 1;
   int m_numSamples = 1;
   int m_FrameCount = 0;
@@ -207,6 +207,7 @@ vk::Format    m_saveFormat{vk::Format::eR32G32B32A32Sfloat};
 
 	std::vector<PointLight> m_PointLights = {};
   nvvk::Buffer            m_pointLightBuffer;
+		nvvk::Buffer m_areaLightBuffer;
 	int m_modelNumber = 0;
 
   struct RtPushConstant
@@ -222,12 +223,14 @@ vk::Format    m_saveFormat{vk::Format::eR32G32B32A32Sfloat};
     float fuzzyAngle = 0.1f;
     float ior = 0.0f;
     int           numPointLights;
+  	int numAreaLights;
     float         celramp = 0.9;
     int           celsteps = 10;
     bool          celatten = false;
   	int numids;
   	float r = 0.005;
   	float cut = 0.7;
+  
   	
   } m_rtPushConstants;
 
@@ -238,5 +241,6 @@ vk::Format    m_saveFormat{vk::Format::eR32G32B32A32Sfloat};
     int   height;
     float threshold = 1.5;
     int useSobel = 1;
+    int blurRange = 1;
 	} m_postPushConstants;
 };

@@ -34,6 +34,7 @@ layout(push_constant) uniform Constants
     float fuzzyAngle;
     float ior;
     int           numPointLights;
+    int numAreaLights;
     float         celramp ;
     int           celsteps;
     bool          celatten;
@@ -212,6 +213,7 @@ void main()
         mag = step(pushC.cut, mag);
 
         outlines = (1 - mag.r) * (1-mag.g) * (1 - mag.b) *  (1 - mag.a);
+
     }
   }
   prd.hitValue = hitValues * vec3(outlines) / pushC.numSamples;

@@ -90,6 +90,7 @@ void renderUI(HelloVulkan& helloVk)
 	changed |= ImGui::InputInt("use Sobel Edges", &helloVk.m_postPushConstants.useSobel);
 
 	changed |= ImGui::InputFloat("cel radius", &helloVk.m_rtPushConstants.r, 0.001, 0.0001);
+  changed |= ImGui::InputInt("Blur Kernel Range", &helloVk.m_postPushConstants.blurRange);
 changed |= ImGui::InputFloat("cel cut", &helloVk.m_rtPushConstants.cut, 0.01f, 0.01f);
   ImGui::Value("Frames", helloVk.m_FrameCount);
   if(changed){
@@ -221,7 +222,7 @@ int main(int argc, char** argv)
 
 	
 
-
+  helloVk.postModelSetup();
 
   helloVk.createOffscreenRender();
   helloVk.createDescriptorSetLayout();

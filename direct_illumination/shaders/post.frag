@@ -15,6 +15,7 @@ layout(push_constant) uniform shaderInformation
   int height;
   float threshold;
   int useSobel;
+int blurRange;
 }
 pushc;
 
@@ -106,16 +107,18 @@ const float gaussian_k[25] = {
 
 
     float sobel(sampler2D Txt, vec2 uv, float t){
+        float offsetx = 1.0 / pushc.width;
+        float offsety = 1.0 / pushc.height;
         vec3 blurred[9] = vec3[9](
-    texture(Txt, uv + vec2(-1,-1)).rgb,
-    texture(Txt, uv + vec2(0,-1)).rgb,
-    texture(Txt, uv + vec2(1,-1)).rgb,
-    texture(Txt, uv + vec2(-1,0)).rgb,
+    texture(Txt, uv + vec2(-offsetx,-offsety)).rgb,
+    texture(Txt, uv + vec2(0,-offsety)).rgb,
+    texture(Txt, uv + vec2(offsetx,-offsety)).rgb,
+    texture(Txt, uv + vec2(-offsetx,0)).rgb,
     texture(Txt, uv).rgb,
-    texture(Txt, uv + vec2(1,0)).rgb,
-    texture(Txt, uv + vec2(-1,1)).rgb,
-    texture(Txt, uv + vec2(0,1)).rgb,
-    texture(Txt, uv + vec2(1,1)).rgb
+    texture(Txt, uv + vec2(offsetx,0)).rgb,
+    texture(Txt, uv + vec2(-offsetx,offsety)).rgb,
+    texture(Txt, uv + vec2(0,offsety)).rgb,
+    texture(Txt, uv + vec2(offsetx,offsety)).rgb
 
      /*vec3 blurred[9] = vec3[9](
     blury(Txt, uv + vec2(-1,-1)).rgb,
@@ -171,7 +174,7 @@ const float gaussian_k[25] = {
     void main()
 {
   vec3 acc = vec3(1);
-  vec2  uv    = outUV * vec2(pushc.width, pushc.height);
+  vec2  uv    = outUV;
   float gamma = 1. / 2.2;
   //fragColor   = pow(vec4(blury(uv), 1.f), vec4(gamma));
 
@@ -184,13 +187,13 @@ const float gaussian_k[25] = {
             sobel(
                 normalTxt, uv, pushc.threshold
             )
-         * sobel(depthTxt, uv, pushc.threshold) : 1;
+         * sobel(depthTxt, uv, pushc.threshold)  : 1;
  vec4 c =  pow(
     vec4(
         texture(noisyTxt, uv).rgb * outlines
          , 1.0), vec4(gamma));
 
-    imageStore(save, ivec2(uv), c);
+    imageStore(save, ivec2(uv * vec2(pushc.width, pushc.height)) , c);
     fragColor = c;
 
          

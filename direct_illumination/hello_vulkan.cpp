@@ -132,7 +132,7 @@ void HelloVulkan::createDescriptorSetLayout()
   m_descSetLayoutBind.addBinding(  //
       vkDS(6, vkDT::eStorageBuffer, nbObj, vkSS::eClosestHitKHR));
   // AreaLights (binding = 7)
-  m_descSetLayoutBind.addBinding(vkDS(7, vkDT::eStorageBuffer, nbObj, vkSS::eClosestHitKHR));
+  m_descSetLayoutBind.addBinding(vkDS(7, vkDT::eStorageBuffer, 1, vkSS::eClosestHitKHR));
   // Point Lights (binding = 8)
 	m_descSetLayoutBind.addBinding(vkDS(8, vkDT::eStorageBuffer, 1, vkSS::eClosestHitKHR));
 
@@ -160,21 +160,24 @@ void HelloVulkan::updateDescriptorSet()
   std::vector<vk::DescriptorBufferInfo> dbiMatIdx;
   std::vector<vk::DescriptorBufferInfo> dbiVert;
   std::vector<vk::DescriptorBufferInfo> dbiIdx;
-  std::vector<vk::DescriptorBufferInfo> dbiLight;
+
   for(size_t i = 0; i < m_objModel.size(); ++i)
   {
     dbiMat.push_back({m_objModel[i].matColorBuffer.buffer, 0, VK_WHOLE_SIZE});
     dbiMatIdx.push_back({m_objModel[i].matIndexBuffer.buffer, 0, VK_WHOLE_SIZE});
     dbiVert.push_back({m_objModel[i].vertexBuffer.buffer, 0, VK_WHOLE_SIZE});
     dbiIdx.push_back({m_objModel[i].indexBuffer.buffer, 0, VK_WHOLE_SIZE});
-    dbiLight.push_back({m_objModel[i].lightBuffer.buffer, 0, VK_WHOLE_SIZE});
   }
+ 
   writes.emplace_back(m_descSetLayoutBind.makeWriteArray(m_descSet, 1, dbiMat.data()));
   writes.emplace_back(m_descSetLayoutBind.makeWriteArray(m_descSet, 4, dbiMatIdx.data()));
   writes.emplace_back(m_descSetLayoutBind.makeWriteArray(m_descSet, 5, dbiVert.data()));
   writes.emplace_back(m_descSetLayoutBind.makeWriteArray(m_descSet, 6, dbiIdx.data()));
-  writes.emplace_back(m_descSetLayoutBind.makeWriteArray(m_descSet, 7, dbiLight.data()));
-
+if(m_AreaLightsPerObject.size() > 0)
+  {
+    vk::DescriptorBufferInfo dbiLight{m_areaLightBuffer.buffer, 0, VK_WHOLE_SIZE};
+    writes.emplace_back(m_descSetLayoutBind.makeWrite(m_descSet, 7, &dbiLight));
+  }
   // All texture samplers
   std::vector<vk::DescriptorImageInfo> diit;
   for(auto& texture : m_textures)
@@ -182,10 +185,11 @@ void HelloVulkan::updateDescriptorSet()
     diit.push_back(texture.descriptor);
   }
   writes.emplace_back(m_descSetLayoutBind.makeWriteArray(m_descSet, 3, diit.data()));
-
-vk::DescriptorBufferInfo dbiPLights{m_pointLightBuffer.buffer, 0, VK_WHOLE_SIZE};
-  writes.emplace_back(m_descSetLayoutBind.makeWrite(m_descSet, 8, &dbiPLights));
-
+if(m_PointLights.size() > 0)
+  {
+    vk::DescriptorBufferInfo dbiPLights{m_pointLightBuffer.buffer, 0, VK_WHOLE_SIZE};
+    writes.emplace_back(m_descSetLayoutBind.makeWrite(m_descSet, 8, &dbiPLights));
+  }
   // Writing the information
   m_device.updateDescriptorSets(static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
 }
@@ -255,7 +259,7 @@ void HelloVulkan::loadModel(const std::string& filename, nvmath::mat4f transform
   model.nbIndices  = static_cast<uint32_t>(loader.m_indices.size());
   model.nbVertices = static_cast<uint32_t>(loader.m_vertices.size());
 
-  std::vector<AreaLight> lights = {};
+  
   for(int i = 0; i < loader.m_matIndx.size(); i++)
   {
     int                id  = loader.m_matIndx[i];
@@ -265,18 +269,15 @@ void HelloVulkan::loadModel(const std::string& filename, nvmath::mat4f transform
       const AreaLight light = {mat.emission, loader.m_vertices[loader.m_indices[3 * i + 0]].pos,
                                loader.m_vertices[loader.m_indices[3 * i + 1]].pos,
                                loader.m_vertices[loader.m_indices[3 * i + 2]].pos, 0};
-      lights.push_back(light);
+      m_AreaLightsPerObject.push_back(light);
       std::cout << mat.emission.x << ',' << mat.emission.y << ',' << mat.emission.z << std::endl;
     }
   }
 
-  if(lights.empty()){
-    const AreaLight light = {{0,0,0,0}, {0,0,0,0},{0,0,0,0},{0,0,0},0};
-    lights.emplace_back(light);
-  }
+  
 
-  lights[lights.size() - 1].last = 1;
-  m_AreaLightsPerObject.push_back(lights);
+  
+  
   // Create the buffers on Device and copy vertices, indices and materials
   nvvk::CommandPool cmdBufGet(m_device, m_graphicsQueueIndex);
   vk::CommandBuffer cmdBuf = cmdBufGet.createCommandBuffer();
@@ -289,9 +290,7 @@ void HelloVulkan::loadModel(const std::string& filename, nvmath::mat4f transform
   model.matColorBuffer = m_alloc.createBuffer(cmdBuf, loader.m_materials, vkBU::eStorageBuffer);
   model.matIndexBuffer = m_alloc.createBuffer(cmdBuf, loader.m_matIndx, vkBU::eStorageBuffer);
 
-  model.lightBuffer =
-      m_alloc.createBuffer(cmdBuf, m_AreaLightsPerObject[m_AreaLightsPerObject.size() - 1],
-                           vkBU::eStorageBuffer);
+ 
   // Creates all textures found
   createTextureImages(cmdBuf, loader.m_textures);
   cmdBufGet.submitAndWait(cmdBuf);
@@ -302,10 +301,27 @@ void HelloVulkan::loadModel(const std::string& filename, nvmath::mat4f transform
   m_debug.setObjectName(model.indexBuffer.buffer, (std::string("index_" + objNb).c_str()));
   m_debug.setObjectName(model.matColorBuffer.buffer, (std::string("mat_" + objNb).c_str()));
   m_debug.setObjectName(model.matIndexBuffer.buffer, (std::string("matIdx_" + objNb).c_str()));
-  m_debug.setObjectName(model.lightBuffer.buffer, (std::string("light_" + objNb).c_str()));
+ 
 
   m_objModel.emplace_back(model);
   m_objInstance.emplace_back(instance);
+}
+
+void HelloVulkan::postModelSetup()
+{
+  if(m_AreaLightsPerObject.size() > 0){
+    using vkBU = vk::BufferUsageFlagBits;
+    nvvk::CommandPool cmdBufGet(m_device, m_graphicsQueueIndex);
+    vk::CommandBuffer cmdBuf = cmdBufGet.createCommandBuffer();
+    m_areaLightBuffer =
+        m_alloc.createBuffer(cmdBuf, m_AreaLightsPerObject,vkBU::eStorageBuffer);
+    cmdBufGet.submitAndWait(cmdBuf);
+
+    m_alloc.finalizeAndReleaseStaging();
+
+    m_debug.setObjectName(m_areaLightBuffer.buffer, (std::string("Arealights").c_str()));
+  }
+
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -335,7 +351,10 @@ void HelloVulkan::createSceneDescriptionBuffer()
 
   auto cmdBuf = cmdGen.createCommandBuffer();
   m_sceneDesc = m_alloc.createBuffer(cmdBuf, m_objInstance, vkBU::eStorageBuffer);
-  m_pointLightBuffer = m_alloc.createBuffer(cmdBuf, m_PointLights, vkBU::eStorageBuffer);
+  if(m_PointLights.size() > 0)
+  {
+    m_pointLightBuffer = m_alloc.createBuffer(cmdBuf, m_PointLights, vkBU::eStorageBuffer);
+  }
   cmdGen.submitAndWait(cmdBuf);
   m_alloc.finalizeAndReleaseStaging();
   m_debug.setObjectName(m_sceneDesc.buffer, "sceneDesc");
@@ -434,14 +453,14 @@ void HelloVulkan::destroyResources()
     m_alloc.destroy(m.indexBuffer);
     m_alloc.destroy(m.matColorBuffer);
     m_alloc.destroy(m.matIndexBuffer);
-    m_alloc.destroy(m.lightBuffer);
+    
   }
 
   for(auto& t : m_textures)
   {
     m_alloc.destroy(t);
   }
-
+  m_alloc.destroy(m_areaLightBuffer);
   //#Post
   m_device.destroy(m_postPipeline);
   m_device.destroy(m_postPipelineLayout);
@@ -526,7 +545,7 @@ void HelloVulkan::createOffscreenRender()
   // Creating the color image
   vk::SamplerCreateInfo sampler =
       vk::SamplerCreateInfo({}, vk::Filter::eNearest, vk::Filter::eNearest, vk::SamplerMipmapMode::eNearest, vk::SamplerAddressMode::eMirroredRepeat, vk::SamplerAddressMode::eMirroredRepeat, vk::SamplerAddressMode::eMirroredRepeat);
-  sampler.setUnnormalizedCoordinates(true);
+  sampler.setUnnormalizedCoordinates(false);
   {
     auto colorCreateInfo = nvvk::makeImage2DCreateInfo(m_size, m_offscreenColorFormat,
                                                        vk::ImageUsageFlagBits::eColorAttachment
@@ -538,7 +557,7 @@ void HelloVulkan::createOffscreenRender()
     m_offscreenColorImage  = m_alloc.createImage(colorCreateInfo);
     vk::ImageViewCreateInfo ivInfo = nvvk::makeImageViewCreateInfo(m_offscreenColorImage.image, colorCreateInfo);
     m_offscreenColor               = m_alloc.createTexture(m_offscreenColorImage, ivInfo, sampler);
-    m_offscreenColor.descriptor.imageLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+    m_offscreenColor.descriptor.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
   }
 
   {
@@ -634,9 +653,7 @@ void HelloVulkan::createOffscreenRender()
     nvvk::cmdBarrierImageLayout(cmdBuf, m_offscreenDepth.image, vk::ImageLayout::eUndefined,
                                 vk::ImageLayout::eDepthStencilAttachmentOptimal,
                                 vk::ImageAspectFlagBits::eDepth);
-  	nvvk::cmdBarrierImageLayout(cmdBuf, m_saveImage.image, vk::ImageLayout::eUndefined,
-                                vk::ImageLayout::eTransferSrcOptimal);
-    nvvk::cmdBarrierImageLayout(cmdBuf, saveImageData.image, vk::ImageLayout::eGeneral,
+    nvvk::cmdBarrierImageLayout(cmdBuf, m_save.image, vk::ImageLayout::eGeneral,
                                 vk::ImageLayout::eGeneral);
 
 
@@ -653,16 +670,12 @@ void HelloVulkan::createOffscreenRender()
 
   // Creating the frame buffer for offscreen
   std::vector<vk::ImageView> attachments = {m_offscreenColor.descriptor.imageView,
-                                            m_offscreenNormal.descriptor.imageView,
-                                            m_offscreenDepthRT.descriptor.imageView,
-                                            m_offscreenId.descriptor.imageView,
-                                            m_offscreenDepth.descriptor.imageView,
-  m_save.descriptor.imageView};
+                                            m_offscreenDepth.descriptor.imageView};
 
   m_device.destroy(m_offscreenFramebuffer);
   vk::FramebufferCreateInfo info;
   info.setRenderPass(m_offscreenRenderPass);
-  info.setAttachmentCount(6);
+  info.setAttachmentCount(2);
   info.setPAttachments(attachments.data());
   info.setWidth(m_size.width);
   info.setHeight(m_size.height);
@@ -1113,11 +1126,14 @@ void HelloVulkan::createRtPipeline()
   m_device.destroy(raygenSM);
   m_device.destroy(missSM);
   m_device.destroy(shadowmissSM);
+  m_device.destroy(celmissSM);
   m_device.destroy(chitSM);
+  m_device.destroy(celhitSM);
   m_device.destroy(lambertSM);
   m_device.destroy(blinnSM);
   m_device.destroy(mirrorSM);
   m_device.destroy(glassSM);
+  m_device.destroy(cellSM);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1181,6 +1197,7 @@ void HelloVulkan::raytrace(const vk::CommandBuffer& cmdBuf, const nvmath::vec4f&
   m_rtPushConstants.lightPosition  = m_LightPosition;
   m_rtPushConstants.numPointLights = m_PointLights.size();
 	m_rtPushConstants.numids = ObjLoader::id_counter;
+	m_rtPushConstants.numAreaLights = m_AreaLightsPerObject.size();
 
   cmdBuf.bindPipeline(vk::PipelineBindPoint::eRayTracingKHR, m_rtPipeline);
   cmdBuf.bindDescriptorSets(vk::PipelineBindPoint::eRayTracingKHR, m_rtPipelineLayout, 0,
@@ -1347,14 +1364,16 @@ void HelloVulkan::saveImage() {
 
     std::vector<uint8_t> pngdata(m_size.width * m_size.height * 4, 0);
     for(int i = 0; i < m_size.width * m_size.height * 4; i++){
-      imagedata[i] = std::pow(imagedata[i], 1.0 / 2.2);
       pngdata[i] = static_cast<uint8_t>(std::min(255.0f, imagedata[i] * 255));
       if(imagedata[i] < 0.0 || isnan(imagedata[i]))
       {
         std::cout << i / 3 << std::endl;
+        imagedata[i] = 0;
       }
     }
     stbi_write_png("K:\\testy.png", m_size.width, m_size.height, 4, pngdata.data(), 0);
+    vkUnmapMemory(m_device, dstImageMemory);
+    vkFreeMemory(m_device, dstImageMemory, nullptr);
     	return;
   }
 

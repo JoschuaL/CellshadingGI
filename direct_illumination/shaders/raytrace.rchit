@@ -22,23 +22,30 @@ layout(binding = 3, set = 1) uniform sampler2D textureSamplers[];
 layout(binding = 4, set = 1)  buffer MatIndexColorBuffer { int i[]; } matIndex[];
 layout(binding = 5, set = 1, scalar) buffer Vertices { Vertex v[]; } vertices[];
 layout(binding = 6, set = 1) buffer Indices { uint i[]; } indices[];
-layout(binding = 7, set = 1) buffer AreaLightsBuffer { AreaLight l[]; } lights[];
+layout(binding = 7, set = 1) buffer AreaLightsBuffer { AreaLight l[]; } lights;
 layout(binding = 8, set = 1) buffer PointLightsBuffer { PointLight l[]; } plights;
 
 // clang-format on
 
 layout(push_constant) uniform Constants
 {
-  vec4  clearColor;
-  vec4  lightColor;
-  vec4  lightPosition;
-  int   numObjs;
-  int   numAreaSamples;
-  int   frame;
-  int   numSamples;
-  float fuzzyAngle;
-  float ior;
-  int numPointLights;
+   vec4 clearColor;
+    vec4 lightColor;
+    vec4 lightPosition;
+    int           numObjs;
+    int numAreaSamples;
+    int frame;
+    int numSamples;
+    float fuzzyAngle;
+    float ior;
+    int           numPointLights;
+  	int numAreaLights;
+    float         celramp;
+    int           celsteps;
+    bool          celatten;
+  	int numids;
+  	float r;
+  	float cut;
 }
 pushC;
 
@@ -274,23 +281,16 @@ void main()
   
 
 
-  for(int i = 0; i < pushC.numObjs; i++)
+  
   {
-    int j = 0;
-    while(true)
+    for(int i = 0; i < pushC.numAreaLights; i++)
     {
-      AreaLight li = lights[i].l[j];
-      j++;
+      AreaLight li = lights.l[i];
       if(li.color.x + li.color.y + li.color.z <= 0.0)
       {
-        if(floatBitsToInt(li.v2.w) == 1)
-        {
-          break;
-        }
-        else
-        {
+        
           continue;
-        }
+        
       }
       vec3 d1        = li.v1.xyz - li.v0.xyz;
       vec3 d2        = li.v2.xyz - li.v0.xyz;
@@ -314,14 +314,9 @@ void main()
 
         if(outanglecos < 0)
         {
-          if(floatBitsToInt(li.v2.w) == 1)
-          {
-            break;
-          }
-          else
-          {
+          
             continue;
-          }
+          
         }
 
 
@@ -348,14 +343,9 @@ void main()
         vec3 specular = vec3(0, 0, 0);
       if(isShadowed)
         {
-          if(floatBitsToInt(li.v2.w) == 1)
-          {
-            break;
-          }
-          else
-          {
+          
             continue;
-          }
+          
         }
 
 
@@ -376,10 +366,7 @@ void main()
           executeCallableEXT(call, 0);
         
 
-      if(floatBitsToInt(li.v2.w) == 1)
-      {
-        break;
-      }
+      
     }
   }
 
