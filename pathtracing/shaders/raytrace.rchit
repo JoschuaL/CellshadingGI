@@ -207,33 +207,35 @@ void main()
 
   mc.fuzzyAngle = pushC.fuzzyAngle;
   mc.ior        = pushC.ior;
-  mc.inDir      = vec3(1, 0, 0);
+  mc.inDir;
 
 
   const int       cl   = min(int(rnd(prd.seed) * (pushC.numAreaLights + pushC.numPointLights)), pushC.numAreaLights + pushC.numPointLights - 1);
-  vec3 pos;
-  int lightType = 0;
-
+  int lightType;
   if(cl < pushC.numAreaLights){
-   const AreaLight li   = lights.l[cl];
-   const vec3      e1   = li.v1.xyz - li.v0.xyz;
-   const vec3      e2   = li.v2.xyz - li.v0.xyz;
-   const vec3      ln   = normalize(cross(e1, e2));
-   const float     u    = rnd(prd.seed);
-   const float     v    = rnd(prd.seed);
-   const vec3      lpos = u + v < 1.0 ? li.v0.xyz + (u * e1) + (v * e2) :
-                                   li.v0.xyz + ((1.0 - u) * e1) + ((1.0 - v) * e2);
-   pos = offset_ray(offset_ray(lpos, ln), ln);
+  const AreaLight li   = lights.l[cl];
+    const vec3      e1   = li.v1.xyz - li.v0.xyz;
+    const vec3      e2   = li.v2.xyz - li.v0.xyz;
+    const vec3      ln   = normalize(cross(e1, e2));
+    const float     u    = rnd(prd.seed);
+    const float     v    = rnd(prd.seed);
+    const vec3      lpos = u + v < 1.0 ? li.v0.xyz + (u * e1) + (v * e2) :
+                                    li.v0.xyz + ((1.0 - u) * e1) + ((1.0 - v) * e2);
+    const vec3 pos = offset_ray(offset_ray(lpos, ln), ln);
+
+    dsc.pos             = pos;
     dsc.li              = li;
-     lightType = 1;
+    lightType = 1;
   } else {
+
     const PointLight p = Plights.l[cl - pushC.numAreaLights];
-    pos = p.pos.xyz;
-    lightType = 0;
+
     dsc.p = p;
+    dsc.pos = p.pos.xyz;
+
+    lightType = 0;
+
   }
-
-
 
 
   dsc.seed            = prd.seed;
@@ -242,12 +244,8 @@ void main()
 
 
   const int call      = 6 + lightType;
-
   executeCallableEXT(call, 2);
   prd.seed = dsc.seed;
-
-  dsc.pos = Plights.l[cl - pushC.numAreaLights].pos.xyz;
-
 
 
   const vec3  dir     = worldPos - dsc.pos;
@@ -279,26 +277,20 @@ void main()
               cos_hit < 0 ? dist : 0,  // ray max range
               1                        // payload (location = 1)
   );
-  float mis_weight;
-  if(cl < pushC.numAreaLights){
-   const float pne = ((dsc.pdf_area * d2) / (dsc.cos_v * (pushC.numAreaLights + pushC.numPointLights)));
 
 
-    const float p_bsdf     = mc.pdf_pdf;
-    mis_weight = pne / (pne + p_bsdf);
-  } else {
-    mis_weight = 1.0;
-  }
+  const float pne = ((dsc.pdf_area * d2) / (dsc.cos_v * pushC.numAreaLights));
 
 
-  prd.color += float(!isShadowed) * ww * dsc.intensity.xyz * mis_weight
-                 * ((prd.weight * mc.eval_color * dsc.cos_v * (pushC.numAreaLights + pushC.numPointLights) * abs(cos_hit))
-                    / (d2 * dsc.pdf_area));
-  prd.done = true;
-  return;
+  const float p_bsdf     = mc.pdf_pdf;
+
+  const float mis_weight = lightType == 1 ? pne / (pne + p_bsdf) : 1.0;
 
 
 
+  prd.color += float(!isShadowed) * ww * dsc.intensity * mis_weight
+               * ((prd.weight * mc.eval_color * dsc.cos_v * (pushC.numAreaLights + pushC.numPointLights) * abs(cos_hit))
+                  / (d2 * dsc.pdf_area));
 
 
   const float p = russian_roulette(prd.weight);
