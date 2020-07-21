@@ -32,8 +32,12 @@ extern std::vector<std::string> defaultSearchPaths;
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "fileformats/stb_image.h"
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "fileformats/stb_image_write.h"
 #include "obj_loader.h"
 
+#include "VulkanInitializers.hpp"
+#include "VulkanTools.hpp"
 #include "hello_vulkan.h"
 #include "nvh/cameramanipulator.hpp"
 #include "nvh/fileoperations.hpp"
@@ -104,24 +108,25 @@ void HelloVulkan::createDescriptorSetLayout()
       vkDS(0, vkDT::eUniformBuffer, 1, vkSS::eVertex | vkSS::eRaygenKHR));
   // Materials (binding = 1)
   m_descSetLayoutBind.addBinding(
-      vkDS(1, vkDT::eStorageBuffer, nbObj, vkSS::eVertex | vkSS::eFragment | vkSS::eClosestHitKHR | vkSS::eCallableKHR));
+      vkDS(1, vkDT::eStorageBuffer, nbObj,
+           vkSS::eVertex | vkSS::eFragment | vkSS::eClosestHitKHR | vkSS::eCallableKHR));
   // Scene description (binding = 2)
   m_descSetLayoutBind.addBinding(  //
       vkDS(2, vkDT::eStorageBuffer, 1,
            vkSS::eVertex | vkSS::eFragment | vkSS::eClosestHitKHR | vkSS::eCallableKHR));
   // Textures (binding = 3)
-  m_descSetLayoutBind.addBinding(
-      vkDS(3, vkDT::eCombinedImageSampler, nbTxt, vkSS::eFragment | vkSS::eClosestHitKHR | vkSS::eCallableKHR));
+  m_descSetLayoutBind.addBinding(vkDS(3, vkDT::eCombinedImageSampler, nbTxt,
+                                      vkSS::eFragment | vkSS::eClosestHitKHR | vkSS::eCallableKHR));
   // Materials (binding = 4)
-  m_descSetLayoutBind.addBinding(
-      vkDS(4, vkDT::eStorageBuffer, nbObj, vkSS::eFragment | vkSS::eClosestHitKHR | vkSS::eCallableKHR));
+  m_descSetLayoutBind.addBinding(vkDS(4, vkDT::eStorageBuffer, nbObj,
+                                      vkSS::eFragment | vkSS::eClosestHitKHR | vkSS::eCallableKHR));
   // Storing vertices (binding = 5)
   m_descSetLayoutBind.addBinding(  //
       vkDS(5, vkDT::eStorageBuffer, nbObj, vkSS::eClosestHitKHR));
   // Storing indices (binding = 6)
   m_descSetLayoutBind.addBinding(  //
       vkDS(6, vkDT::eStorageBuffer, nbObj, vkSS::eClosestHitKHR));
-
+  // AreaLights (binding = 7)
   m_descSetLayoutBind.addBinding(vkDS(7, vkDT::eStorageBuffer, 1, vkSS::eClosestHitKHR));
   // Point Lights (binding = 8)
   m_descSetLayoutBind.addBinding(vkDS(8, vkDT::eStorageBuffer, 1, vkSS::eClosestHitKHR));
@@ -144,11 +149,7 @@ void HelloVulkan::updateDescriptorSet()
   writes.emplace_back(m_descSetLayoutBind.makeWrite(m_descSet, 0, &dbiUnif));
   vk::DescriptorBufferInfo dbiSceneDesc{m_sceneDesc.buffer, 0, VK_WHOLE_SIZE};
   writes.emplace_back(m_descSetLayoutBind.makeWrite(m_descSet, 2, &dbiSceneDesc));
-if(m_AreaLightsPerObject.size() > 0)
-  {
-    vk::DescriptorBufferInfo lights{m_areaLightsBuffer.buffer, 0, VK_WHOLE_SIZE};
-    writes.emplace_back(m_descSetLayoutBind.makeWrite(m_descSet, 7, &lights));
-  }
+
   // All material buffers, 1 buffer per OBJ
   std::vector<vk::DescriptorBufferInfo> dbiMat;
   std::vector<vk::DescriptorBufferInfo> dbiMatIdx;
@@ -165,7 +166,11 @@ if(m_AreaLightsPerObject.size() > 0)
   writes.emplace_back(m_descSetLayoutBind.makeWriteArray(m_descSet, 4, dbiMatIdx.data()));
   writes.emplace_back(m_descSetLayoutBind.makeWriteArray(m_descSet, 5, dbiVert.data()));
   writes.emplace_back(m_descSetLayoutBind.makeWriteArray(m_descSet, 6, dbiIdx.data()));
-
+  if(m_AreaLightsPerObject.size() > 0)
+  {
+    vk::DescriptorBufferInfo lights{m_areaLightsBuffer.buffer, 0, VK_WHOLE_SIZE};
+    writes.emplace_back(m_descSetLayoutBind.makeWrite(m_descSet, 7, &lights));
+  }
   // All texture samplers
   std::vector<vk::DescriptorImageInfo> diit;
   for(auto& texture : m_textures)
@@ -227,7 +232,7 @@ void HelloVulkan::loadModel(const std::string& filename, nvmath::mat4f transform
   using vkBU = vk::BufferUsageFlagBits;
 
   ObjLoader loader;
-  loader.loadModel(filename, m_modelId);
+  loader.loadModel(filename, 1 << m_modelId);
 
   // Converting from Srgb to linear
   for(auto& m : loader.m_materials)
@@ -262,10 +267,6 @@ void HelloVulkan::loadModel(const std::string& filename, nvmath::mat4f transform
     }
   }
 
- /*if(m_AreaLightsPerObject.empty()){
-    const AreaLight light = {{0,0,0,0}, {0,0,0,0},{0,0,0,0},{0,0,0,0}};
-    m_AreaLightsPerObject.emplace_back(light);
-  }*/
 
   // Create the buffers on Device and copy vertices, indices and materials
   nvvk::CommandPool cmdBufGet(m_device, m_graphicsQueueIndex);
@@ -298,19 +299,18 @@ void HelloVulkan::loadModel(const std::string& filename, nvmath::mat4f transform
 
 void HelloVulkan::postModelSetup()
 {
-  if(m_AreaLightsPerObject.size() > 0){
+  if(m_AreaLightsPerObject.size() > 0)
+  {
     using vkBU = vk::BufferUsageFlagBits;
     nvvk::CommandPool cmdBufGet(m_device, m_graphicsQueueIndex);
     vk::CommandBuffer cmdBuf = cmdBufGet.createCommandBuffer();
-    m_areaLightsBuffer =
-        m_alloc.createBuffer(cmdBuf, m_AreaLightsPerObject,vkBU::eStorageBuffer);
+    m_areaLightsBuffer = m_alloc.createBuffer(cmdBuf, m_AreaLightsPerObject, vkBU::eStorageBuffer);
     cmdBufGet.submitAndWait(cmdBuf);
 
     m_alloc.finalizeAndReleaseStaging();
 
     m_debug.setObjectName(m_areaLightsBuffer.buffer, (std::string("Arealights").c_str()));
   }
-
 }
 
 
@@ -442,7 +442,6 @@ void HelloVulkan::destroyResources()
     m_alloc.destroy(m.indexBuffer);
     m_alloc.destroy(m.matColorBuffer);
     m_alloc.destroy(m.matIndexBuffer);
-
   }
 
   for(auto& t : m_textures)
@@ -457,6 +456,10 @@ void HelloVulkan::destroyResources()
   m_device.destroy(m_postDescSetLayout);
   m_alloc.destroy(m_offscreenColor);
   m_alloc.destroy(m_offscreenDepth);
+  m_alloc.destroy(m_offscreenDepthRT);
+  m_alloc.destroy(m_offscreenNormal);
+  m_alloc.destroy(m_offscreenId);
+  m_alloc.destroy(m_save);
   m_device.destroy(m_offscreenRenderPass);
   m_device.destroy(m_offscreenFramebuffer);
 
@@ -523,20 +526,87 @@ void HelloVulkan::createOffscreenRender()
 {
   m_alloc.destroy(m_offscreenColor);
   m_alloc.destroy(m_offscreenDepth);
+  m_alloc.destroy(m_offscreenNormal);
+  m_alloc.destroy(m_offscreenId);
+  m_alloc.destroy(m_offscreenDepthRT);
 
   // Creating the color image
+  vk::SamplerCreateInfo sampler = vk::SamplerCreateInfo(
+      {}, vk::Filter::eNearest, vk::Filter::eNearest, vk::SamplerMipmapMode::eNearest,
+      vk::SamplerAddressMode::eMirroredRepeat, vk::SamplerAddressMode::eMirroredRepeat,
+      vk::SamplerAddressMode::eMirroredRepeat);
+  sampler.setUnnormalizedCoordinates(false);
   {
     auto colorCreateInfo = nvvk::makeImage2DCreateInfo(m_size, m_offscreenColorFormat,
                                                        vk::ImageUsageFlagBits::eColorAttachment
                                                            | vk::ImageUsageFlagBits::eSampled
-                                                           | vk::ImageUsageFlagBits::eStorage);
+                                                           | vk::ImageUsageFlagBits::eStorage
+                                                           | vk::ImageUsageFlagBits::eTransferSrc);
 
 
-    nvvk::Image             image  = m_alloc.createImage(colorCreateInfo);
-    vk::ImageViewCreateInfo ivInfo = nvvk::makeImageViewCreateInfo(image.image, colorCreateInfo);
-    m_offscreenColor               = m_alloc.createTexture(image, ivInfo, vk::SamplerCreateInfo());
+    m_offscreenColorImage = m_alloc.createImage(colorCreateInfo);
+    vk::ImageViewCreateInfo ivInfo =
+        nvvk::makeImageViewCreateInfo(m_offscreenColorImage.image, colorCreateInfo);
+    m_offscreenColor = m_alloc.createTexture(m_offscreenColorImage, ivInfo, sampler);
     m_offscreenColor.descriptor.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
   }
+
+  {
+    auto normalCreateInfo = nvvk::makeImage2DCreateInfo(m_size, m_offscreenNormalFormat,
+                                                        vk::ImageUsageFlagBits::eColorAttachment
+                                                            | vk::ImageUsageFlagBits::eSampled
+                                                            | vk::ImageUsageFlagBits::eStorage);
+
+
+    m_offscreenNormalImage = m_alloc.createImage(normalCreateInfo);
+    vk::ImageViewCreateInfo ivInfo =
+        nvvk::makeImageViewCreateInfo(m_offscreenNormalImage.image, normalCreateInfo);
+    m_offscreenNormal = m_alloc.createTexture(m_offscreenNormalImage, ivInfo, sampler);
+    m_offscreenNormal.descriptor.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+  }
+
+  {
+    auto depthCreateInfoRT = nvvk::makeImage2DCreateInfo(m_size, m_offscreenDepthFormatRT,
+                                                         vk::ImageUsageFlagBits::eColorAttachment
+                                                             | vk::ImageUsageFlagBits::eSampled
+                                                             | vk::ImageUsageFlagBits::eStorage);
+
+
+    m_offscreenDepthImageRT = m_alloc.createImage(depthCreateInfoRT);
+    vk::ImageViewCreateInfo ivInfo =
+        nvvk::makeImageViewCreateInfo(m_offscreenDepthImageRT.image, depthCreateInfoRT);
+    m_offscreenDepthRT = m_alloc.createTexture(m_offscreenDepthImageRT, ivInfo, sampler);
+    m_offscreenDepthRT.descriptor.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+  }
+
+  {
+    auto idCreateInfo = nvvk::makeImage2DCreateInfo(m_size, m_offscreenIdFormat,
+                                                    vk::ImageUsageFlagBits::eColorAttachment
+                                                        | vk::ImageUsageFlagBits::eSampled
+                                                        | vk::ImageUsageFlagBits::eStorage);
+
+
+    m_offscreenIdImage = m_alloc.createImage(idCreateInfo);
+    vk::ImageViewCreateInfo ivInfo =
+        nvvk::makeImageViewCreateInfo(m_offscreenIdImage.image, idCreateInfo);
+    m_offscreenId = m_alloc.createTexture(m_offscreenIdImage, ivInfo, sampler);
+    m_offscreenId.descriptor.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+  }
+
+  {
+    auto idCreateInfo = nvvk::makeImage2DCreateInfo(m_size, m_saveFormat,
+                                                    vk::ImageUsageFlagBits::eColorAttachment
+                                                        | vk::ImageUsageFlagBits::eSampled
+                                                        | vk::ImageUsageFlagBits::eStorage
+                                                        | vk::ImageUsageFlagBits::eTransferSrc);
+
+
+    m_saveImage                    = m_alloc.createImage(idCreateInfo);
+    vk::ImageViewCreateInfo ivInfo = nvvk::makeImageViewCreateInfo(m_saveImage.image, idCreateInfo);
+    m_save                         = m_alloc.createTexture(m_saveImage, ivInfo, sampler);
+    m_save.descriptor.imageLayout  = VK_IMAGE_LAYOUT_GENERAL;
+  }
+
 
   // Creating the depth buffer
   auto depthCreateInfo =
@@ -631,6 +701,10 @@ void HelloVulkan::createPostDescriptor()
   using vkSS = vk::ShaderStageFlagBits;
 
   m_postDescSetLayoutBind.addBinding(vkDS(0, vkDT::eCombinedImageSampler, 1, vkSS::eFragment));
+  m_postDescSetLayoutBind.addBinding(vkDS(1, vkDT::eCombinedImageSampler, 1, vkSS::eFragment));
+  m_postDescSetLayoutBind.addBinding(vkDS(2, vkDT::eCombinedImageSampler, 1, vkSS::eFragment));
+  m_postDescSetLayoutBind.addBinding(vkDS(3, vkDT::eCombinedImageSampler, 1, vkSS::eFragment));
+  m_postDescSetLayoutBind.addBinding(vkDS(4, vkDT::eStorageImage, 1, vkSS::eFragment));
   m_postDescSetLayout = m_postDescSetLayoutBind.createLayout(m_device);
   m_postDescPool      = m_postDescSetLayoutBind.createPool(m_device);
   m_postDescSet       = nvvk::allocateDescriptorSet(m_device, m_postDescPool, m_postDescSetLayout);
@@ -641,9 +715,31 @@ void HelloVulkan::createPostDescriptor()
 //
 void HelloVulkan::updatePostDescriptorSet()
 {
-  vk::WriteDescriptorSet writeDescriptorSets =
-      m_postDescSetLayoutBind.makeWrite(m_postDescSet, 0, &m_offscreenColor.descriptor);
-  m_device.updateDescriptorSets(writeDescriptorSets, nullptr);
+  {
+    vk::WriteDescriptorSet writeDescriptorSets =
+        m_postDescSetLayoutBind.makeWrite(m_postDescSet, 0, &m_offscreenColor.descriptor);
+    m_device.updateDescriptorSets(writeDescriptorSets, nullptr);
+  }
+  {
+    vk::WriteDescriptorSet writeDescriptorSets =
+        m_postDescSetLayoutBind.makeWrite(m_postDescSet, 1, &m_offscreenNormal.descriptor);
+    m_device.updateDescriptorSets(writeDescriptorSets, nullptr);
+  }
+  {
+    vk::WriteDescriptorSet writeDescriptorSets =
+        m_postDescSetLayoutBind.makeWrite(m_postDescSet, 2, &m_offscreenDepthRT.descriptor);
+    m_device.updateDescriptorSets(writeDescriptorSets, nullptr);
+  }
+  {
+    vk::WriteDescriptorSet writeDescriptorSets =
+        m_postDescSetLayoutBind.makeWrite(m_postDescSet, 3, &m_offscreenId.descriptor);
+    m_device.updateDescriptorSets(writeDescriptorSets, nullptr);
+  }
+  {
+    vk::WriteDescriptorSet writeDescriptorSets =
+        m_postDescSetLayoutBind.makeWrite(m_postDescSet, 4, &m_save.descriptor);
+    m_device.updateDescriptorSets(writeDescriptorSets, nullptr);
+  }
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -657,8 +753,11 @@ void HelloVulkan::drawPost(vk::CommandBuffer cmdBuf)
   cmdBuf.setScissor(0, {{{0, 0}, {m_size.width, m_size.height}}});
 
   auto aspectRatio = static_cast<float>(m_size.width) / static_cast<float>(m_size.height);
-  cmdBuf.pushConstants<float>(m_postPipelineLayout, vk::ShaderStageFlagBits::eFragment, 0,
-                              aspectRatio);
+  m_postPushConstants.aspectRatio = aspectRatio;
+  m_postPushConstants.width       = m_size.width;
+  m_postPushConstants.height      = m_size.height;
+  cmdBuf.pushConstants<PostPushConstant>(m_postPipelineLayout, vk::ShaderStageFlagBits::eFragment,
+                                         0, m_postPushConstants);
   cmdBuf.bindPipeline(vk::PipelineBindPoint::eGraphics, m_postPipeline);
   cmdBuf.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_postPipelineLayout, 0,
                             m_postDescSet, {});
@@ -746,7 +845,8 @@ void HelloVulkan::createBottomLevelAS()
     // We could add more geometry in each BLAS, but we add only one for now
     allBlas.emplace_back(blas);
   }
-  m_rtBuilder.buildBlas(allBlas, vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastTrace);
+  m_rtBuilder.buildBlas(allBlas, vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastTrace
+                                     | vk::BuildAccelerationStructureFlagBitsKHR::eAllowCompaction);
 }
 
 void HelloVulkan::createTopLevelAS()
@@ -761,6 +861,7 @@ void HelloVulkan::createTopLevelAS()
     rayInst.blasId     = m_objInstance[i].objIndex;
     rayInst.hitGroupId = 0;  // We will use the same hit group for all objects
     rayInst.flags      = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
+    rayInst.mask       = 1 << m_modelId++;
     tlas.emplace_back(rayInst);
   }
   m_rtBuilder.buildTlas(tlas, vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastTrace);
@@ -780,6 +881,11 @@ void HelloVulkan::createRtDescriptorSet()
   m_rtDescSetLayoutBind.addBinding(
       vkDSLB(1, vkDT::eStorageImage, 1, vkSS::eRaygenKHR));  // Output image
 
+  m_rtDescSetLayoutBind.addBinding(vkDSLB(2, vkDT::eStorageImage, 1, vkSS::eRaygenKHR));
+
+  m_rtDescSetLayoutBind.addBinding(vkDSLB(3, vkDT::eStorageImage, 1, vkSS::eRaygenKHR));
+
+  m_rtDescSetLayoutBind.addBinding(vkDSLB(4, vkDT::eStorageImage, 1, vkSS::eRaygenKHR));
   m_rtDescPool      = m_rtDescSetLayoutBind.createPool(m_device);
   m_rtDescSetLayout = m_rtDescSetLayoutBind.createLayout(m_device);
   m_rtDescSet       = m_device.allocateDescriptorSets({m_rtDescPool, 1, &m_rtDescSetLayout})[0];
@@ -791,10 +897,19 @@ void HelloVulkan::createRtDescriptorSet()
   vk::DescriptorImageInfo imageInfo{
       {}, m_offscreenColor.descriptor.imageView, vk::ImageLayout::eGeneral};
 
+  vk::DescriptorImageInfo normalInfo{
+      {}, m_offscreenNormal.descriptor.imageView, vk::ImageLayout::eGeneral};
+
+  vk::DescriptorImageInfo depthInfo{
+      {}, m_offscreenDepthRT.descriptor.imageView, vk::ImageLayout::eGeneral};
+
+  vk::DescriptorImageInfo idInfo{{}, m_offscreenId.descriptor.imageView, vk::ImageLayout::eGeneral};
   std::vector<vk::WriteDescriptorSet> writes;
   writes.emplace_back(m_rtDescSetLayoutBind.makeWrite(m_rtDescSet, 0, &descASInfo));
-  writes.emplace_back(m_rtDescSetLayoutBind.makeWrite(m_rtDescSet, 0, &descASInfo));
   writes.emplace_back(m_rtDescSetLayoutBind.makeWrite(m_rtDescSet, 1, &imageInfo));
+  writes.emplace_back(m_rtDescSetLayoutBind.makeWrite(m_rtDescSet, 2, &normalInfo));
+  writes.emplace_back(m_rtDescSetLayoutBind.makeWrite(m_rtDescSet, 3, &depthInfo));
+  writes.emplace_back(m_rtDescSetLayoutBind.makeWrite(m_rtDescSet, 4, &idInfo));
   m_device.updateDescriptorSets(static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
 }
 
@@ -812,6 +927,19 @@ void HelloVulkan::updateRtDescriptorSet()
       {}, m_offscreenColor.descriptor.imageView, vk::ImageLayout::eGeneral};
   vk::WriteDescriptorSet wds{m_rtDescSet, 1, 0, 1, vkDT::eStorageImage, &imageInfo};
   m_device.updateDescriptorSets(wds, nullptr);
+  vk::DescriptorImageInfo normalInfo{
+      {}, m_offscreenNormal.descriptor.imageView, vk::ImageLayout::eGeneral};
+  vk::WriteDescriptorSet nds{m_rtDescSet, 2, 0, 1, vkDT::eStorageImage, &normalInfo};
+  m_device.updateDescriptorSets(nds, nullptr);
+
+  vk::DescriptorImageInfo depthInfo{
+      {}, m_offscreenDepthRT.descriptor.imageView, vk::ImageLayout::eGeneral};
+  vk::WriteDescriptorSet dds{m_rtDescSet, 3, 0, 1, vkDT::eStorageImage, &depthInfo};
+  m_device.updateDescriptorSets(dds, nullptr);
+
+  vk::DescriptorImageInfo idInfo{{}, m_offscreenId.descriptor.imageView, vk::ImageLayout::eGeneral};
+  vk::WriteDescriptorSet  ids{m_rtDescSet, 4, 0, 1, vkDT::eStorageImage, &idInfo};
+  m_device.updateDescriptorSets(ids, nullptr);
 }
 
 
@@ -874,32 +1002,37 @@ void HelloVulkan::createRtPipeline()
                                             VK_SHADER_UNUSED_KHR, VK_SHADER_UNUSED_KHR};
 
 
-
-
   vk::ShaderModule lambertSM =
+      nvvk::createShaderModule(m_device, nvh::loadFile("shaders/lambert.rcall.spv", true, paths));
+
+  vk::ShaderModule blinnSM =
+      nvvk::createShaderModule(m_device, nvh::loadFile("shaders/blinn.rcall.spv", true, paths));
+
+  vk::ShaderModule mirrorSM =
+      nvvk::createShaderModule(m_device, nvh::loadFile("shaders/mirror.rcall.spv", true, paths));
+
+  vk::ShaderModule glassSM =
+      nvvk::createShaderModule(m_device, nvh::loadFile("shaders/glass.rcall.spv", true, paths));
+
+  vk::ShaderModule pointEmittSM =
       nvvk::createShaderModule(m_device,
-                               nvh::loadFile("shaders/lambert.rcall.spv", true, paths));
+                               nvh::loadFile("shaders/PointEmission.rcall.spv", true, paths));
 
-  vk::ShaderModule blinnSM = nvvk::createShaderModule(m_device, nvh::loadFile("shaders/blinn.rcall.spv", true, paths));
+  vk::ShaderModule areaEmittSM =
+      nvvk::createShaderModule(m_device,
+                               nvh::loadFile("shaders/AreaEmission.rcall.spv", true, paths));
+  vk::ShaderModule emitterSM =
+      nvvk::createShaderModule(m_device, nvh::loadFile("shaders/emitter.rcall.spv", true, paths));
 
-  vk::ShaderModule mirrorSM = nvvk::createShaderModule(m_device, nvh::loadFile("shaders/mirror.rcall.spv", true, paths));
-
-  vk::ShaderModule glassSM = nvvk::createShaderModule(m_device, nvh::loadFile("shaders/glass.rcall.spv", true, paths));
-
-	vk::ShaderModule pointEmittSM = nvvk::createShaderModule(m_device, nvh::loadFile("shaders/PointEmission.rcall.spv", true, paths));
-
-	vk::ShaderModule areaEmittSM =
-      nvvk::createShaderModule(m_device, nvh::loadFile("shaders/AreaEmission.rcall.spv", true, paths));vk::ShaderModule emitterSM = nvvk::createShaderModule(m_device, nvh::loadFile("shaders/emitter.rcall.spv", true, paths));
-
-	vk::ShaderModule pointDirectSampleSM =
+  vk::ShaderModule pointDirectSampleSM =
       nvvk::createShaderModule(m_device,
                                nvh::loadFile("shaders/PointSampleDirect.rcall.spv", true, paths));
   vk::ShaderModule areaDirectSampleSM =
-      nvvk::createShaderModule(m_device, nvh::loadFile("shaders/AreaSampleDirect.rcall.spv", true, paths));
+      nvvk::createShaderModule(m_device,
+                               nvh::loadFile("shaders/AreaSampleDirect.rcall.spv", true, paths));
 
   vk::ShaderModule celSM =
       nvvk::createShaderModule(m_device, nvh::loadFile("shaders/cel.rcall.spv", true, paths));
-
 
 
   stages.push_back({{}, vk::ShaderStageFlagBits::eCallableKHR, lambertSM, "main"});
@@ -922,11 +1055,11 @@ void HelloVulkan::createRtPipeline()
   cg.setGeneralShader(static_cast<uint32_t>(stages.size() - 1));
   m_rtShaderGroups.push_back(cg);
 
-	stages.push_back({{}, vk::ShaderStageFlagBits::eCallableKHR, areaEmittSM, "main"});
+  stages.push_back({{}, vk::ShaderStageFlagBits::eCallableKHR, areaEmittSM, "main"});
   cg.setGeneralShader(static_cast<uint32_t>(stages.size() - 1));
   m_rtShaderGroups.push_back(cg);
 
-		stages.push_back({{}, vk::ShaderStageFlagBits::eCallableKHR, pointDirectSampleSM, "main"});
+  stages.push_back({{}, vk::ShaderStageFlagBits::eCallableKHR, pointDirectSampleSM, "main"});
   cg.setGeneralShader(static_cast<uint32_t>(stages.size() - 1));
   m_rtShaderGroups.push_back(cg);
 
@@ -944,7 +1077,8 @@ void HelloVulkan::createRtPipeline()
   // Push constant: we want to be able to update constants used by the shaders
   vk::PushConstantRange pushConstant{vk::ShaderStageFlagBits::eRaygenKHR
                                          | vk::ShaderStageFlagBits::eClosestHitKHR
-                                         | vk::ShaderStageFlagBits::eMissKHR,
+                                         | vk::ShaderStageFlagBits::eMissKHR
+                                         | vk::ShaderStageFlagBits::eCallableKHR,
                                      0, sizeof(RtPushConstant)};
   pipelineLayoutCreateInfo.setPushConstantRangeCount(1);
   pipelineLayoutCreateInfo.setPPushConstantRanges(&pushConstant);
@@ -1038,14 +1172,15 @@ void HelloVulkan::raytrace(const vk::CommandBuffer& cmdBuf, const nvmath::vec4f&
   m_rtPushConstants.lightType      = m_pushConstant.lightType;
   m_rtPushConstants.numObjs        = m_AreaLightsPerObject.size();
   m_rtPushConstants.numAreaSamples = m_numAreaSamples;
-  m_rtPushConstants.frame = m_FrameCount;
-  m_rtPushConstants.numSamples = m_numSamples;
-  m_rtPushConstants.fuzzyAngle = m_fuzzyAngle;
-  m_rtPushConstants.ior = m_IOR;
-  m_rtPushConstants.numLights = m_AreaLightsPerObject.size();
+  m_rtPushConstants.frame          = m_FrameCount;
+  m_rtPushConstants.numSamples     = m_numSamples;
+  m_rtPushConstants.fuzzyAngle     = m_fuzzyAngle;
+  m_rtPushConstants.ior            = m_IOR;
+  m_rtPushConstants.numLights      = m_AreaLightsPerObject.size();
   m_rtPushConstants.maxBounces     = m_maxBounces;
   m_rtPushConstants.max_russian    = m_maxRussian;
   m_rtPushConstants.numPointLights = m_PointLights.size();
+  m_rtPushConstants.numIds         = ObjLoader::id_counter;
 
   cmdBuf.bindPipeline(vk::PipelineBindPoint::eRayTracingKHR, m_rtPipeline);
   cmdBuf.bindDescriptorSets(vk::PipelineBindPoint::eRayTracingKHR, m_rtPipelineLayout, 0,
@@ -1057,10 +1192,10 @@ void HelloVulkan::raytrace(const vk::CommandBuffer& cmdBuf, const nvmath::vec4f&
                                        0, m_rtPushConstants);
 
   vk::DeviceSize progSize =
-      m_rtProperties.shaderGroupBaseAlignment;    // Size of a program identifier
-  vk::DeviceSize rayGenOffset   = 0u * progSize;  // Start at the beginning of m_sbtBuffer
-  vk::DeviceSize missOffset     = 1u * progSize;  // Jump over raygen
-  vk::DeviceSize hitGroupOffset = 3u * progSize;  // Jump over the previous shaders
+      m_rtProperties.shaderGroupBaseAlignment;         // Size of a program identifier
+  vk::DeviceSize rayGenOffset        = 0u * progSize;  // Start at the beginning of m_sbtBuffer
+  vk::DeviceSize missOffset          = 1u * progSize;  // Jump over raygen
+  vk::DeviceSize hitGroupOffset      = 3u * progSize;  // Jump over the previous shaders
   vk::DeviceSize callableGroupOffset = 4u * progSize;
 
   vk::DeviceSize sbtSize = progSize * (vk::DeviceSize)m_rtShaderGroups.size();
@@ -1071,7 +1206,8 @@ void HelloVulkan::raytrace(const vk::CommandBuffer& cmdBuf, const nvmath::vec4f&
                                                              progSize, sbtSize};
   const vk::StridedBufferRegionKHR hitShaderBindingTable    = {m_rtSBTBuffer.buffer, hitGroupOffset,
                                                             progSize, sbtSize};
-  const vk::StridedBufferRegionKHR callableShaderBindingTable = {m_rtSBTBuffer.buffer, callableGroupOffset, progSize, sbtSize};
+  const vk::StridedBufferRegionKHR callableShaderBindingTable = {
+      m_rtSBTBuffer.buffer, callableGroupOffset, progSize, sbtSize};
 
   cmdBuf.traceRaysKHR(&raygenShaderBindingTable, &missShaderBindingTable, &hitShaderBindingTable,
                       &callableShaderBindingTable,      //
@@ -1081,11 +1217,13 @@ void HelloVulkan::raytrace(const vk::CommandBuffer& cmdBuf, const nvmath::vec4f&
   m_debug.endLabel(cmdBuf);
 }
 
-void HelloVulkan::resetFrame() {
+void HelloVulkan::resetFrame()
+{
   m_FrameCount = -1;
 }
 
-void HelloVulkan::updateFrame() {
+void HelloVulkan::updateFrame()
+{
   static nvmath::mat4f refCamMatrix;
 
   auto& m = CameraManip.getMatrix();
@@ -1102,3 +1240,130 @@ void HelloVulkan::addPointLight(PointLight p)
   m_PointLights.push_back(p);
 }
 
+uint32_t HelloVulkan::getMemoryTypeIndex(uint32_t typeBits, VkMemoryPropertyFlags properties)
+{
+  VkPhysicalDeviceMemoryProperties deviceMemoryProperties;
+  vkGetPhysicalDeviceMemoryProperties(m_physicalDevice, &deviceMemoryProperties);
+  for(uint32_t i = 0; i < deviceMemoryProperties.memoryTypeCount; i++)
+  {
+    if((typeBits & 1) == 1)
+    {
+      if((deviceMemoryProperties.memoryTypes[i].propertyFlags & properties) == properties)
+      {
+        return i;
+      }
+    }
+    typeBits >>= 1;
+  }
+  return 0;
+}
+
+void HelloVulkan::saveImage()
+{
+  VkCommandPool           commandPool;
+  VkCommandPoolCreateInfo cmdPoolInfo = {};
+  cmdPoolInfo.sType                   = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+  cmdPoolInfo.queueFamilyIndex        = 1;
+  cmdPoolInfo.flags                   = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+  VK_CHECK_RESULT(vkCreateCommandPool(m_device, &cmdPoolInfo, nullptr, &commandPool));
+
+  float* imagedata;
+  {
+    // Create the linear tiled destination image to copy to and to read the memory from
+    VkImageCreateInfo imgCreateInfo(vks::initializers::imageCreateInfo());
+    imgCreateInfo.imageType     = VK_IMAGE_TYPE_2D;
+    imgCreateInfo.format        = VK_FORMAT_R32G32B32A32_SFLOAT;
+    imgCreateInfo.extent.width  = m_size.width;
+    imgCreateInfo.extent.height = m_size.height;
+    imgCreateInfo.extent.depth  = 1;
+    imgCreateInfo.arrayLayers   = 1;
+    imgCreateInfo.mipLevels     = 1;
+    imgCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    imgCreateInfo.samples       = VK_SAMPLE_COUNT_1_BIT;
+    imgCreateInfo.tiling        = VK_IMAGE_TILING_LINEAR;
+    imgCreateInfo.usage         = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    // Create the image
+    VkImage dstImage;
+    VK_CHECK_RESULT(vkCreateImage(m_device, &imgCreateInfo, nullptr, &dstImage));
+    // Create memory to back up the image
+    VkMemoryRequirements memRequirements;
+    VkMemoryAllocateInfo memAllocInfo(vks::initializers::memoryAllocateInfo());
+    VkDeviceMemory       dstImageMemory;
+    vkGetImageMemoryRequirements(m_device, dstImage, &memRequirements);
+    memAllocInfo.allocationSize = memRequirements.size;
+    // Memory must be host visible to copy from
+    memAllocInfo.memoryTypeIndex = getMemoryTypeIndex(memRequirements.memoryTypeBits,
+                                                      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+                                                          | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    VK_CHECK_RESULT(vkAllocateMemory(m_device, &memAllocInfo, nullptr, &dstImageMemory));
+    VK_CHECK_RESULT(vkBindImageMemory(m_device, dstImage, dstImageMemory, 0));
+
+    // Do the actual blit from the offscreen image to our host visible destination image
+    VkCommandBufferAllocateInfo cmdBufAllocateInfo =
+        vks::initializers::commandBufferAllocateInfo(commandPool, VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+                                                     1);
+    nvvk::CommandPool          cmdGen(m_device, m_graphicsQueueIndex);
+    std::vector<nvmath::vec4f> img(m_size.width * m_size.height, {0, 0, 0, 0});
+
+    vk::CommandBuffer cmdBuf = cmdGen.createCommandBuffer();
+
+
+    // Transition destination image to transfer destination layout
+    vks::tools::insertImageMemoryBarrier(
+        cmdBuf, dstImage, 0, VK_ACCESS_TRANSFER_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VkImageSubresourceRange{VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1});
+
+    // colorAttachment.image is already in VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, and does not need to be transitioned
+
+    VkImageCopy imageCopyRegion{};
+    imageCopyRegion.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    imageCopyRegion.srcSubresource.layerCount = 1;
+    imageCopyRegion.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    imageCopyRegion.dstSubresource.layerCount = 1;
+    imageCopyRegion.extent.width              = m_size.width;
+    imageCopyRegion.extent.height             = m_size.height;
+    imageCopyRegion.extent.depth              = 1;
+
+    vkCmdCopyImage(cmdBuf, m_saveImage.image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dstImage,
+                   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopyRegion);
+
+    // Transition destination image to general layout, which is the required layout for mapping the image memory later on
+    vks::tools::insertImageMemoryBarrier(
+        cmdBuf, dstImage, VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_MEMORY_READ_BIT,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL,
+        VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VkImageSubresourceRange{VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1});
+
+    cmdGen.submitAndWait(cmdBuf);
+
+
+    // Get layout of the image (including row pitch)
+    VkImageSubresource subResource{};
+    subResource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    VkSubresourceLayout subResourceLayout;
+
+    vkGetImageSubresourceLayout(m_device, dstImage, &subResource, &subResourceLayout);
+
+    // Map image memory so we can start copying from it
+    vkMapMemory(m_device, dstImageMemory, 0, VK_WHOLE_SIZE, 0, (void**)&imagedata);
+    imagedata += subResourceLayout.offset;
+    stbi_write_hdr("testy.hdr", m_size.width, m_size.height, 4, imagedata);
+
+    std::vector<uint8_t> pngdata(m_size.width * m_size.height * 4, 0);
+    for(int i = 0; i < m_size.width * m_size.height * 4; i++)
+    {
+      pngdata[i] = static_cast<uint8_t>(std::min(255.0f, imagedata[i] * 255));
+      if(imagedata[i] < 0.0 || isnan(imagedata[i]))
+      {
+        std::cout << i / 3 << std::endl;
+        imagedata[i] = 0;
+      }
+    }
+    stbi_write_png("testy.png", m_size.width, m_size.height, 4, pngdata.data(), 0);
+    vkUnmapMemory(m_device, dstImageMemory);
+    vkFreeMemory(m_device, dstImageMemory, nullptr);
+    return;
+  }
+}

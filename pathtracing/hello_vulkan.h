@@ -45,7 +45,8 @@
 // - The image of the framebuffer is displayed in post-process in a full-screen quad
 //
 
-enum LightType{
+enum LightType
+{
   Point = 0,
   Infinite,
   Spot,
@@ -99,7 +100,7 @@ public:
   {
     nvmath::vec3f lightPosition{0.f, 2.f, 0.f};
     int           instanceId{0};  // To retrieve the transformation matrix
-    nvmath::vec4f lightColor{3.f,3.f,3.f, 1.f};
+    nvmath::vec4f lightColor{3.f, 3.f, 3.f, 1.f};
     LightType     lightType{Point};  // 0: point, 1: infinite
   };
   ObjPushConstant m_pushConstant;
@@ -153,10 +154,12 @@ public:
   void                             updateRtDescriptorSet();
   void                             createRtPipeline();
   void                             createRtShaderBindingTable();
-  void raytrace(const vk::CommandBuffer& cmdBuf, const nvmath::vec4f& clearColor);
-  void resetFrame();
-  void updateFrame();
-  void addPointLight(PointLight p);
+  void     raytrace(const vk::CommandBuffer& cmdBuf, const nvmath::vec4f& clearColor);
+  void     resetFrame();
+  void     updateFrame();
+  void     addPointLight(PointLight p);
+  uint32_t getMemoryTypeIndex(uint32_t typeBits, VkMemoryPropertyFlags properties);
+  void     saveImage();
 
 
   vk::PhysicalDeviceRayTracingPropertiesKHR           m_rtProperties;
@@ -170,17 +173,38 @@ public:
   vk::Pipeline                                        m_rtPipeline;
   nvvk::Buffer                                        m_rtSBTBuffer;
   nvvk::Buffer                                        m_areaLightsBuffer;
-  float m_fuzzyAngle = 0.1f;
-  std::vector<AreaLight>     m_AreaLightsPerObject = {};
-  int m_numAreaSamples = 1;
-  int m_numSamples = 1;
-  int m_FrameCount = 0;
-  float m_IOR = 0.3f;
+  float                                               m_fuzzyAngle          = 0.1f;
+  std::vector<AreaLight>                              m_AreaLightsPerObject = {};
+  int                                                 m_numAreaSamples      = 1;
+  int                                                 m_numSamples          = 1;
+  int                                                 m_FrameCount          = 0;
+  float                                               m_IOR                 = 0.3f;
   int                                                 m_maxBounces          = 64;
-  float                                               m_maxRussian = 1.0;
-int m_modelId = 0;
-  std::vector<PointLight> m_PointLights = {};
-  nvvk::Buffer            m_pointLightBuffer;
+  float                                               m_maxRussian          = 1.0;
+  int                                                 m_modelId             = 0;
+  std::vector<PointLight>                             m_PointLights         = {};
+  nvvk::Buffer                                        m_pointLightBuffer;
+
+  nvvk::Image m_offscreenColorImage;
+
+  nvvk::Image m_offscreenDepthImage;
+
+  nvvk::Image   m_offscreenDepthImageRT;
+  nvvk::Texture m_offscreenDepthRT;
+  vk::Format    m_offscreenDepthFormatRT{vk::Format::eR32G32B32A32Sfloat};
+
+  nvvk::Image   m_offscreenNormalImage;
+  nvvk::Texture m_offscreenNormal;
+  vk::Format    m_offscreenNormalFormat{vk::Format::eR32G32B32A32Sfloat};
+
+  nvvk::Image   m_offscreenIdImage;
+  nvvk::Texture m_offscreenId;
+  vk::Format    m_offscreenIdFormat{vk::Format::eR32G32B32A32Sfloat};
+
+
+  nvvk::Image   m_saveImage;
+  nvvk::Texture m_save;
+  vk::Format    m_saveFormat{vk::Format::eR32G32B32A32Sfloat};
 
   struct RtPushConstant
   {
@@ -189,16 +213,25 @@ int m_modelId = 0;
     nvmath::vec3f lightPosition;
     LightType     lightType;
     int           numObjs;
-    int numAreaSamples = 1;
-    int frame = 0;
-    int numSamples = 1;
-    float fuzzyAngle = 0.1f;
-    float ior = 0.3f;
-    int           numLights = 0;
-    int           maxBounces = 1;
-    float         max_russian = 0.75;
-    int numPointLights = 0;
+    int           numAreaSamples = 1;
+    int           frame          = 0;
+    int           numSamples     = 1;
+    float         fuzzyAngle     = 0.1f;
+    float         ior            = 0.3f;
+    int           numLights      = 0;
+    int           maxBounces     = 1;
+    float         max_russian    = 0.75;
+    int           numPointLights = 0;
+    int           numIds;
   } m_rtPushConstants;
+
+  struct PostPushConstant
+  {
+    float aspectRatio;
+    int   width;
+    int   height;
+    float threshold = 1.5;
+    int   useSobel  = 1;
+    int   blurRange = 1;
+  } m_postPushConstants;
 };
-
-
