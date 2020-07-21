@@ -52,7 +52,7 @@ VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 // Default search path for shaders
 std::vector<std::string> defaultSearchPaths;
 
-float guiLightColor[4] = {3.f,3.f,3.f, 1.f};
+float guiLightColor[4] = {3.f, 3.f, 3.f, 1.f};
 
 // GLFW Callback functions
 static void onErrorCallback(int error, const char* description)
@@ -63,8 +63,8 @@ static void onErrorCallback(int error, const char* description)
 // Extra UI
 void renderUI(HelloVulkan& helloVk)
 {
-  static int item = 1;
-  bool changed = false;
+  static int item    = 1;
+  bool       changed = false;
   if(ImGui::Combo("Up Vector", &item, "X\0Y\0Z\0\0"))
   {
     nvmath::vec3f pos, eye, up;
@@ -72,20 +72,25 @@ void renderUI(HelloVulkan& helloVk)
     up = nvmath::vec3f(item == 0, item == 1, item == 2);
     CameraManip.setLookat(pos, eye, up);
   }
-  changed |= ImGui::SliderFloat3("Light Position", &helloVk.m_pushConstant.lightPosition.x, -20.f, 20.f);
-  changed |=ImGui::ColorEdit4("Light Color", guiLightColor);
-  helloVk.m_pushConstant.lightColor = {guiLightColor[0], guiLightColor[1], guiLightColor[2], guiLightColor[3]};
-  changed |=ImGui::RadioButton("Point", reinterpret_cast<int*>(&helloVk.m_pushConstant.lightType), 0);
+  changed |=
+      ImGui::SliderFloat3("Light Position", &helloVk.m_pushConstant.lightPosition.x, -20.f, 20.f);
+  changed |= ImGui::ColorEdit4("Light Color", guiLightColor);
+  helloVk.m_pushConstant.lightColor = {guiLightColor[0], guiLightColor[1], guiLightColor[2],
+                                       guiLightColor[3]};
+  changed |=
+      ImGui::RadioButton("Point", reinterpret_cast<int*>(&helloVk.m_pushConstant.lightType), 0);
   ImGui::SameLine();
-  changed |=ImGui::RadioButton("Infinite", reinterpret_cast<int*>(&helloVk.m_pushConstant.lightType), 1);
-  changed |=ImGui::InputFloat("fuzzy angle", &helloVk.m_fuzzyAngle, 0.01f, 0.01f);
-  changed |=ImGui::InputFloat("IOR", &helloVk.m_IOR, 0.01f, 0.01f);
-  changed |=ImGui::InputInt("Area Samples", &helloVk.m_numAreaSamples);
-  changed |=ImGui::InputInt("Per Frame Samples", &helloVk.m_numSamples);
+  changed |=
+      ImGui::RadioButton("Infinite", reinterpret_cast<int*>(&helloVk.m_pushConstant.lightType), 1);
+  changed |= ImGui::InputFloat("fuzzy angle", &helloVk.m_fuzzyAngle, 0.01f, 0.01f);
+  changed |= ImGui::InputFloat("IOR", &helloVk.m_IOR, 0.01f, 0.01f);
+  changed |= ImGui::InputInt("Area Samples", &helloVk.m_numAreaSamples);
+  changed |= ImGui::InputInt("Per Frame Samples", &helloVk.m_numSamples);
   changed |= ImGui::InputInt("Bounces", &helloVk.m_maxBounces);
   changed |= ImGui::InputFloat("RR", &helloVk.m_maxRussian, 0.01f, 0.01f);
   ImGui::Value("Frames", helloVk.m_FrameCount);
-  if(changed){
+  if(changed)
+  {
     helloVk.resetFrame();
   }
 }
@@ -115,7 +120,8 @@ int main(int argc, char** argv)
 
   // Setup camera
   CameraManip.setWindowSize(SAMPLE_WIDTH, SAMPLE_HEIGHT);
-  CameraManip.setLookat(nvmath::vec3f(-0.3, 6.7, 16), nvmath::vec3f(0.5, 4.5, 1.5), nvmath::vec3f(0, 1, 0));
+  CameraManip.setLookat(nvmath::vec3f(-0.3, 6.7, 16), nvmath::vec3f(0.5, 4.5, 1.5),
+                        nvmath::vec3f(0, 1, 0));
 
   // Setup Vulkan
   if(!glfwVulkanSupported())
@@ -128,13 +134,11 @@ int main(int argc, char** argv)
   NVPSystem system(argv[0], PROJECT_NAME);
 
   // Search path for shaders and other media
-  defaultSearchPaths = {
-      PROJECT_ABSDIRECTORY,
-      PROJECT_ABSDIRECTORY "../",
-      NVPSystem::exePath() + std::string(PROJECT_RELDIRECTORY),
-      NVPSystem::exePath() + std::string(PROJECT_RELDIRECTORY) + std::string("../"),
-  		NVPSystem::exePath()
-  };
+  defaultSearchPaths = {PROJECT_ABSDIRECTORY, PROJECT_ABSDIRECTORY "../",
+                        NVPSystem::exePath() + std::string(PROJECT_RELDIRECTORY),
+                        NVPSystem::exePath() + std::string(PROJECT_RELDIRECTORY)
+                            + std::string("../"),
+                        NVPSystem::exePath()};
 
 
   // Requesting Vulkan extensions and layers
@@ -199,9 +203,9 @@ int main(int argc, char** argv)
   //helloVk.loadModel(nvh::findFile("media/scenes/plane.obj", defaultSearchPaths));
 
   helloVk.loadModel(nvh::findFile("media/scenes/ladies/gumi_alone.obj", defaultSearchPaths));
-  helloVk.loadModel(nvh::findFile("media/scenes/ladies/walls.obj", defaultSearchPaths) );
-  nvmath::vec4f plc = {10, 10, 10,1};
-  nvmath::vec4f b = {0, 0, 0, 1};
+  helloVk.loadModel(nvh::findFile("media/scenes/ladies/walls.obj", defaultSearchPaths));
+  nvmath::vec4f plc = {10, 10, 10, 1};
+  nvmath::vec4f b   = {0, 0, 0, 1};
 
   helloVk.addPointLight({plc, {3.5, 10, 2.5, 1}});
   helloVk.addPointLight({plc, {-3.5, 10, 2.5, 1}});
@@ -210,7 +214,7 @@ int main(int argc, char** argv)
   helloVk.addPointLight({plc, {0, 10, -0.5, 1}});
   helloVk.addPointLight({plc, {0, 10, 9, 1}});
 
-	helloVk.postModelSetup();
+  helloVk.postModelSetup();
 
   helloVk.createOffscreenRender();
   helloVk.createDescriptorSetLayout();
@@ -323,7 +327,7 @@ int main(int argc, char** argv)
     cmdBuff.end();
     helloVk.submitFrame();
   }
-
+  helloVk.saveImage();
   // Cleanup
   helloVk.getDevice().waitIdle();
   helloVk.destroyResources();
