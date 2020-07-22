@@ -41,6 +41,7 @@ layout(push_constant) uniform Constants
   int   maxBounces;
   float maxRussian;
   int numPointLights;
+  int numIds;
 }
 pushC;
 
@@ -136,7 +137,7 @@ void main()
           (ec.pdf_area * dot(r, r)) / (dot(-gl_WorldRayDirectionEXT, snormal) * (pushC.numAreaLights + pushC.numPointLights));
       const float p_bsdf     = prd.last_bsdf_pdf;
       const float mis_weight = p_bsdf / (p_bsdf + pne);
-      prd.color += ec.intensity * mis_weight * prd.weight;
+      prd.color += 0;// ec.intensity * mis_weight * prd.weight;
     }
     prd.done = true;
     return;
@@ -148,13 +149,15 @@ void main()
 
 
   float ww   = 1.0;
-  int   mask = matProb & 15;
+  int   mask = matProb;
   if(prd.specular && diffuse)
   {
     float r = rnd(prd.seed);
     mask    = r > 0.5 ? (mask & 12) : (mask & 3);
     ww *= 2;
   }
+
+  
 
   switch(mask)
   {
@@ -189,7 +192,7 @@ void main()
         break;
     }
     case 32: {
-        mask = 0;
+        mask = 8;
         ww = 1;
         break;
     }
@@ -210,7 +213,7 @@ void main()
   mc.inDir;
 
 
-  const int       cl   = min(int(rnd(prd.seed) * (pushC.numAreaLights + pushC.numPointLights)), pushC.numAreaLights + pushC.numPointLights - 1);
+  const int       cl   =  min(int(rnd(prd.seed) * (pushC.numAreaLights + pushC.numPointLights)), pushC.numAreaLights + pushC.numPointLights - 1);
   int lightType;
   if(cl < pushC.numAreaLights){
   const AreaLight li   = lights.l[cl];
@@ -252,7 +255,7 @@ void main()
   const float d2      = dot(dir, dir);
   const float dist    = sqrt(d2);
   const vec3  rayDir  = dir / dist;
-  const float cos_hit = dot(rayDir, snormal);
+  const float cos_hit = dot(rayDir, gnormal);
   mc.inDir            = -rayDir;
   mc.eval_color       = vec3(0, 0, 0);
 
@@ -274,11 +277,13 @@ void main()
               dsc.pos,                 // ray origin
               0.0,                     // ray min range
               rayDir,                  // ray direction
-              cos_hit < 0 ? dist : 0,  // ray max range
+              dist,  // ray max range
               1                        // payload (location = 1)
   );
 
+  
 
+  if(!isShadowed){
   const float pne = ((dsc.pdf_area * d2) / (dsc.cos_v * pushC.numAreaLights));
 
 
@@ -288,11 +293,17 @@ void main()
 
 
 
-  prd.color += float(!isShadowed) * ww * dsc.intensity * mis_weight
-               * ((prd.weight * mc.eval_color * dsc.cos_v * (pushC.numAreaLights + pushC.numPointLights) * abs(cos_hit))
+  prd.color +=  ww * dsc.intensity * mis_weight
+               * ((prd.weight * mc.eval_color * dsc.cos_v * (pushC.numAreaLights + pushC.numPointLights))
                   / (d2 * dsc.pdf_area));
 
+   
+  }
 
+
+  
+
+  
   const float p = russian_roulette(prd.weight);
   if(rnd(prd.seed) > p || mc.sample_color == vec3(0, 0, 0) || mc.sample_pdf <= 0.0)
   {

@@ -31,31 +31,72 @@ matIndex[];
 layout(push_constant) uniform Constants
 {
   vec4  clearColor;
-  vec3  lightPosition;
-  float lightIntensity;
-  vec3  lightDirection;
-  float lightSpotCutoff;
-  float lightSpotOuterCutoff;
-  int   lightType;
-};
+  vec4  lightColor;
+  vec4  lightPosition;
+  int   numObjs;
+  int   numAreaSamples;
+  int   frame;
+  int   numSamples;
+  float fuzzyAngle;
+  float ior;
+  int   numAreaLights;
+  int   maxBounces;
+  float maxRussian;
+  int numPointLights;
+  int numIds;
+  int celsteps;
+  float celramp;
+}
+pushC;
+
+
+
 
 void main()
 {
 
-
-  const int               matIdx  = matIndex[nonuniformEXT(mc.objId)].i[mc.pId];
+   const int               matIdx  = matIndex[nonuniformEXT(mc.objId)].i[mc.pId];
   const WaveFrontMaterial mat     = materials[nonuniformEXT(mc.objId)].m[matIdx];
   uint              txtId   = 0;
    vec3              diffuse = mat.diffuse;
+  int celsteps = pushC.celsteps;
+  float celramp = pushC.celramp;
+ 
   if(mat.textureId >= 0)
   {
     txtId = mat.textureId + scnDesc.i[mc.instID].txtOffset;
     diffuse *= texture(textureSamplers[nonuniformEXT(txtId)], mc.texCoord).xyz;
   }
-  mc.eval_color = diffuse * max(dot(mc.normal, mc.inDir), 0.0) / M_PI;
+
+
+  
+
+  float cellfac_eval = ceil(dot(mc.normal, mc.inDir) * celsteps) / celsteps;
+  cellfac_eval = max(step(celramp, cellfac_eval) * 1, 0.3);
+
+  //mc.celfaccounter = max(cellfac,mc.celfaccounter);
+  //mc.celradiance += mc.inR;
+  //mc.celcounter += 1;
+
+  //mc.outR += mc.inR * diffuse * mc.celfaccounter;
+
+  
+ 
+ 
+  mc.eval_color = diffuse * cellfac_eval / M_PI;
+  
+
+
+
   const LocalCoords coords = gen_local_coords(mc.normal);
   sample_cosine_hemisphere(coords, rnd(mc.seed), rnd(mc.seed), mc);
-  const vec3 color = diffuse * (max(dot(mc.sample_in, coords.n), 0.0f));
+
+  float cellfac_sample = ceil(dot(mc.sample_in, coords.n) * celsteps) / celsteps;
+  cellfac_sample = max(step(celramp, cellfac_sample) * 1, 0.3);
+  
+
+
+  const vec3 color = diffuse * cellfac_sample;
   
   make_sample(mc.sample_in, mc.sample_pdf, color, mc.normal, mc);
   mc.pdf_pdf = dot(mc.inDir, mc.normal) / M_PI;

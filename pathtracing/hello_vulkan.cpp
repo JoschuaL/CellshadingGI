@@ -1349,7 +1349,7 @@ void HelloVulkan::saveImage()
     // Map image memory so we can start copying from it
     vkMapMemory(m_device, dstImageMemory, 0, VK_WHOLE_SIZE, 0, (void**)&imagedata);
     imagedata += subResourceLayout.offset;
-    stbi_write_hdr("testy.hdr", m_size.width, m_size.height, 4, imagedata);
+    stbi_write_hdr("K:\\testy.hdr", m_size.width, m_size.height, 4, imagedata);
 
     std::vector<uint8_t> pngdata(m_size.width * m_size.height * 4, 0);
     for(int i = 0; i < m_size.width * m_size.height * 4; i++)
@@ -1361,7 +1361,7 @@ void HelloVulkan::saveImage()
         imagedata[i] = 0;
       }
     }
-    stbi_write_png("testy.png", m_size.width, m_size.height, 4, pngdata.data(), 0);
+    stbi_write_png("K:\\testy.png", m_size.width, m_size.height, 4, pngdata.data(), 0);
     vkUnmapMemory(m_device, dstImageMemory);
     vkFreeMemory(m_device, dstImageMemory, nullptr);
     return;

@@ -29,20 +29,25 @@ matIndex[];
 
 layout(push_constant) uniform Constants
 {
-   vec4  clearColor;
-  vec4  lightColor;
-  vec4  lightPosition;
-  int   numObjs;
-  int   numAreaSamples;
-  int   frame;
-  int   numSamples;
-  float fuzzyAngle;
-  float ior;
-  int numPointLights;
+   vec4 clearColor;
+    vec4 lightColor;
+    vec4 lightPosition;
+    int           numObjs;
+    int numAreaSamples;
+    int frame;
+    int numSamples;
+    float fuzzyAngle;
+    float ior;
+    int           numPointLights;
+  	int numAreaLights;
     float         celramp;
     int           celsteps;
-    bool celatten;
-} pushC;
+    bool          celatten;
+  	int numids;
+  	float r;
+  	float cut;
+}
+pushC;
 
 
 //const int invcelsteps = 1 / celsteps;

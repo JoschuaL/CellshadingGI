@@ -223,6 +223,8 @@ public:
     float         max_russian    = 0.75;
     int           numPointLights = 0;
     int           numIds;
+  	int celsteps = 10;
+  	float celramp = 0.2;
   } m_rtPushConstants;
 
   struct PostPushConstant
