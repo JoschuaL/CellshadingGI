@@ -15,4 +15,5 @@ void main()
   prd.normal = vec3(0);
   prd.depth = 0;
   prd.object = 0;
+  prd.celid = 0;
 }

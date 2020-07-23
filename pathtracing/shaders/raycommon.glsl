@@ -14,6 +14,7 @@ struct hitPayload
   float depth;
   vec3 normal;
   int object;
+  
 };
 
 struct celPayload
@@ -21,6 +22,7 @@ struct celPayload
     float depth;
     vec3 normal;
     int object;
+    uint celid;
 };
 
 struct AreaLight

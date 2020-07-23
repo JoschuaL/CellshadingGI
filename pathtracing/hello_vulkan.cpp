@@ -232,7 +232,7 @@ void HelloVulkan::loadModel(const std::string& filename, nvmath::mat4f transform
   using vkBU = vk::BufferUsageFlagBits;
 
   ObjLoader loader;
-  loader.loadModel(filename, 1 << m_modelId);
+  loader.loadModel(filename, 1 << m_modelId++);
 
   // Converting from Srgb to linear
   for(auto& m : loader.m_materials)
@@ -861,7 +861,7 @@ void HelloVulkan::createTopLevelAS()
     rayInst.blasId     = m_objInstance[i].objIndex;
     rayInst.hitGroupId = 0;  // We will use the same hit group for all objects
     rayInst.flags      = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
-    rayInst.mask       = 1 << m_modelId++;
+    rayInst.mask       = 1 << i;
     tlas.emplace_back(rayInst);
   }
   m_rtBuilder.buildTlas(tlas, vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastTrace);
@@ -1384,4 +1384,108 @@ void HelloVulkan::saveImage()
     vkFreeMemory(m_device, dstImageMemory, nullptr);
     return;
   }
+}
+
+void HelloVulkan::postFrameWork()
+{
+	VkCommandPool           commandPool;
+  VkCommandPoolCreateInfo cmdPoolInfo = {};
+  cmdPoolInfo.sType                   = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+  cmdPoolInfo.queueFamilyIndex        = 1;
+  cmdPoolInfo.flags                   = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+  VK_CHECK_RESULT(vkCreateCommandPool(m_device, &cmdPoolInfo, nullptr, &commandPool));
+
+  float* imagedata;
+  {
+    // Create the linear tiled destination image to copy to and to read the memory from
+    VkImageCreateInfo imgCreateInfo(vks::initializers::imageCreateInfo());
+    imgCreateInfo.imageType     = VK_IMAGE_TYPE_2D;
+    imgCreateInfo.format        = VK_FORMAT_R32G32B32A32_SFLOAT;
+    imgCreateInfo.extent.width  = m_size.width;
+    imgCreateInfo.extent.height = m_size.height;
+    imgCreateInfo.extent.depth  = 1;
+    imgCreateInfo.arrayLayers   = 1;
+    imgCreateInfo.mipLevels     = 1;
+    imgCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    imgCreateInfo.samples       = VK_SAMPLE_COUNT_1_BIT;
+    imgCreateInfo.tiling        = VK_IMAGE_TILING_LINEAR;
+    imgCreateInfo.usage         = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    // Create the image
+    VkImage dstImage;
+    VK_CHECK_RESULT(vkCreateImage(m_device, &imgCreateInfo, nullptr, &dstImage));
+    // Create memory to back up the image
+    VkMemoryRequirements memRequirements;
+    VkMemoryAllocateInfo memAllocInfo(vks::initializers::memoryAllocateInfo());
+    VkDeviceMemory       dstImageMemory;
+    vkGetImageMemoryRequirements(m_device, dstImage, &memRequirements);
+    memAllocInfo.allocationSize = memRequirements.size;
+    // Memory must be host visible to copy from
+    memAllocInfo.memoryTypeIndex = getMemoryTypeIndex(memRequirements.memoryTypeBits,
+                                                      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+                                                          | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    VK_CHECK_RESULT(vkAllocateMemory(m_device, &memAllocInfo, nullptr, &dstImageMemory));
+    VK_CHECK_RESULT(vkBindImageMemory(m_device, dstImage, dstImageMemory, 0));
+
+    // Do the actual blit from the offscreen image to our host visible destination image
+    VkCommandBufferAllocateInfo cmdBufAllocateInfo =
+        vks::initializers::commandBufferAllocateInfo(commandPool, VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+                                                     1);
+    nvvk::CommandPool          cmdGen(m_device, m_graphicsQueueIndex);
+    std::vector<nvmath::vec4f> img(m_size.width * m_size.height, {0, 0, 0, 0});
+
+    vk::CommandBuffer cmdBuf = cmdGen.createCommandBuffer();
+
+
+    // Transition destination image to transfer destination layout
+    vks::tools::insertImageMemoryBarrier(
+        cmdBuf, dstImage, 0, VK_ACCESS_TRANSFER_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VkImageSubresourceRange{VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1});
+
+    // colorAttachment.image is already in VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, and does not need to be transitioned
+
+    VkImageCopy imageCopyRegion{};
+    imageCopyRegion.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    imageCopyRegion.srcSubresource.layerCount = 1;
+    imageCopyRegion.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    imageCopyRegion.dstSubresource.layerCount = 1;
+    imageCopyRegion.extent.width              = m_size.width;
+    imageCopyRegion.extent.height             = m_size.height;
+    imageCopyRegion.extent.depth              = 1;
+
+    vkCmdCopyImage(cmdBuf, m_saveImage.image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dstImage,
+                   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopyRegion);
+
+    // Transition destination image to general layout, which is the required layout for mapping the image memory later on
+    vks::tools::insertImageMemoryBarrier(
+        cmdBuf, dstImage, VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_MEMORY_READ_BIT,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL,
+        VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VkImageSubresourceRange{VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1});
+
+    cmdGen.submitAndWait(cmdBuf);
+
+
+    // Get layout of the image (including row pitch)
+    VkImageSubresource subResource{};
+    subResource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    VkSubresourceLayout subResourceLayout;
+
+    vkGetImageSubresourceLayout(m_device, dstImage, &subResource, &subResourceLayout);
+
+    // Map image memory so we can start copying from it
+    vkMapMemory(m_device, dstImageMemory, 0, VK_WHOLE_SIZE, 0, (void**)&imagedata);
+    imagedata += subResourceLayout.offset;
+	std::vector<float> max = std::vector<float>(m_size.height, 0);
+#pragma omp parallel for
+	for(int j = 0; j < m_size.height; j++){
+	
+    for(int i = 0; i < m_size.width; i+=4)
+    {
+	    max[j] = std::max(imagedata[j * m_size.width + i] + imagedata[j * m_size.width + i+ 1] + imagedata[j * m_size.width + i+2], max[j]);
+    }}
+		m_rtPushConstants.maxillum = *(std::max_element(std::begin(max), std::end(max)));
+	return;
+   }
 }

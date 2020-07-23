@@ -332,6 +332,7 @@ int main(int argc, char** argv)
     // Submit for display
     cmdBuff.end();
     helloVk.submitFrame();
+  	//helloVk.postFrameWork();
   }
   helloVk.saveImage();
   // Cleanup

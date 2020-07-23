@@ -160,6 +160,7 @@ public:
   void     addPointLight(PointLight p);
   uint32_t getMemoryTypeIndex(uint32_t typeBits, VkMemoryPropertyFlags properties);
   void     saveImage();
+  void postFrameWork();
 
 
   vk::PhysicalDeviceRayTracingPropertiesKHR           m_rtProperties;
@@ -227,6 +228,7 @@ public:
   	float celramp = 0.2;
   	float r = 0.005;
   	float cut = 0.7;
+  	float maxillum;
   } m_rtPushConstants;
 
   struct PostPushConstant

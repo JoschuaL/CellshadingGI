@@ -62,6 +62,7 @@ void main()
 
   prd.object = (v0.mat & 32) != 0 ? v0.id : 0;
   prd.depth =  (v0.mat & 32) != 0 ? gl_HitTEXT : 0;
+  prd.celid = v0.celid;
   
 
   const vec3 barycentrics = vec3(1.0 - attribs.x - attribs.y, attribs.x, attribs.y);

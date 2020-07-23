@@ -91,6 +91,8 @@ void main()
   prd.normal = (matProb & 32) != 0 ? (snormal + vec3(1)) / 2 : vec3(0);
   prd.depth =   (matProb & 32) != 0 ? gl_HitTEXT : 0;
   prd.object =  (matProb & 32) != 0 ?  v0.id : 0;
+  
+
   }
   const vec3 worldPos = offset_ray(
       vec3(
@@ -135,7 +137,6 @@ void main()
     if(prd.specular || prd.first)
     {
       prd.color += ec.intensity * prd.weight;
-      //prd.color = vec3(1,1,1);
     }
     else
     {
@@ -144,7 +145,7 @@ void main()
           (ec.pdf_area * dot(r, r)) / (dot(-gl_WorldRayDirectionEXT, snormal) * (pushC.numAreaLights + pushC.numPointLights));
       const float p_bsdf     = prd.last_bsdf_pdf;
       const float mis_weight = p_bsdf / (p_bsdf + pne);
-      prd.color += 0;// ec.intensity * mis_weight * prd.weight;
+      prd.color += ec.intensity * mis_weight * prd.weight;
     }
     prd.done = true;
     return;

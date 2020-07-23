@@ -82,6 +82,7 @@ const float gaussian_k[25] = {
 
 void main()
 {
+  uint mask = 0;
   // Initialize the random number
   prd.seed       = tea(gl_LaunchIDEXT.y * gl_LaunchSizeEXT.x + gl_LaunchIDEXT.x, pushC.frame);
   vec3 hitValues = vec3(0);
@@ -118,7 +119,7 @@ void main()
     vec2(0, pushC.r),
     vec2(pushC.r, pushC.r),
     vec2(-pushC.r, 0),
-    vec2(0, 0),
+    vec2(0,0),
     vec2(pushC.r, 0),
     vec2(-pushC.r, -pushC.r),
     vec2(0, -pushC.r),
@@ -135,13 +136,45 @@ void main()
   for(int i = 0; i <= 32 && !prd.done; i++)
   {
   if(true){
-  int ids = -1;
+
+  traceRayEXT(topLevelAS,     // acceleration structure
+                  rayFlags,       // rayFlags
+                  0xFF,           // cullMask
+                  1,              // sbtRecordOffset
+                  0,              // sbtRecordStride
+                  2,              // missIndex
+                  origin.xyz,     // ray origin
+                  0,           // ray min range
+                  direction.xyz,  // ray direction
+                  10000,           // ray max range
+                  1               // payload (location = 0)
+      );
+
+      c[4] = vec4(cel.normal, cel.depth);
+
+      
+
+
+
+
+
+
+  int ids = cel.object;
+  mask  = cel.celid;
+
+  
+
+ 
+
+ 
   LocalCoords local = gen_local_coords(normalize(direction.xyz));
-    for(int i = 0; i < 9; i++){
-    cel.normal = vec3(0);
-    cel.depth = 0;
-    cel.object =0;
-        vec4 o = vec4(origin.xyz + m[i].x * local.t + m[i].y * local.bt, origin.w);
+    for(int j = 0; j < 9 && i == 0; j++){
+    if(j == 4){
+        continue;
+    }
+    
+
+        vec4 o = vec4(origin.xyz + m[j].x * local.t + m[j].y * local.bt, origin.w);
         traceRayEXT(topLevelAS,     // acceleration structure
                   rayFlags,       // rayFlags
                   0xFF,           // cullMask
@@ -154,15 +187,15 @@ void main()
                   10000,           // ray max range
                   1               // payload (location = 0)
       );
-      c[i] = vec4(cel.normal, cel.depth);
+      c[j] = vec4(cel.normal, cel.depth);
       
-      outlines *= float(ids < 0 || ids == cel.object);
+      outlines *= float(ids == cel.object);
       ids = cel.object;
     }
 
-      vec4 devx = vec4(0);
+  vec4 devx = vec4(0);
   vec4 devy = vec4(0);
-  
+  if(false)
   {
   int w_k = 3;
   int h_k = 3;
@@ -171,12 +204,12 @@ void main()
 
 
        
-        for(int j = 0; j < h_k; j++){
-            for(int i = 0; i < w_k; i++){
-                float kernelpixx = sobel_x[(j * w_k) + i];
-                float kernelpixy = sobel_y[(j * w_k) + i];
-                devx += kernelpixx * c[(j * w_k) + i];
-                devy += kernelpixy * c[(j * w_k) + i];
+        for(int l = 0; l < h_k; l++){
+            for(int k = 0; k < w_k; k++){
+                float kernelpixx = sobel_x[(l * w_k) + k];
+                float kernelpixy = sobel_y[(l * w_k) + k];
+                devx += kernelpixx * c[(l * w_k) + k];
+                devy += kernelpixy * c[(l * w_k) + k];
             }
         }
        
@@ -191,6 +224,7 @@ void main()
         mag = step(pushC.cut, mag);
 
         outlines *= (1 - mag.r) * (1-mag.g) * (1 - mag.b) * (1 - mag.a);
+        
 
     }
   }
@@ -198,7 +232,7 @@ void main()
   if(outlines <= 0.01){
     break;
   }
-
+    
 
     traceRayEXT(topLevelAS,     // acceleration structure
                 rayFlags,       // rayFlags
