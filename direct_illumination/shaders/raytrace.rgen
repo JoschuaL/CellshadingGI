@@ -41,6 +41,7 @@ layout(push_constant) uniform Constants
   	int numids;
     float r;
     float cut;
+    int rayEdges;
 }
 pushC;
 
@@ -109,6 +110,12 @@ void main()
   vec4 origin;
   vec4 direction;
   uint  rayFlags  = gl_RayFlagsOpaqueEXT;
+
+
+  float outlines = 1;
+
+
+
   for(int smpl = 0; smpl < pushC.numSamples; smpl++)
   {
 
@@ -131,44 +138,9 @@ void main()
     float tMax      = 10000.0;
     prd.done        = true;
     prd.attenuation = vec3(1, 1, 1);
-    for(;;)
-    {
-      traceRayEXT(topLevelAS,     // acceleration structure
-                  rayFlags,       // rayFlags
-                  0xFF,           // cullMask
-                  0,              // sbtRecordOffset
-                  0,              // sbtRecordStride
-                  0,              // missIndex
-                  origin.xyz,     // ray origin
-                  tMin,           // ray min range
-                  direction.xyz,  // ray direction
-                  tMax,           // ray max range
-                  0               // payload (location = 0)
-      );
-      
-      hitValues += prd.hitValue * prd.attenuation;
 
-      ddd = smpl == 0 ? prd.depth : ddd;
-      nnn = smpl == 0 ? prd.normal : nnn;
-      ooo = smpl == 0 ? prd.object : ooo;
-
-
-      if(prd.done)
-      {
-        break;
-      }
-
-      prd.done      = true;
-      origin.xyz    = prd.rayOrigin;
-      direction.xyz = prd.rayDirection;
-    }
-  }
-
-  float outlines = 1;
-
-  
-
-  if(true){
+    
+  if(pushC.rayEdges > 0){
   int ids = -1;
     for(int i = 0; i < 9; i++){
         vec4 o = vec4(origin.xy + m[i], origin.zw);
@@ -224,7 +196,51 @@ void main()
 
     }
   }
-  prd.hitValue = outlines > 0.01 ? prd.hitValue / pushC.numSamples : vec3(1,0,0);
+
+    if(outlines <= 0.01){
+       break;
+    }
+
+
+
+    for(;;)
+    {
+      traceRayEXT(topLevelAS,     // acceleration structure
+                  rayFlags,       // rayFlags
+                  0xFF,           // cullMask
+                  0,              // sbtRecordOffset
+                  0,              // sbtRecordStride
+                  0,              // missIndex
+                  origin.xyz,     // ray origin
+                  tMin,           // ray min range
+                  direction.xyz,  // ray direction
+                  tMax,           // ray max range
+                  0               // payload (location = 0)
+      );
+      
+      hitValues += prd.hitValue * prd.attenuation;
+
+      ddd = smpl == 0 ? prd.depth : ddd;
+      nnn = smpl == 0 ? prd.normal : nnn;
+      ooo = smpl == 0 ? prd.object : ooo;
+
+
+      if(prd.done)
+      {
+        break;
+      }
+
+      prd.done      = true;
+      origin.xyz    = prd.rayOrigin;
+      direction.xyz = prd.rayDirection;
+    }
+  }
+
+  
+
+  
+  
+  prd.hitValue = outlines > 0.01 ? prd.hitValue / pushC.numSamples : vec3(0,0,0);
 
 
   // Do accumulation over time

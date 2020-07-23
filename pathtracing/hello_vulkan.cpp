@@ -963,6 +963,10 @@ void HelloVulkan::createRtPipeline()
       nvvk::createShaderModule(m_device,
                                nvh::loadFile("shaders/raytraceShadow.rmiss.spv", true, paths));
 
+	 vk::ShaderModule celmissSM =
+      nvvk::createShaderModule(m_device,
+                               nvh::loadFile("shaders/cel.rmiss.spv", true, paths));
+
 
   std::vector<vk::PipelineShaderStageCreateInfo> stages;
 
@@ -985,15 +989,27 @@ void HelloVulkan::createRtPipeline()
   mg.setGeneralShader(static_cast<uint32_t>(stages.size() - 1));
   m_rtShaderGroups.push_back(mg);
 
+	stages.push_back({{}, vk::ShaderStageFlagBits::eMissKHR, celmissSM, "main"});
+  mg.setGeneralShader(static_cast<uint32_t>(stages.size() - 1));
+  m_rtShaderGroups.push_back(mg);
+
   // Hit Group - Closest Hit + AnyHit
   vk::ShaderModule chitSM =
       nvvk::createShaderModule(m_device,  //
                                nvh::loadFile("shaders/raytrace.rchit.spv", true, paths));
 
+	vk::ShaderModule celchitSM =
+      nvvk::createShaderModule(m_device,  //
+                               nvh::loadFile("shaders/cel.rchit.spv", true, paths));
+
   vk::RayTracingShaderGroupCreateInfoKHR hg{vk::RayTracingShaderGroupTypeKHR::eTrianglesHitGroup,
                                             VK_SHADER_UNUSED_KHR, VK_SHADER_UNUSED_KHR,
                                             VK_SHADER_UNUSED_KHR, VK_SHADER_UNUSED_KHR};
   stages.push_back({{}, vk::ShaderStageFlagBits::eClosestHitKHR, chitSM, "main"});
+  hg.setClosestHitShader(static_cast<uint32_t>(stages.size() - 1));
+  m_rtShaderGroups.push_back(hg);
+
+	 stages.push_back({{}, vk::ShaderStageFlagBits::eClosestHitKHR, celchitSM, "main"});
   hg.setClosestHitShader(static_cast<uint32_t>(stages.size() - 1));
   m_rtShaderGroups.push_back(hg);
 
@@ -1117,6 +1133,8 @@ void HelloVulkan::createRtPipeline()
   m_device.destroy(pointEmittSM);
   m_device.destroy(areaEmittSM);
   m_device.destroy(celSM);
+	m_device.destroy(celchitSM);
+	m_device.destroy(celmissSM);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1195,8 +1213,8 @@ void HelloVulkan::raytrace(const vk::CommandBuffer& cmdBuf, const nvmath::vec4f&
       m_rtProperties.shaderGroupBaseAlignment;         // Size of a program identifier
   vk::DeviceSize rayGenOffset        = 0u * progSize;  // Start at the beginning of m_sbtBuffer
   vk::DeviceSize missOffset          = 1u * progSize;  // Jump over raygen
-  vk::DeviceSize hitGroupOffset      = 3u * progSize;  // Jump over the previous shaders
-  vk::DeviceSize callableGroupOffset = 4u * progSize;
+  vk::DeviceSize hitGroupOffset      = 4u * progSize;  // Jump over the previous shaders
+  vk::DeviceSize callableGroupOffset = 6u * progSize;
 
   vk::DeviceSize sbtSize = progSize * (vk::DeviceSize)m_rtShaderGroups.size();
 

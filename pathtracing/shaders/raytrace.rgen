@@ -12,6 +12,7 @@ layout(binding = 4, set = 0, rgba32f) uniform image2D idImage;
 
 
 layout(location = 0) rayPayloadEXT hitPayload prd;
+layout(location = 1) rayPayloadEXT celPayload cel;
 
 layout(binding = 0, set = 1) uniform CameraProperties
 {
@@ -40,8 +41,44 @@ layout(push_constant) uniform Constants
   int numIds;
   int celsteps;
   float celramp;
+  float r;
+  float cut;
 }
 pushC;
+
+
+const float gaussian_k[25] = {
+            0.024, 0.034, 0.038, 0.034, 0.024,
+            0.034, 0.049, 0.055, 0.049, 0.034,
+            0.038, 0.055, 0.063, 0.055, 0.038,
+            0.034, 0.049, 0.055, 0.049, 0.034,
+            0.024, 0.034, 0.038, 0.034, 0.024
+    };
+
+
+     const float sobel_x[9] = {
+            1, 0, -1,
+            2, 0, -2,
+            1, 0, -1
+    };
+
+    const float sobel_y[9] = {
+            1, 2, 1,
+            0, 0, 0,
+            -1, -2, -1
+    };
+
+    const float just_scalingx[9] = {
+            0, 0, 0,
+            -1, 0, 1,
+            0, 0, 0
+    };
+
+    const float just_scalingy[9] = {
+            0, -1, 0,
+            0, 0, 0,
+            0, 1, 0
+    };
 
 void main()
 {
@@ -76,11 +113,91 @@ void main()
 
   prd.color = vec3(0, 0, 0);
 
+  vec2 m[9] = vec2[](
+    vec2(-pushC.r, pushC.r),
+    vec2(0, pushC.r),
+    vec2(pushC.r, pushC.r),
+    vec2(-pushC.r, 0),
+    vec2(0, 0),
+    vec2(pushC.r, 0),
+    vec2(-pushC.r, -pushC.r),
+    vec2(0, -pushC.r),
+    vec2(pushC.r, -pushC.r)
+  );
+
+  
+   vec4 c[9];
+  float outlines = 1;
+  
  
   
-
+  
   for(int i = 0; i <= 32 && !prd.done; i++)
   {
+  if(true){
+  int ids = -1;
+  LocalCoords local = gen_local_coords(normalize(direction.xyz));
+    for(int i = 0; i < 9; i++){
+    cel.normal = vec3(0);
+    cel.depth = 0;
+    cel.object =0;
+        vec4 o = vec4(origin.xyz + m[i].x * local.t + m[i].y * local.bt, origin.w);
+        traceRayEXT(topLevelAS,     // acceleration structure
+                  rayFlags,       // rayFlags
+                  0xFF,           // cullMask
+                  1,              // sbtRecordOffset
+                  0,              // sbtRecordStride
+                  2,              // missIndex
+                  o.xyz,     // ray origin
+                  0,           // ray min range
+                  direction.xyz,  // ray direction
+                  10000,           // ray max range
+                  1               // payload (location = 0)
+      );
+      c[i] = vec4(cel.normal, cel.depth);
+      
+      outlines *= float(ids < 0 || ids == cel.object);
+      ids = cel.object;
+    }
+
+      vec4 devx = vec4(0);
+  vec4 devy = vec4(0);
+  
+  {
+  int w_k = 3;
+  int h_k = 3;
+        int a = ((w_k + 1) / 2) - 1;
+        int b = ((h_k + 1) / 2) - 1;
+
+
+       
+        for(int j = 0; j < h_k; j++){
+            for(int i = 0; i < w_k; i++){
+                float kernelpixx = sobel_x[(j * w_k) + i];
+                float kernelpixy = sobel_y[(j * w_k) + i];
+                devx += kernelpixx * c[(j * w_k) + i];
+                devy += kernelpixy * c[(j * w_k) + i];
+            }
+        }
+       
+
+ 
+
+
+ 
+ 
+                
+        vec4 mag = sqrt(devx * devx + devy * devy);
+        mag = step(pushC.cut, mag);
+
+        outlines *= (1 - mag.r) * (1-mag.g) * (1 - mag.b) * (1 - mag.a);
+
+    }
+  }
+
+  if(outlines <= 0.01){
+    break;
+  }
 
 
     traceRayEXT(topLevelAS,     // acceleration structure
@@ -100,6 +217,13 @@ void main()
     origin.xyz    = prd.rayOrigin;
     direction.xyz = prd.rayDirection;
   }
+  
+
+
+  
+
+ 
+ 
 
 
   // Do accumulation over time

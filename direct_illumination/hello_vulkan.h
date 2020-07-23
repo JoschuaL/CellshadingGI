@@ -230,6 +230,7 @@ vk::Format    m_saveFormat{vk::Format::eR32G32B32A32Sfloat};
   	int numids;
   	float r = 0.005;
   	float cut = 0.7;
+  	int rayEdges = 0;
   
   	
   } m_rtPushConstants;

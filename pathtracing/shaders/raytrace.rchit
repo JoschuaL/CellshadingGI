@@ -89,7 +89,7 @@ void main()
   snormal       = entering ? snormal : -snormal;
   if(prd.first) {
   prd.normal = (matProb & 32) != 0 ? (snormal + vec3(1)) / 2 : vec3(0);
-  prd.depth =   (matProb & 32) != 0 ? max(200 - gl_HitTEXT, 0) / 200 : 0;
+  prd.depth =   (matProb & 32) != 0 ? gl_HitTEXT : 0;
   prd.object =  (matProb & 32) != 0 ?  v0.id : 0;
   }
   const vec3 worldPos = offset_ray(

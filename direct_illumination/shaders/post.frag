@@ -135,8 +135,8 @@ void main()
 
 
   float outlines = pushc.useSobel == 1 ?
-                       sobel(idTxt, uv, 0.1) * sobel(normalTxt, uv, pushc.threshold)
-                           * sobel(depthTxt, uv, pushc.threshold) :
+                       sobel(idTxt, uv, 0.1) * sobel(normalTxt, uv, pushc.threshold)*
+                            sobel(depthTxt, uv, pushc.threshold) :
                        1;
   vec4 c = pow(vec4(texture(noisyTxt, uv).rgb * outlines, 1.0), vec4(gamma));
 

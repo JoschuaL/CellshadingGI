@@ -225,6 +225,8 @@ public:
     int           numIds;
   	int celsteps = 10;
   	float celramp = 0.2;
+  	float r = 0.005;
+  	float cut = 0.7;
   } m_rtPushConstants;
 
   struct PostPushConstant
@@ -235,5 +237,6 @@ public:
     float threshold = 1.5;
     int   useSobel  = 0;
     int   blurRange = 1;
+  	
   } m_postPushConstants;
 };

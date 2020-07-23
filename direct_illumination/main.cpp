@@ -92,6 +92,7 @@ void renderUI(HelloVulkan& helloVk)
 	changed |= ImGui::InputFloat("cel radius", &helloVk.m_rtPushConstants.r, 0.001, 0.0001);
   changed |= ImGui::InputInt("Blur Kernel Range", &helloVk.m_postPushConstants.blurRange);
 changed |= ImGui::InputFloat("cel cut", &helloVk.m_rtPushConstants.cut, 0.01f, 0.01f);
+	changed |= ImGui::InputInt("use ray based edges", &helloVk.m_rtPushConstants.rayEdges, 1);
   ImGui::Value("Frames", helloVk.m_FrameCount);
   if(changed){
     helloVk.resetFrame();

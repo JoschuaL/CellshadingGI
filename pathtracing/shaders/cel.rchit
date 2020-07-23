@@ -44,7 +44,7 @@ pushC;
 void main()
 {
    
-  prd.depth =  max(200 - gl_HitTEXT, 0) / 200;
+ 
 
   // Object of this instance
   const uint objId = scnDesc.i[gl_InstanceID].objId;
@@ -60,7 +60,8 @@ void main()
   Vertex v2 = vertices[nonuniformEXT(objId)].v[ind.z];
 
 
-
+  prd.object = (v0.mat & 32) != 0 ? v0.id : 0;
+  prd.depth =  (v0.mat & 32) != 0 ? gl_HitTEXT : 0;
   
 
   const vec3 barycentrics = vec3(1.0 - attribs.x - attribs.y, attribs.x, attribs.y);
@@ -74,7 +75,7 @@ void main()
 
   snormal *= -sign(ins);
 
-  prd.normal =   (snormal + vec3(1)) / 2;
+  prd.normal =  (v0.mat & 32) != 0 ?  (snormal + vec3(1)) / 2 : vec3(0);
 
   
 
