@@ -138,7 +138,7 @@ void ObjLoader::loadModel(const std::string& filename, int celid)
         }
       }
       vertex.id = id_counter;
-   vertex.celid = celid;
+      vertex.celid = celid;
      
 
 

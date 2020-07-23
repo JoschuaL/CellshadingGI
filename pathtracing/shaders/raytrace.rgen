@@ -6,6 +6,10 @@
 
 layout(binding = 0, set = 0) uniform accelerationStructureEXT topLevelAS;
 layout(binding = 1, set = 0, rgba32f) uniform image2D image;
+layout(binding = 2, set = 0, rgba32f) uniform image2D normalImage;
+layout(binding = 3, set = 0, rgba32f) uniform image2D depthImage;
+layout(binding = 4, set = 0, rgba32f) uniform image2D idImage;
+
 
 layout(location = 0) rayPayloadEXT hitPayload prd;
 
@@ -21,18 +25,21 @@ cam;
 layout(push_constant) uniform Constants
 {
   vec4  clearColor;
-    vec4  lightColor;
-    vec4  lightPosition;
-    int   numObjs;
-    int   numAreaSamples;
-    int   frame;
-    int   numSamples;
-    float fuzzyAngle;
-    float ior;
-    int   numAreaLights;
-    int   maxBounces;
-    float maxRussian;
-    int numPointLights;
+  vec4  lightColor;
+  vec4  lightPosition;
+  int   numObjs;
+  int   numAreaSamples;
+  int   frame;
+  int   numSamples;
+  float fuzzyAngle;
+  float ior;
+  int   numAreaLights;
+  int   maxBounces;
+  float maxRussian;
+  int numPointLights;
+  int numIds;
+  int celsteps;
+  float celramp;
 }
 pushC;
 
@@ -64,9 +71,13 @@ void main()
   prd.weight        = vec3(1, 1, 1);
   prd.last_bsdf_pdf = 1.0;
   prd.specular      = true;
+  prd.first = true;
 
 
   prd.color = vec3(0, 0, 0);
+
+ 
+  
 
   for(int i = 0; i <= 32 && !prd.done; i++)
   {
@@ -94,7 +105,6 @@ void main()
   // Do accumulation over time
   if(pushC.frame > 0)
   {
-
     const float a         = 1.0f / float(pushC.frame + 1);
     const vec3  old_color = imageLoad(image, ivec2(gl_LaunchIDEXT.xy)).xyz;
     imageStore(image, ivec2(gl_LaunchIDEXT.xy), vec4(mix(old_color, prd.color, a), 1.f));
@@ -103,5 +113,8 @@ void main()
   {
     // First frame, replace the value in the buffer
     imageStore(image, ivec2(gl_LaunchIDEXT.xy), vec4(prd.color, 1.f));
+    imageStore(depthImage, ivec2(gl_LaunchIDEXT.xy), vec4(vec3(prd.depth), 1.f));
+    imageStore(normalImage, ivec2(gl_LaunchIDEXT.xy), vec4(prd.normal, 1.f));
+    imageStore(idImage, ivec2(gl_LaunchIDEXT.xy), vec4(vec3(prd.object) / pushC.numIds, 1.f));
   }
 }

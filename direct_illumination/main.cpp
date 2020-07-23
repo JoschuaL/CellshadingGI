@@ -209,7 +209,7 @@ int main(int argc, char** argv)
   //helloVk.loadModel(nvh::findFile("media/scenes/ladies/gumi.obj", defaultSearchPaths));
   helloVk.loadModel(nvh::findFile("media/scenes/ladies/gumi_alone.obj", defaultSearchPaths));
 	helloVk.loadModel(nvh::findFile("media/scenes/ladies/walls.obj", defaultSearchPaths) );
-  nvmath::vec4f plc = {20, 20, 20,1};
+  nvmath::vec4f plc = {10, 10, 10,1};
   nvmath::vec4f b = {0, 0, 0, 1};
 	
   helloVk.addPointLight({plc, {3.5, 10, 2.5, 1}});

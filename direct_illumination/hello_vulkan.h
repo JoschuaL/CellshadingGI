@@ -240,7 +240,7 @@ vk::Format    m_saveFormat{vk::Format::eR32G32B32A32Sfloat};
     int   width;
     int   height;
     float threshold = 1.5;
-    int useSobel = 1;
+    int useSobel = 0;
     int blurRange = 1;
 	} m_postPushConstants;
 };

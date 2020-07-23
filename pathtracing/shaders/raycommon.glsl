@@ -10,6 +10,17 @@ struct hitPayload
   bool  done;
   float last_bsdf_pdf;
   bool  specular;
+  bool first;
+  float depth;
+  vec3 normal;
+  int object;
+};
+
+struct celPayload
+{
+    float depth;
+    vec3 normal;
+    int object;
 };
 
 struct AreaLight

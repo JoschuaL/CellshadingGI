@@ -233,7 +233,7 @@ public:
     int   width;
     int   height;
     float threshold = 1.5;
-    int   useSobel  = 1;
+    int   useSobel  = 0;
     int   blurRange = 1;
   } m_postPushConstants;
 };

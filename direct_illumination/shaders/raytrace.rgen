@@ -105,6 +105,7 @@ void main()
   vec3  hitValues = vec3(0);
   float ddd       = 0;
   vec3  nnn       = vec3(0);
+  int ooo = 0;
   vec4 origin;
   vec4 direction;
   uint  rayFlags  = gl_RayFlagsOpaqueEXT;
@@ -149,6 +150,8 @@ void main()
 
       ddd = smpl == 0 ? prd.depth : ddd;
       nnn = smpl == 0 ? prd.normal : nnn;
+      ooo = smpl == 0 ? prd.object : ooo;
+
 
       if(prd.done)
       {
@@ -165,12 +168,13 @@ void main()
 
   
 
-  if(prd.celid != 0){
+  if(true){
+  int ids = -1;
     for(int i = 0; i < 9; i++){
         vec4 o = vec4(origin.xy + m[i], origin.zw);
         traceRayEXT(topLevelAS,     // acceleration structure
                   rayFlags,       // rayFlags
-                  prd.celid,           // cullMask
+                  0xFF,           // cullMask
                   1,              // sbtRecordOffset
                   0,              // sbtRecordStride
                   2,              // missIndex
@@ -181,10 +185,14 @@ void main()
                   1               // payload (location = 0)
       );
       c[i] = vec4(cel.normal, cel.depth);
+      
+      //outlines *= float(ids < 0 || ids == cel.object);
+      ids = cel.object;
+    }
 
       vec4 devx = vec4(0);
   vec4 devy = vec4(0);
-
+  
   {
   int w_k = 3;
   int h_k = 3;
@@ -203,7 +211,7 @@ void main()
         }
        
 
- }
+ 
 
 
  
@@ -212,11 +220,11 @@ void main()
         vec4 mag = sqrt(devx * devx + devy * devy);
         mag = step(pushC.cut, mag);
 
-        outlines = (1 - mag.r) * (1-mag.g) * (1 - mag.b) *  (1 - mag.a);
+        outlines *= (1 - mag.r) * (1-mag.g) * (1 - mag.b) * (1 - mag.a);
 
     }
   }
-  prd.hitValue = hitValues * vec3(outlines) / pushC.numSamples;
+  prd.hitValue = outlines > 0.01 ? prd.hitValue / pushC.numSamples : vec3(1,0,0);
 
 
   // Do accumulation over time

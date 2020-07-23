@@ -90,6 +90,8 @@ void renderUI(HelloVulkan& helloVk)
   changed |= ImGui::InputFloat("RR", &helloVk.m_maxRussian, 0.01f, 0.01f);
 	changed |= ImGui::InputInt("Cel steps", &helloVk.m_rtPushConstants.celsteps, 1);
 	changed |= ImGui::InputFloat("cel ramp", &helloVk.m_rtPushConstants.celramp, 0.01, 0.1);
+	changed |= ImGui::InputInt("Use Sobel", &helloVk.m_postPushConstants.useSobel, 1);
+	changed |= ImGui::InputFloat("Cel Threshold", &helloVk.m_postPushConstants.threshold, 0.1, 1);
   ImGui::Value("Frames", helloVk.m_FrameCount);
   if(changed)
   {

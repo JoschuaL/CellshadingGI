@@ -18,6 +18,7 @@ struct celPayload
 {
     float depth;
     vec3 normal;
+    int object;
 };
 
 struct AreaLight

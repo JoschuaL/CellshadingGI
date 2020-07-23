@@ -42,6 +42,8 @@ layout(push_constant) uniform Constants
   float maxRussian;
   int numPointLights;
   int numIds;
+  int celsteps;
+  float celramp;
 }
 pushC;
 
@@ -85,6 +87,11 @@ void main()
   mc.entering = entering;
   gnormal       = entering ? gnormal : -gnormal;
   snormal       = entering ? snormal : -snormal;
+  if(prd.first) {
+  prd.normal = (matProb & 32) != 0 ? (snormal + vec3(1)) / 2 : vec3(0);
+  prd.depth =   (matProb & 32) != 0 ? max(200 - gl_HitTEXT, 0) / 200 : 0;
+  prd.object =  (matProb & 32) != 0 ?  v0.id : 0;
+  }
   const vec3 worldPos = offset_ray(
       vec3(
           scnDesc.i[gl_InstanceID].transfo
@@ -125,7 +132,7 @@ void main()
     ec.dir              = -gl_WorldRayDirectionEXT;
     ec.li = AreaLight(vec4(mat.emission, 1), vec4(v0.pos, 0), vec4(v1.pos, 0), vec4(v2.pos, 0));
     executeCallableEXT(call, 1);
-    if(prd.specular)
+    if(prd.specular || prd.first)
     {
       prd.color += ec.intensity * prd.weight;
       //prd.color = vec3(1,1,1);
@@ -145,6 +152,7 @@ void main()
 
 
   prd.specular       = (matProb & 12) != 0;
+  prd.first = prd.first && prd.specular;
   const bool diffuse = (matProb & 3) != 0;
 
 

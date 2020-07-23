@@ -13,4 +13,9 @@ layout(push_constant) uniform Constants
 void main()
 {
   prd.done = true;
+  if(prd.first){
+  prd.normal = vec3(0);
+  prd.depth = 0;
+  prd.object = 0;
+  }
 }

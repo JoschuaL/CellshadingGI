@@ -134,16 +134,12 @@ void main()
   //fragColor   = pow(vec4(blury(uv), 1.f), vec4(gamma));
 
 
-  /*float outlines = pushc.useSobel == 1 ?
-                       sobel(idTxt, uv, 0.1) * sobel(normalTxt, uv, pushc.threshold)
+  float outlines = pushc.useSobel > 0 ?
+                       sobel(idTxt, uv, 0.001) * sobel(normalTxt, uv, pushc.threshold)
                            * sobel(depthTxt, uv, pushc.threshold) :
                        1;
   vec4 c = pow(vec4(texture(noisyTxt, uv).rgb * outlines, 1.0), vec4(gamma));
 
   imageStore(save, ivec2(uv * vec2(pushc.width, pushc.height)), c);
-  fragColor = c;*/
-  float outlines = 1.0;
-  vec4  col      = pow(vec4(texture(noisyTxt, uv).rgb * outlines, 1.0), vec4(gamma));
-  imageStore(save, ivec2(uv * vec2(pushc.width, pushc.height)), col);
-  fragColor = col;
+  fragColor = c;
 }
