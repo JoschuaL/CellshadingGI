@@ -187,14 +187,14 @@ void sample_cosine_hemisphere(LocalCoords coords, float u, float v, inout materi
   mc.sample_in  = d.x * coords.t + d.y * coords.bt + z * coords.n;
   mc.sample_pdf = abs(z) / M_PI;*/
 
-  float phi       = 2.0 * M_PI * u;
+  /*float phi       = 2.0 * M_PI * u;
   float cos_theta = sqrt(v);
   float theta     = acos(cos_theta);
 
   vec3 du       = normalize(cos(phi) * coords.t + sin(phi) * coords.bt);
   vec3 dir      = normalize(cos_theta * coords.n + sin(theta) * du);
   mc.sample_in  = dir;
-  mc.sample_pdf = cos_theta / M_PI;
+  mc.sample_pdf = cos_theta / M_PI;*/
 }
 
 float cosine_power_hemisphere_pdf(float c, float k)

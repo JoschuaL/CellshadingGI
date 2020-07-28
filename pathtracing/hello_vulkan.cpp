@@ -1220,7 +1220,6 @@ void HelloVulkan::raytrace(const vk::CommandBuffer& cmdBuf, const nvmath::vec4f&
   m_rtPushConstants.fuzzyAngle     = m_fuzzyAngle;
   m_rtPushConstants.ior            = m_IOR;
   m_rtPushConstants.numLights      = m_AreaLightsPerObject.size();
-  m_rtPushConstants.maxBounces     = m_maxBounces;
   m_rtPushConstants.max_russian    = m_maxRussian;
   m_rtPushConstants.numPointLights = m_PointLights.size();
   m_rtPushConstants.numIds         = ObjLoader::id_counter;

@@ -160,7 +160,7 @@ public:
   void     addPointLight(PointLight p);
   uint32_t getMemoryTypeIndex(uint32_t typeBits, VkMemoryPropertyFlags properties);
   void     saveImage();
-  void postFrameWork();
+  void     postFrameWork();
 
 
   vk::PhysicalDeviceRayTracingPropertiesKHR           m_rtProperties;
@@ -180,7 +180,7 @@ public:
   int                                                 m_numSamples          = 1;
   int                                                 m_FrameCount          = 0;
   float                                               m_IOR                 = 0.3f;
-  int                                                 m_maxBounces          = 64;
+
   float                                               m_maxRussian          = 1.0;
   int                                                 m_modelId             = 0;
   std::vector<PointLight>                             m_PointLights         = {};
@@ -226,11 +226,11 @@ public:
     float         max_russian    = 0.75;
     int           numPointLights = 0;
     int           numIds;
-  	int celsteps = 10;
-  	float celramp = 0.2;
-  	float r = 0.005;
-  	float cut = 0.7;
-  	float maxillum;
+    int           celsteps = 10;
+    float         celramp  = 0.9;
+    float         r        = 0.005;
+    float         cut      = 0.7;
+    float         maxillum;
   } m_rtPushConstants;
 
   struct PostPushConstant
@@ -241,6 +241,6 @@ public:
     float threshold = 1.5;
     int   useSobel  = 0;
     int   blurRange = 1;
-  	
+
   } m_postPushConstants;
 };

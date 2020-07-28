@@ -40,9 +40,9 @@ layout(push_constant) uniform Constants
   int   numAreaLights;
   int   maxBounces;
   float maxRussian;
-  int numPointLights;
-  int numIds;
-  int celsteps;
+  int   numPointLights;
+  int   numIds;
+  int   celsteps;
   float celramp;
 }
 pushC;
@@ -85,14 +85,13 @@ void main()
   bool entering = dot(gl_WorldRayDirectionEXT, gnormal) < 0;
 
   mc.entering = entering;
-  gnormal       = entering ? gnormal : -gnormal;
-  snormal       = entering ? snormal : -snormal;
-  if(prd.first) {
-  prd.normal = (matProb & 32) != 0 ? (snormal + vec3(1)) / 2 : vec3(0);
-  prd.depth =   (matProb & 32) != 0 ? gl_HitTEXT : 0;
-  prd.object =  (matProb & 32) != 0 ?  v0.id : 0;
-  
-
+  gnormal     = entering ? gnormal : -gnormal;
+  snormal     = entering ? snormal : -snormal;
+  if(prd.first)
+  {
+    prd.normal = (matProb & 32) != 0 ? (snormal + vec3(1)) / 2 : vec3(0);
+    prd.depth  = (matProb & 32) != 0 ? gl_HitTEXT : 0;
+    prd.object = (matProb & 32) != 0 ? v0.id : 0;
   }
   const vec3 worldPos = offset_ray(
       vec3(
@@ -125,7 +124,7 @@ void main()
 
   mc.emission      = vec3(0, 0, 0);*/
 
-  
+
   if((matProb & 16) != 0)
   {
 
@@ -142,7 +141,8 @@ void main()
     {
       const vec3  r = gl_WorldRayOriginEXT - worldPos;
       const float pne =
-          (ec.pdf_area * dot(r, r)) / (dot(-gl_WorldRayDirectionEXT, snormal) * (pushC.numAreaLights + pushC.numPointLights));
+          (ec.pdf_area * dot(r, r))
+          / (dot(-gl_WorldRayDirectionEXT, snormal) * (pushC.numAreaLights + pushC.numPointLights));
       const float p_bsdf     = prd.last_bsdf_pdf;
       const float mis_weight = p_bsdf / (p_bsdf + pne);
       prd.color += ec.intensity * mis_weight * prd.weight;
@@ -153,7 +153,7 @@ void main()
 
 
   prd.specular       = (matProb & 12) != 0;
-  prd.first = prd.first && prd.specular;
+  prd.first          = prd.first && prd.specular;
   const bool diffuse = (matProb & 3) != 0;
 
 
@@ -166,7 +166,6 @@ void main()
     ww *= 2;
   }
 
-  
 
   switch(mask)
   {
@@ -197,15 +196,14 @@ void main()
       break;
     }
     case 16: {
-        mask = 0;
-        break;
+      mask = 0;
+      break;
     }
     case 32: {
-        mask = 8;
-        ww = 1;
-        break;
+      mask = 8;
+      ww   = 1;
+      break;
     }
-
   }
 
   mc.objId  = objId;
@@ -222,10 +220,12 @@ void main()
   mc.inDir;
 
 
-  const int       cl   =  min(int(rnd(prd.seed) * (pushC.numAreaLights + pushC.numPointLights)), pushC.numAreaLights + pushC.numPointLights - 1);
-  int lightType;
-  if(cl < pushC.numAreaLights){
-  const AreaLight li   = lights.l[cl];
+  const int cl = min(int(rnd(prd.seed) * (pushC.numAreaLights + pushC.numPointLights)),
+                     pushC.numAreaLights + pushC.numPointLights - 1);
+  int       lightType;
+  if(cl < pushC.numAreaLights)
+  {
+    const AreaLight li   = lights.l[cl];
     const vec3      e1   = li.v1.xyz - li.v0.xyz;
     const vec3      e2   = li.v2.xyz - li.v0.xyz;
     const vec3      ln   = normalize(cross(e1, e2));
@@ -235,27 +235,28 @@ void main()
                                     li.v0.xyz + ((1.0 - u) * e1) + ((1.0 - v) * e2);
     const vec3 pos = offset_ray(offset_ray(lpos, ln), ln);
 
-    dsc.pos             = pos;
-    dsc.li              = li;
+    dsc.pos   = pos;
+    dsc.li    = li;
     lightType = 1;
-  } else {
+  }
+  else
+  {
 
     const PointLight p = Plights.l[cl - pushC.numAreaLights];
 
-    dsc.p = p;
+    dsc.p   = p;
     dsc.pos = p.pos.xyz;
 
     lightType = 0;
-
   }
 
 
-  dsc.seed            = prd.seed;
+  dsc.seed = prd.seed;
 
-  dsc.from            = worldPos;
+  dsc.from = worldPos;
 
 
-  const int call      = 6 + lightType;
+  const int call = 6 + lightType;
   executeCallableEXT(call, 2);
   prd.seed = dsc.seed;
 
@@ -277,42 +278,37 @@ void main()
   isShadowed = true;
 
 
-  traceRayEXT(topLevelAS,              // acceleration structure
-              flags,                   // rayFlags
-              0xFF,                    // cullMask
-              0,                       // sbtRecordOffset
-              0,                       // sbtRecordStride
-              1,                       // missIndex
-              dsc.pos,                 // ray origin
-              0.0,                     // ray min range
-              rayDir,                  // ray direction
-              dist,  // ray max range
-              1                        // payload (location = 1)
+  traceRayEXT(topLevelAS,  // acceleration structure
+              flags,       // rayFlags
+              0xFF,        // cullMask
+              0,           // sbtRecordOffset
+              0,           // sbtRecordStride
+              1,           // missIndex
+              dsc.pos,     // ray origin
+              0.0,         // ray min range
+              rayDir,      // ray direction
+              dist,        // ray max range
+              1            // payload (location = 1)
   );
 
-  
 
-  if(!isShadowed){
-  const float pne = ((dsc.pdf_area * d2) / (dsc.cos_v * pushC.numAreaLights));
-
-
-  const float p_bsdf     = mc.pdf_pdf;
-
-  const float mis_weight = lightType == 1 ? pne / (pne + p_bsdf) : 1.0;
+  if(!isShadowed)
+  {
+    const float pne = ((dsc.pdf_area * d2) / (dsc.cos_v * pushC.numAreaLights));
 
 
+    const float p_bsdf = mc.pdf_pdf;
 
-  prd.color +=  ww * dsc.intensity * mis_weight
-               * ((prd.weight * mc.eval_color * dsc.cos_v * (pushC.numAreaLights + pushC.numPointLights))
-                  / (d2 * dsc.pdf_area));
+    const float mis_weight = lightType == 1 ? pne / (pne + p_bsdf) : 1.0;
 
-   
+
+    prd.color +=
+        ww * dsc.intensity * mis_weight
+        * ((prd.weight * mc.eval_color * dsc.cos_v * (pushC.numAreaLights + pushC.numPointLights))
+           / (d2 * dsc.pdf_area));
   }
 
 
-  
-
-  
   const float p = russian_roulette(prd.weight);
   if(rnd(prd.seed) > p || mc.sample_color == vec3(0, 0, 0) || mc.sample_pdf <= 0.0)
   {
@@ -324,7 +320,8 @@ void main()
   prd.last_bsdf_pdf = mc.sample_pdf;
 
 
-  prd.weight *= (mc.sample_color * abs(dot(mc.sample_in, snormal))) / (mc.sample_pdf * p);
+  prd.weight *= mc.sample_color / (mc.sample_pdf * p);
+  prd.color = prd.weight;
 
 
   prd.rayOrigin    = worldPos;

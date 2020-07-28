@@ -86,7 +86,7 @@ void renderUI(HelloVulkan& helloVk)
   changed |= ImGui::InputFloat("IOR", &helloVk.m_IOR, 0.01f, 0.01f);
   changed |= ImGui::InputInt("Area Samples", &helloVk.m_numAreaSamples);
   changed |= ImGui::InputInt("Per Frame Samples", &helloVk.m_numSamples);
-  changed |= ImGui::InputInt("Bounces", &helloVk.m_maxBounces);
+  changed |= ImGui::InputInt("Bounces", &helloVk.m_rtPushConstants.maxBounces);
   changed |= ImGui::InputFloat("RR", &helloVk.m_maxRussian, 0.01f, 0.01f);
   changed |= ImGui::InputInt("Cel steps", &helloVk.m_rtPushConstants.celsteps, 1);
   changed |= ImGui::InputFloat("cel ramp", &helloVk.m_rtPushConstants.celramp, 0.01, 0.1);
