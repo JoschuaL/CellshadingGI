@@ -88,12 +88,12 @@ void renderUI(HelloVulkan& helloVk)
   changed |= ImGui::InputInt("Per Frame Samples", &helloVk.m_numSamples);
   changed |= ImGui::InputInt("Bounces", &helloVk.m_maxBounces);
   changed |= ImGui::InputFloat("RR", &helloVk.m_maxRussian, 0.01f, 0.01f);
-	changed |= ImGui::InputInt("Cel steps", &helloVk.m_rtPushConstants.celsteps, 1);
-	changed |= ImGui::InputFloat("cel ramp", &helloVk.m_rtPushConstants.celramp, 0.01, 0.1);
-	changed |= ImGui::InputInt("Use Sobel", &helloVk.m_postPushConstants.useSobel, 1);
-	changed |= ImGui::InputFloat("Cel Threshold", &helloVk.m_postPushConstants.threshold, 0.1, 1);
-	changed |= ImGui::InputFloat("cel radius", &helloVk.m_rtPushConstants.r, 0.001, 0.01);
-	changed |= ImGui::InputFloat("cel cut", &helloVk.m_rtPushConstants.cut, 0.01, 0.1);
+  changed |= ImGui::InputInt("Cel steps", &helloVk.m_rtPushConstants.celsteps, 1);
+  changed |= ImGui::InputFloat("cel ramp", &helloVk.m_rtPushConstants.celramp, 0.01, 0.1);
+  changed |= ImGui::InputInt("Use Sobel", &helloVk.m_postPushConstants.useSobel, 1);
+  changed |= ImGui::InputFloat("Cel Threshold", &helloVk.m_postPushConstants.threshold, 0.1, 1);
+  changed |= ImGui::InputFloat("cel radius", &helloVk.m_rtPushConstants.r, 0.001, 0.01);
+  changed |= ImGui::InputFloat("cel cut", &helloVk.m_rtPushConstants.cut, 0.01, 0.1);
   ImGui::Value("Frames", helloVk.m_FrameCount);
   if(changed)
   {
@@ -150,6 +150,7 @@ int main(int argc, char** argv)
   // Requesting Vulkan extensions and layers
   nvvk::ContextCreateInfo contextInfo(true);
   contextInfo.setVersion(1, 2);
+  contextInfo.addInstanceLayer("VK_LAYER_KHRONOS_validation", true);
   contextInfo.addInstanceLayer("VK_LAYER_LUNARG_monitor", true);
   contextInfo.addInstanceExtension(VK_KHR_SURFACE_EXTENSION_NAME);
 #ifdef WIN32
@@ -332,7 +333,7 @@ int main(int argc, char** argv)
     // Submit for display
     cmdBuff.end();
     helloVk.submitFrame();
-  	//helloVk.postFrameWork();
+    //helloVk.postFrameWork();
   }
   helloVk.saveImage();
   // Cleanup

@@ -53,7 +53,7 @@ VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 // Default search path for shaders
 std::vector<std::string> defaultSearchPaths;
 
-float guiLightColor[4] = {0.f,0.f,0.f, 1.f};
+float guiLightColor[4] = {0.f, 0.f, 0.f, 1.f};
 
 // GLFW Callback functions
 static void onErrorCallback(int error, const char* description)
@@ -64,8 +64,8 @@ static void onErrorCallback(int error, const char* description)
 // Extra UI
 void renderUI(HelloVulkan& helloVk)
 {
-  static int item = 1;
-  bool changed = false;
+  static int item    = 1;
+  bool       changed = false;
   if(ImGui::Combo("Up Vector", &item, "X\0Y\0Z\0\0"))
   {
     nvmath::vec3f pos, eye, up;
@@ -74,27 +74,30 @@ void renderUI(HelloVulkan& helloVk)
     CameraManip.setLookat(pos, eye, up);
   }
   changed |= ImGui::InputFloat3("Light Position", &helloVk.m_LightPosition.x);
-  changed |=ImGui::ColorEdit4("Light Color", guiLightColor, ImGuiColorEditFlags_Float);
-  helloVk.m_pushConstant.lightColor = {guiLightColor[0], guiLightColor[1], guiLightColor[2], guiLightColor[3]};
-  changed |=ImGui::RadioButton("Point", reinterpret_cast<int*>(&helloVk.m_LightType), 0);
+  changed |= ImGui::ColorEdit4("Light Color", guiLightColor, ImGuiColorEditFlags_Float);
+  helloVk.m_pushConstant.lightColor = {guiLightColor[0], guiLightColor[1], guiLightColor[2],
+                                       guiLightColor[3]};
+  changed |= ImGui::RadioButton("Point", reinterpret_cast<int*>(&helloVk.m_LightType), 0);
   ImGui::SameLine();
-  changed |=ImGui::RadioButton("Infinite", reinterpret_cast<int*>(&helloVk.m_LightType), 1);
-  changed |=ImGui::InputFloat("fuzzy angle", &helloVk.m_fuzzyAngle, 0.01f, 0.01f);
-  changed |=ImGui::InputFloat("IOR", &helloVk.m_IOR, 0.01f, 0.01f);
-  changed |=ImGui::InputInt("Area Samples", &helloVk.m_numAreaSamples);
-  changed |=ImGui::InputInt("Per Frame Samples", &helloVk.m_numSamples);
+  changed |= ImGui::RadioButton("Infinite", reinterpret_cast<int*>(&helloVk.m_LightType), 1);
+  changed |= ImGui::InputFloat("fuzzy angle", &helloVk.m_fuzzyAngle, 0.01f, 0.01f);
+  changed |= ImGui::InputFloat("IOR", &helloVk.m_IOR, 0.01f, 0.01f);
+  changed |= ImGui::InputInt("Area Samples", &helloVk.m_numAreaSamples);
+  changed |= ImGui::InputInt("Per Frame Samples", &helloVk.m_numSamples);
   changed |= ImGui::InputFloat("Celramp", &helloVk.m_rtPushConstants.celramp, 0.1);
   changed |= ImGui::InputInt("Celsteps", &helloVk.m_rtPushConstants.celsteps, 1);
   changed |= ImGui::Checkbox("cel attenuation", &helloVk.m_rtPushConstants.celatten);
-  changed |= ImGui::InputFloat("cel threshold", &helloVk.m_postPushConstants.threshold, 0.01f, 0.01f);
-	changed |= ImGui::InputInt("use Sobel Edges", &helloVk.m_postPushConstants.useSobel);
+  changed |=
+      ImGui::InputFloat("cel threshold", &helloVk.m_postPushConstants.threshold, 0.01f, 0.01f);
+  changed |= ImGui::InputInt("use Sobel Edges", &helloVk.m_postPushConstants.useSobel);
 
-	changed |= ImGui::InputFloat("cel radius", &helloVk.m_rtPushConstants.r, 0.001, 0.0001);
+  changed |= ImGui::InputFloat("cel radius", &helloVk.m_rtPushConstants.r, 0.001, 0.0001);
   changed |= ImGui::InputInt("Blur Kernel Range", &helloVk.m_postPushConstants.blurRange);
-changed |= ImGui::InputFloat("cel cut", &helloVk.m_rtPushConstants.cut, 0.01f, 0.01f);
-	changed |= ImGui::InputInt("use ray based edges", &helloVk.m_rtPushConstants.rayEdges, 1);
+  changed |= ImGui::InputFloat("cel cut", &helloVk.m_rtPushConstants.cut, 0.01f, 0.01f);
+  changed |= ImGui::InputInt("use ray based edges", &helloVk.m_rtPushConstants.rayEdges, 1);
   ImGui::Value("Frames", helloVk.m_FrameCount);
-  if(changed){
+  if(changed)
+  {
     helloVk.resetFrame();
   }
 }
@@ -124,7 +127,8 @@ int main(int argc, char** argv)
 
   // Setup camera
   CameraManip.setWindowSize(SAMPLE_WIDTH, SAMPLE_HEIGHT);
-  CameraManip.setLookat(nvmath::vec3f(-0.3, 6.7, 16), nvmath::vec3f(0.5, 4.5, 1.5), nvmath::vec3f(0, 1, 0));
+  CameraManip.setLookat(nvmath::vec3f(-0.3, 6.7, 16), nvmath::vec3f(0.5, 4.5, 1.5),
+                        nvmath::vec3f(0, 1, 0));
 
   // Setup Vulkan
   if(!glfwVulkanSupported())
@@ -137,18 +141,17 @@ int main(int argc, char** argv)
   NVPSystem system(argv[0], PROJECT_NAME);
 
   // Search path for shaders and other media
-  defaultSearchPaths = {
-      PROJECT_ABSDIRECTORY,
-      PROJECT_ABSDIRECTORY "../",
-      NVPSystem::exePath() + std::string(PROJECT_RELDIRECTORY),
-      NVPSystem::exePath() + std::string(PROJECT_RELDIRECTORY) + std::string("../"),
-  	NVPSystem::exePath()
-  };
+  defaultSearchPaths = {PROJECT_ABSDIRECTORY, PROJECT_ABSDIRECTORY "../",
+                        NVPSystem::exePath() + std::string(PROJECT_RELDIRECTORY),
+                        NVPSystem::exePath() + std::string(PROJECT_RELDIRECTORY)
+                            + std::string("../"),
+                        NVPSystem::exePath()};
 
 
   // Requesting Vulkan extensions and layers
   nvvk::ContextCreateInfo contextInfo(true);
   contextInfo.setVersion(1, 2);
+  contextInfo.addInstanceLayer("VK_LAYER_KHRONOS_validation", true);
   contextInfo.addInstanceLayer("VK_LAYER_LUNARG_monitor", true);
   contextInfo.addInstanceExtension(VK_KHR_SURFACE_EXTENSION_NAME);
 #ifdef WIN32
@@ -209,19 +212,17 @@ int main(int argc, char** argv)
   //helloVk.loadModel(nvh::findFile("media/scenes/ladies/separatewalls.obj", defaultSearchPaths));
   //helloVk.loadModel(nvh::findFile("media/scenes/ladies/gumi.obj", defaultSearchPaths));
   helloVk.loadModel(nvh::findFile("media/scenes/ladies/gumi_alone.obj", defaultSearchPaths));
-	helloVk.loadModel(nvh::findFile("media/scenes/ladies/walls.obj", defaultSearchPaths) );
-  nvmath::vec4f plc = {10, 10, 10,1};
-  nvmath::vec4f b = {0, 0, 0, 1};
-	
+  helloVk.loadModel(nvh::findFile("media/scenes/ladies/walls.obj", defaultSearchPaths));
+  nvmath::vec4f plc = {10, 10, 10, 1};
+  nvmath::vec4f b   = {0, 0, 0, 1};
+
   helloVk.addPointLight({plc, {3.5, 10, 2.5, 1}});
   helloVk.addPointLight({plc, {-3.5, 10, 2.5, 1}});
   helloVk.addPointLight({plc, {3.5, 10, 6.5, 1}});
   helloVk.addPointLight({plc, {-3.5, 10, 6.5, 1}});
   helloVk.addPointLight({plc, {0, 10, -0.5, 1}});
   helloVk.addPointLight({plc, {0, 10, 9, 1}});
-	
 
-	
 
   helloVk.postModelSetup();
 
@@ -280,7 +281,6 @@ int main(int argc, char** argv)
       renderUI(helloVk);
       ImGui::Text("Application average %.3f ms/frame (%.1f FPS)",
                   1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-      
     }
     ImGui::Render();
     // Start rendering the scene

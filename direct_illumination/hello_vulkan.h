@@ -45,7 +45,8 @@
 // - The image of the framebuffer is displayed in post-process in a full-screen quad
 //
 
-enum LightType{
+enum LightType
+{
   Point = 0,
   Infinite,
   Spot,
@@ -98,7 +99,7 @@ public:
   {
     nvmath::vec3f lightPosition{0.f, 2.f, 0.f};
     int           instanceId{0};  // To retrieve the transformation matrix
-    nvmath::vec4f lightColor{3.f,3.f,3.f, 1.f};
+    nvmath::vec4f lightColor{3.f, 3.f, 3.f, 1.f};
     LightType     lightType{Point};  // 0: point, 1: infinite
   };
   ObjPushConstant m_pushConstant;
@@ -139,33 +140,33 @@ public:
   vk::RenderPass              m_offscreenRenderPass;
   vk::Framebuffer             m_offscreenFramebuffer;
 
-  nvvk::Image                 m_offscreenColorImage;
-  nvvk::Texture               m_offscreenColor;
-  vk::Format                  m_offscreenColorFormat{vk::Format::eR32G32B32A32Sfloat};
+  nvvk::Image   m_offscreenColorImage;
+  nvvk::Texture m_offscreenColor;
+  vk::Format    m_offscreenColorFormat{vk::Format::eR32G32B32A32Sfloat};
 
-  nvvk::Image                 m_offscreenDepthImage;
-  nvvk::Texture               m_offscreenDepth;
-  vk::Format                  m_offscreenDepthFormat{vk::Format::eD32Sfloat};
+  nvvk::Image   m_offscreenDepthImage;
+  nvvk::Texture m_offscreenDepth;
+  vk::Format    m_offscreenDepthFormat{vk::Format::eD32Sfloat};
 
-  nvvk::Image                 m_offscreenDepthImageRT;
-  nvvk::Texture               m_offscreenDepthRT;
-  vk::Format                  m_offscreenDepthFormatRT{vk::Format::eR32G32B32A32Sfloat};
+  nvvk::Image   m_offscreenDepthImageRT;
+  nvvk::Texture m_offscreenDepthRT;
+  vk::Format    m_offscreenDepthFormatRT{vk::Format::eR32G32B32A32Sfloat};
 
-  nvvk::Image                 m_offscreenNormalImage;
+  nvvk::Image   m_offscreenNormalImage;
   nvvk::Texture m_offscreenNormal;
-  vk::Format m_offscreenNormalFormat{vk::Format::eR32G32B32A32Sfloat};
+  vk::Format    m_offscreenNormalFormat{vk::Format::eR32G32B32A32Sfloat};
 
-nvvk::Image   m_offscreenIdImage;
-nvvk::Texture m_offscreenId;
-vk::Format    m_offscreenIdFormat{vk::Format::eR32G32B32A32Sfloat};
+  nvvk::Image   m_offscreenIdImage;
+  nvvk::Texture m_offscreenId;
+  vk::Format    m_offscreenIdFormat{vk::Format::eR32G32B32A32Sfloat};
 
-	
-nvvk::Image   m_saveImage;
-nvvk::Texture m_save;
-vk::Format    m_saveFormat{vk::Format::eR32G32B32A32Sfloat};
 
-	uint32_t getMemoryTypeIndex(uint32_t typeBits, VkMemoryPropertyFlags properties);
-	
+  nvvk::Image   m_saveImage;
+  nvvk::Texture m_save;
+  vk::Format    m_saveFormat{vk::Format::eR32G32B32A32Sfloat};
+
+  uint32_t getMemoryTypeIndex(uint32_t typeBits, VkMemoryPropertyFlags properties);
+
 
   // #VKRay
   void                             initRayTracing();
@@ -194,54 +195,55 @@ vk::Format    m_saveFormat{vk::Format::eR32G32B32A32Sfloat};
   vk::PipelineLayout                                  m_rtPipelineLayout;
   vk::Pipeline                                        m_rtPipeline;
   nvvk::Buffer                                        m_rtSBTBuffer;
-  float m_fuzzyAngle = 0.1f;
-  std::vector<AreaLight>     m_AreaLightsPerObject = {};
-  int m_numAreaSamples = 1;
-  int m_numSamples = 1;
-  int m_FrameCount = 0;
-  float m_IOR = 0.0f;
-	LightType m_LightType = LightType::Infinite;
+  float                                               m_fuzzyAngle          = 0.1f;
+  std::vector<AreaLight>                              m_AreaLightsPerObject = {};
+  int                                                 m_numAreaSamples      = 1;
+  int                                                 m_numSamples          = 1;
+  int                                                 m_FrameCount          = 0;
+  float                                               m_IOR                 = 0.0f;
+  LightType                                           m_LightType           = LightType::Infinite;
   nvmath::vec3f                                       m_LightPosition       = {0, 0, 1};
 
   nvvk::Image saveImageData;
 
-	std::vector<PointLight> m_PointLights = {};
+  std::vector<PointLight> m_PointLights = {};
   nvvk::Buffer            m_pointLightBuffer;
-		nvvk::Buffer m_areaLightBuffer;
-	int m_modelNumber = 0;
+  nvvk::Buffer            m_areaLightBuffer;
+  int                     m_modelNumber = 0;
+  std::vector<int>        dummy         = {0};
 
   struct RtPushConstant
   {
     nvmath::vec4f clearColor;
     nvmath::vec4f lightColor;
-    nvmath::vec3f lightPosition = {0,0,1};
-    LightType     lightType = LightType::Infinite;
+    nvmath::vec3f lightPosition = {0, 0, 1};
+    LightType     lightType     = LightType::Infinite;
     int           numObjs;
-    int numAreaSamples = 1;
-    int frame = 0;
-    int numSamples = 1;
-    float fuzzyAngle = 0.1f;
-    float ior = 0.0f;
+    int           numAreaSamples = 1;
+    int           frame          = 0;
+    int           numSamples     = 1;
+    float         fuzzyAngle     = 0.1f;
+    float         ior            = 0.0f;
     int           numPointLights;
-  	int numAreaLights;
-    float         celramp = 0.9;
+    int           numAreaLights;
+    float         celramp  = 0.9;
     int           celsteps = 10;
     bool          celatten = false;
-  	int numids;
-  	float r = 0.005;
-  	float cut = 0.7;
-  	int rayEdges = 0;
-  
-  	
+    int           numids;
+    float         r        = 0.005;
+    float         cut      = 0.7;
+    int           rayEdges = 0;
+
+
   } m_rtPushConstants;
 
-	struct PostPushConstant
-	{
+  struct PostPushConstant
+  {
     float aspectRatio;
     int   width;
     int   height;
     float threshold = 1.5;
-    int useSobel = 0;
-    int blurRange = 1;
-	} m_postPushConstants;
+    int   useSobel  = 0;
+    int   blurRange = 1;
+  } m_postPushConstants;
 };

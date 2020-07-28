@@ -174,11 +174,10 @@ void HelloVulkan::updateDescriptorSet()
   writes.emplace_back(m_descSetLayoutBind.makeWriteArray(m_descSet, 4, dbiMatIdx.data()));
   writes.emplace_back(m_descSetLayoutBind.makeWriteArray(m_descSet, 5, dbiVert.data()));
   writes.emplace_back(m_descSetLayoutBind.makeWriteArray(m_descSet, 6, dbiIdx.data()));
-  if(m_AreaLightsPerObject.size() > 0)
-  {
-    vk::DescriptorBufferInfo dbiLight{m_areaLightBuffer.buffer, 0, VK_WHOLE_SIZE};
-    writes.emplace_back(m_descSetLayoutBind.makeWrite(m_descSet, 7, &dbiLight));
-  }
+
+  vk::DescriptorBufferInfo dbiLight{m_areaLightBuffer.buffer, 0, VK_WHOLE_SIZE};
+  writes.emplace_back(m_descSetLayoutBind.makeWrite(m_descSet, 7, &dbiLight));
+
   // All texture samplers
   std::vector<vk::DescriptorImageInfo> diit;
   for(auto& texture : m_textures)
@@ -186,11 +185,10 @@ void HelloVulkan::updateDescriptorSet()
     diit.push_back(texture.descriptor);
   }
   writes.emplace_back(m_descSetLayoutBind.makeWriteArray(m_descSet, 3, diit.data()));
-  if(m_PointLights.size() > 0)
-  {
-    vk::DescriptorBufferInfo dbiPLights{m_pointLightBuffer.buffer, 0, VK_WHOLE_SIZE};
-    writes.emplace_back(m_descSetLayoutBind.makeWrite(m_descSet, 8, &dbiPLights));
-  }
+
+  vk::DescriptorBufferInfo dbiPLights{m_pointLightBuffer.buffer, 0, VK_WHOLE_SIZE};
+  writes.emplace_back(m_descSetLayoutBind.makeWrite(m_descSet, 8, &dbiPLights));
+
   // Writing the information
   m_device.updateDescriptorSets(static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
 }
@@ -319,6 +317,18 @@ void HelloVulkan::postModelSetup()
 
     m_debug.setObjectName(m_areaLightBuffer.buffer, (std::string("Arealights").c_str()));
   }
+  else
+  {
+    using vkBU = vk::BufferUsageFlagBits;
+    nvvk::CommandPool cmdBufGet(m_device, m_graphicsQueueIndex);
+    vk::CommandBuffer cmdBuf = cmdBufGet.createCommandBuffer();
+    m_areaLightBuffer        = m_alloc.createBuffer(cmdBuf, dummy, vkBU::eStorageBuffer);
+    cmdBufGet.submitAndWait(cmdBuf);
+
+    m_alloc.finalizeAndReleaseStaging();
+
+    m_debug.setObjectName(m_areaLightBuffer.buffer, (std::string("Arealights").c_str()));
+  }
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -351,6 +361,10 @@ void HelloVulkan::createSceneDescriptionBuffer()
   if(m_PointLights.size() > 0)
   {
     m_pointLightBuffer = m_alloc.createBuffer(cmdBuf, m_PointLights, vkBU::eStorageBuffer);
+  }
+  else
+  {
+    m_pointLightBuffer = m_alloc.createBuffer(cmdBuf, dummy, vkBU::eStorageBuffer);
   }
   cmdGen.submitAndWait(cmdBuf);
   m_alloc.finalizeAndReleaseStaging();
@@ -456,6 +470,7 @@ void HelloVulkan::destroyResources()
     m_alloc.destroy(t);
   }
   m_alloc.destroy(m_areaLightBuffer);
+  m_alloc.destroy(m_pointLightBuffer);
   //#Post
   m_device.destroy(m_postPipeline);
   m_device.destroy(m_postPipelineLayout);
@@ -637,7 +652,7 @@ void HelloVulkan::createOffscreenRender()
     nvvk::CommandPool genCmdBuf(m_device, m_graphicsQueueIndex);
     auto              cmdBuf = genCmdBuf.createCommandBuffer();
     nvvk::cmdBarrierImageLayout(cmdBuf, m_offscreenColor.image, vk::ImageLayout::eUndefined,
-                                vk::ImageLayout::eTransferSrcOptimal);
+                                vk::ImageLayout::eGeneral);
 
     nvvk::cmdBarrierImageLayout(cmdBuf, m_offscreenNormal.image, vk::ImageLayout::eUndefined,
                                 vk::ImageLayout::eGeneral);
@@ -645,11 +660,11 @@ void HelloVulkan::createOffscreenRender()
                                 vk::ImageLayout::eGeneral);
     nvvk::cmdBarrierImageLayout(cmdBuf, m_offscreenId.image, vk::ImageLayout::eUndefined,
                                 vk::ImageLayout::eGeneral);
+    nvvk::cmdBarrierImageLayout(cmdBuf, m_save.image, vk::ImageLayout::eUndefined,
+                                vk::ImageLayout::eGeneral);
     nvvk::cmdBarrierImageLayout(cmdBuf, m_offscreenDepth.image, vk::ImageLayout::eUndefined,
                                 vk::ImageLayout::eDepthStencilAttachmentOptimal,
                                 vk::ImageAspectFlagBits::eDepth);
-    nvvk::cmdBarrierImageLayout(cmdBuf, m_save.image, vk::ImageLayout::eGeneral,
-                                vk::ImageLayout::eGeneral);
 
 
     genCmdBuf.submitAndWait(cmdBuf);
@@ -684,7 +699,8 @@ void HelloVulkan::createOffscreenRender()
 void HelloVulkan::createPostPipeline()
 {
   // Push constants in the fragment shader
-  vk::PushConstantRange pushConstantRanges = {vk::ShaderStageFlagBits::eFragment, 0, sizeof(float)};
+  vk::PushConstantRange pushConstantRanges = {vk::ShaderStageFlagBits::eFragment, 0,
+                                              sizeof(PostPushConstant)};
 
   // Creating the pipeline layout
   vk::PipelineLayoutCreateInfo pipelineLayoutCreateInfo;
@@ -1193,7 +1209,8 @@ void HelloVulkan::raytrace(const vk::CommandBuffer& cmdBuf, const nvmath::vec4f&
   cmdBuf.pushConstants<RtPushConstant>(m_rtPipelineLayout,
                                        vk::ShaderStageFlagBits::eRaygenKHR
                                            | vk::ShaderStageFlagBits::eClosestHitKHR
-                                           | vk::ShaderStageFlagBits::eMissKHR,
+                                           | vk::ShaderStageFlagBits::eMissKHR
+                                           | vk::ShaderStageFlagBits::eCallableKHR,
                                        0, m_rtPushConstants);
 
   vk::DeviceSize progSize =
@@ -1265,12 +1282,7 @@ uint32_t HelloVulkan::getMemoryTypeIndex(uint32_t typeBits, VkMemoryPropertyFlag
 
 void HelloVulkan::saveImage()
 {
-  VkCommandPool           commandPool;
-  VkCommandPoolCreateInfo cmdPoolInfo = {};
-  cmdPoolInfo.sType                   = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-  cmdPoolInfo.queueFamilyIndex        = 1;
-  cmdPoolInfo.flags                   = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-  VK_CHECK_RESULT(vkCreateCommandPool(m_device, &cmdPoolInfo, nullptr, &commandPool));
+
 
   float* imagedata;
   {
@@ -1304,13 +1316,17 @@ void HelloVulkan::saveImage()
     VK_CHECK_RESULT(vkBindImageMemory(m_device, dstImage, dstImageMemory, 0));
 
     // Do the actual blit from the offscreen image to our host visible destination image
-    VkCommandBufferAllocateInfo cmdBufAllocateInfo =
-        vks::initializers::commandBufferAllocateInfo(commandPool, VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-                                                     1);
+
     nvvk::CommandPool          cmdGen(m_device, m_graphicsQueueIndex);
     std::vector<nvmath::vec4f> img(m_size.width * m_size.height, {0, 0, 0, 0});
 
     vk::CommandBuffer cmdBuf = cmdGen.createCommandBuffer();
+
+    vks::tools::insertImageMemoryBarrier(
+        cmdBuf, m_save.image, VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_MEMORY_READ_BIT,
+        VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VkImageSubresourceRange{VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1});
 
 
     // Transition destination image to transfer destination layout
@@ -1368,6 +1384,7 @@ void HelloVulkan::saveImage()
     }
     stbi_write_png("K:\\testy.png", m_size.width, m_size.height, 4, pngdata.data(), 0);
     vkUnmapMemory(m_device, dstImageMemory);
+    vkDestroyImage(m_device, dstImage, nullptr);
     vkFreeMemory(m_device, dstImageMemory, nullptr);
     return;
   }
