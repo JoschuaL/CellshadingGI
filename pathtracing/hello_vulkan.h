@@ -207,6 +207,8 @@ public:
   nvvk::Texture m_save;
   vk::Format    m_saveFormat{vk::Format::eR32G32B32A32Sfloat};
 
+  std::vector<int> dummy = {0};
+
   struct RtPushConstant
   {
     nvmath::vec4f clearColor;

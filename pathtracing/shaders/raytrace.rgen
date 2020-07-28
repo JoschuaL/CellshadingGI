@@ -177,7 +177,7 @@ void main()
         vec4 o = vec4(origin.xyz + m[j].x * local.t + m[j].y * local.bt, origin.w);
         traceRayEXT(topLevelAS,     // acceleration structure
                   rayFlags,       // rayFlags
-                  0xFF,           // cullMask
+                  mask,           // cullMask
                   1,              // sbtRecordOffset
                   0,              // sbtRecordStride
                   2,              // missIndex
