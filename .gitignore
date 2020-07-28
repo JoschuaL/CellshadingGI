@@ -6,3 +6,4 @@ build
 cmake-build-*
 log_*
 *.pdf
+*.hdr
