@@ -50,7 +50,8 @@ struct shapeObj
 class ObjLoader
 {
 public:
-  void loadModel(const std::string& filename, int celid);
+  void loadModel(const std::string& filename, int celid, float extrusion_width);
+
 
   std::vector<VertexObj>   m_vertices;
   std::vector<uint32_t>    m_indices;

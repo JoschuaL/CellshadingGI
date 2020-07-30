@@ -80,7 +80,7 @@ void main()
   const LocalCoords coords = gen_local_coords(mc.normal);
   sample_cosine_hemisphere(coords, rnd(mc.seed), rnd(mc.seed), mc);
 
-  float cellfac_sample = ceil(abs(dot(mc.sample_in, mc.normal)) * celsteps) / celsteps;
+  float cellfac_sample = ceil(abs(dot(mc.outDir, mc.normal)) * celsteps) / celsteps;
   cellfac_sample       = max(step(celramp, cellfac_sample), 0.3);
 
   const vec3 color = diffuse * cellfac_sample;

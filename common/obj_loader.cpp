@@ -33,7 +33,11 @@ static inline std::string get_path(const std::string& file)
   return dir;
 }
 
-void ObjLoader::loadModel(const std::string& filename, int celid)
+
+
+
+
+void ObjLoader::loadModel(const std::string& filename, int celid, float extrusion_width)
 {
   tinyobj::ObjReader reader;
   reader.ParseFromFile(filename);
@@ -139,6 +143,7 @@ void ObjLoader::loadModel(const std::string& filename, int celid)
       }
       vertex.id = id_counter;
       vertex.celid = celid;
+      vertex.pos +=  nvmath::normalize(vertex.nrm) * extrusion_width;
      
 
 

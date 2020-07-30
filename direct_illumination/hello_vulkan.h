@@ -63,7 +63,7 @@ public:
              uint32_t                  queueFamily) override;
   void createDescriptorSetLayout();
   void createGraphicsPipeline();
-  void loadModel(const std::string& filename, nvmath::mat4f transform = nvmath::mat4f(1));
+  void loadModel(const std::string& filename, float extrusion_width = 0, nvmath::mat4f transform = nvmath::mat4f(1));
   void updateDescriptorSet();
   void createUniformBuffer();
   void createSceneDescriptionBuffer();
@@ -85,11 +85,26 @@ public:
     nvvk::Buffer matIndexBuffer;  // Device buffer of array of 'Wavefront material'
   };
 
+  struct ExtrudedObjModel
+  {
+    uint32_t     nbIndices{0};
+    uint32_t     nbVertices{0};
+    nvvk::Buffer vertexBuffer;    // Device buffer of all 'Vertex'
+    nvvk::Buffer indexBuffer;     // Device buffer of the indices forming triangles
+  };
+
   // Instance of the OBJ
   struct ObjInstance
   {
     uint32_t      objIndex{0};     // Reference to the `m_objModel`
     uint32_t      txtOffset{0};    // Offset in `m_textures`
+    nvmath::mat4f transform{1};    // Position of the instance
+    nvmath::mat4f transformIT{1};  // Inverse transpose
+  };
+
+  struct ExtrudeObjInstance
+  {
+    uint32_t      extObjIndex{0};     // Reference to the `m_objModel`
     nvmath::mat4f transform{1};    // Position of the instance
     nvmath::mat4f transformIT{1};  // Inverse transpose
   };
@@ -107,6 +122,8 @@ public:
   // Array of objects and instances in the scene
   std::vector<ObjModel>    m_objModel;
   std::vector<ObjInstance> m_objInstance;
+  std::vector<ExtrudedObjModel>    m_extObjModel;
+  std::vector<ExtrudeObjInstance> m_extObjInstance;
 
   // Graphic pipeline
   vk::PipelineLayout          m_pipelineLayout;
@@ -171,6 +188,7 @@ public:
   // #VKRay
   void                             initRayTracing();
   nvvk::RaytracingBuilderKHR::Blas objectToVkGeometryKHR(const ObjModel& model);
+  nvvk::RaytracingBuilderKHR::Blas objectToVkGeometryKHR(const ExtrudedObjModel& model);
   void                             createBottomLevelAS();
   void                             createTopLevelAS();
   void                             createRtDescriptorSet();
@@ -233,6 +251,7 @@ public:
     float         r        = 0.005;
     float         cut      = 0.7;
     int           rayEdges = 0;
+    int useExtrusion = 0;
 
 
   } m_rtPushConstants;

@@ -62,10 +62,7 @@ const float just_scalingy[9] = {0, -1, 0, 0, 0, 0, 0, 1, 0};
 
 void main()
 {
-  if(pushC.frame > pushC.maxBounces)
-  {
-    //return;
-  }
+
   uint mask = 0;
   // Initialize the random number
   prd.seed       = tea(gl_LaunchIDEXT.y * gl_LaunchSizeEXT.x + gl_LaunchIDEXT.x, pushC.frame);
@@ -94,7 +91,7 @@ void main()
   prd.last_bsdf_pdf = 1.0;
   prd.specular      = true;
   prd.first         = true;
-
+  prd.needsSampling = false;
 
   prd.color = vec3(0, 0, 0);
 

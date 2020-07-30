@@ -9,9 +9,11 @@ layout(binding = 1, set = 0, rgba32f) uniform image2D image;
 layout(binding = 2, set = 0, rgba32f) uniform image2D normalImage;
 layout(binding = 3, set = 0, rgba32f) uniform image2D depthImage;
 layout(binding = 4, set = 0, rgba32f) uniform image2D idImage;
+layout(binding = 5, set = 0) uniform accelerationStructureEXT extrusionAS;
 
 layout(location = 0) rayPayloadEXT hitPayload prd;
 layout(location = 1) rayPayloadEXT celPayload cel;
+layout(location = 2) rayPayloadEXT bool isShadowed;
 
 layout(binding = 0, set = 1) uniform CameraProperties
 {
@@ -24,96 +26,63 @@ cam;
 
 layout(push_constant) uniform Constants
 {
-  vec4 clearColor;
-  vec4 lightColor;
-  vec4 lightPosition;
-    int           numObjs;
-    int numAreaSamples;
-    int frame;
-    int numSamples;
-    float fuzzyAngle;
-    float ior;
-    int           numPointLights;
-    int numAreaLights;
-    float         celramp ;
-    int           celsteps;
-    bool          celatten;
-  	int numids;
-    float r;
-    float cut;
-    int rayEdges;
+  vec4  clearColor;
+  vec4  lightColor;
+  vec4  lightPosition;
+  int   numObjs;
+  int   numAreaSamples;
+  int   frame;
+  int   numSamples;
+  float fuzzyAngle;
+  float ior;
+  int   numPointLights;
+  int   numAreaLights;
+  float celramp;
+  int   celsteps;
+  bool  celatten;
+  int   numids;
+  float r;
+  float cut;
+  int   rayEdges;
+  int   useExtrusion;
 }
 pushC;
 
 
-
-const float gaussian_k[25] = {
-            0.024, 0.034, 0.038, 0.034, 0.024,
-            0.034, 0.049, 0.055, 0.049, 0.034,
-            0.038, 0.055, 0.063, 0.055, 0.038,
-            0.034, 0.049, 0.055, 0.049, 0.034,
-            0.024, 0.034, 0.038, 0.034, 0.024
-    };
+const float gaussian_k[25] = {0.024, 0.034, 0.038, 0.034, 0.024, 0.034, 0.049, 0.055, 0.049,
+                              0.034, 0.038, 0.055, 0.063, 0.055, 0.038, 0.034, 0.049, 0.055,
+                              0.049, 0.034, 0.024, 0.034, 0.038, 0.034, 0.024};
 
 
-     const float sobel_x[9] = {
-            1, 0, -1,
-            2, 0, -2,
-            1, 0, -1
-    };
+const float sobel_x[9] = {1, 0, -1, 2, 0, -2, 1, 0, -1};
 
-    const float sobel_y[9] = {
-            1, 2, 1,
-            0, 0, 0,
-            -1, -2, -1
-    };
+const float sobel_y[9] = {1, 2, 1, 0, 0, 0, -1, -2, -1};
 
-    const float just_scalingx[9] = {
-            0, 0, 0,
-            -1, 0, 1,
-            0, 0, 0
-    };
+const float just_scalingx[9] = {0, 0, 0, -1, 0, 1, 0, 0, 0};
 
-    const float just_scalingy[9] = {
-            0, -1, 0,
-            0, 0, 0,
-            0, 1, 0
-    };
-
-
-
-
+const float just_scalingy[9] = {0, -1, 0, 0, 0, 0, 0, 1, 0};
 
 
 void main()
 {
-   vec2 m[9] = vec2[](
-    vec2(-pushC.r, pushC.r),
-    vec2(0, pushC.r),
-    vec2(pushC.r, pushC.r),
-    vec2(-pushC.r, 0),
-    vec2(0, 0),
-    vec2(pushC.r, 0),
-    vec2(-pushC.r, -pushC.r),
-    vec2(0, -pushC.r),
-    vec2(pushC.r, -pushC.r)
-  );
+  vec2 m[9] = vec2[](vec2(-pushC.r, pushC.r), vec2(0, pushC.r), vec2(pushC.r, pushC.r),
+                     vec2(-pushC.r, 0), vec2(0, 0), vec2(pushC.r, 0), vec2(-pushC.r, -pushC.r),
+                     vec2(0, -pushC.r), vec2(pushC.r, -pushC.r));
 
- 
+
   vec4 c[9];
   // Initialize the random number
   prd.seed        = tea(gl_LaunchIDEXT.y * gl_LaunchSizeEXT.x + gl_LaunchIDEXT.x, pushC.frame);
   vec3  hitValues = vec3(0);
   float ddd       = 0;
   vec3  nnn       = vec3(0);
-  int ooo = 0;
-  vec4 origin;
-  vec4 direction;
-  uint  rayFlags  = gl_RayFlagsOpaqueEXT;
+  int   ooo       = 0;
+  vec4  origin;
+  vec4  direction;
+  uint  rayFlags = gl_RayFlagsOpaqueEXT;
 
 
   float outlines = 1;
-
 
 
   for(int smpl = 0; smpl < pushC.numSamples; smpl++)
@@ -129,83 +98,91 @@ void main()
     const vec2 inUV        = pixelCenter / vec2(gl_LaunchSizeEXT.xy);
     vec2       d           = inUV * 2.0 - 1.0;
 
-    origin    = cam.viewInverse * vec4(0, 0, 0, 1);
-    vec4 target    = cam.projInverse * vec4(d.x, d.y, 1, 1);
-    direction = cam.viewInverse * vec4(normalize(target.xyz), 0);
+    origin      = cam.viewInverse * vec4(0, 0, 0, 1);
+    vec4 target = cam.projInverse * vec4(d.x, d.y, 1, 1);
+    direction   = cam.viewInverse * vec4(normalize(target.xyz), 0);
 
-    
+
     float tMin      = 0.001;
     float tMax      = 10000.0;
     prd.done        = true;
     prd.attenuation = vec3(1, 1, 1);
 
-    
-  if(pushC.rayEdges > 0){
-  int ids = -1;
-    for(int i = 0; i < 9; i++){
+
+    if(pushC.rayEdges > 0)
+    {
+      int ids = -1;
+      for(int i = 0; i < 9; i++)
+      {
         vec4 o = vec4(origin.xy + m[i], origin.zw);
         traceRayEXT(topLevelAS,     // acceleration structure
-                  rayFlags,       // rayFlags
-                  0xFF,           // cullMask
-                  1,              // sbtRecordOffset
-                  0,              // sbtRecordStride
-                  2,              // missIndex
-                  o.xyz,     // ray origin
-                  0,           // ray min range
-                  direction.xyz,  // ray direction
-                  10000,           // ray max range
-                  1               // payload (location = 0)
-      );
-      c[i] = vec4(cel.normal, cel.depth);
-      
-      //outlines *= float(ids < 0 || ids == cel.object);
-      ids = cel.object;
-    }
+                    rayFlags,       // rayFlags
+                    0xFF,           // cullMask
+                    1,              // sbtRecordOffset
+                    0,              // sbtRecordStride
+                    2,              // missIndex
+                    o.xyz,          // ray origin
+                    0,              // ray min range
+                    direction.xyz,  // ray direction
+                    10000,          // ray max range
+                    1               // payload (location = 0)
+        );
+        c[i] = vec4(cel.normal, cel.depth);
+
+        //outlines *= float(ids < 0 || ids == cel.object);
+        ids = cel.object;
+      }
 
       vec4 devx = vec4(0);
-  vec4 devy = vec4(0);
-  
-  {
-  int w_k = 3;
-  int h_k = 3;
-        int a = ((w_k + 1) / 2) - 1;
-        int b = ((h_k + 1) / 2) - 1;
+      vec4 devy = vec4(0);
+
+      {
+        int w_k = 3;
+        int h_k = 3;
+        int a   = ((w_k + 1) / 2) - 1;
+        int b   = ((h_k + 1) / 2) - 1;
 
 
-       
-        for(int j = 0; j < h_k; j++){
-            for(int i = 0; i < w_k; i++){
-                float kernelpixx = sobel_x[(j * w_k) + i];
-                float kernelpixy = sobel_y[(j * w_k) + i];
-                devx += kernelpixx * c[(j * w_k) + i];
-                devy += kernelpixy * c[(j * w_k) + i];
-            }
+        for(int j = 0; j < h_k; j++)
+        {
+          for(int i = 0; i < w_k; i++)
+          {
+            float kernelpixx = sobel_x[(j * w_k) + i];
+            float kernelpixy = sobel_y[(j * w_k) + i];
+            devx += kernelpixx * c[(j * w_k) + i];
+            devy += kernelpixy * c[(j * w_k) + i];
+          }
         }
-       
-
- 
 
 
- 
- 
-                
         vec4 mag = sqrt(devx * devx + devy * devy);
-        mag = step(pushC.cut, mag);
+        mag      = step(pushC.cut, mag);
 
-        outlines *= (1 - mag.r) * (1-mag.g) * (1 - mag.b) * (1 - mag.a);
-
-    }
-  }
-
-    if(outlines <= 0.01){
-       break;
+        outlines *= (1 - mag.r) * (1 - mag.g) * (1 - mag.b) * (1 - mag.a);
+      }
     }
 
+    if(outlines <= 0.01)
+    {
+      break;
+    }
+
+    /*if(pushC.useExtrusion > 0)
+    {
+      isShadowed = true;
+      traceRayEXT(extrusionAS, rayFlags | gl_RayFlagsSkipClosestHitShaderEXT, 0xFF, 0, 0, 1,
+                  origin.xyz, tMin, direction.xyz, tMax, 0);
+      if(isShadowed)
+      {
+        prd.hitValue = vec3(1);
+        break;
+      }
+    }*/
 
 
     for(;;)
     {
-      traceRayEXT(topLevelAS,     // acceleration structure
+      traceRayEXT(extrusionAS,    // acceleration structure
                   rayFlags,       // rayFlags
                   0xFF,           // cullMask
                   0,              // sbtRecordOffset
@@ -217,7 +194,7 @@ void main()
                   tMax,           // ray max range
                   0               // payload (location = 0)
       );
-      
+
       hitValues += prd.hitValue * prd.attenuation;
 
       ddd = smpl == 0 ? prd.depth : ddd;
@@ -236,11 +213,8 @@ void main()
     }
   }
 
-  
 
-  
-  
-  prd.hitValue = outlines > 0.01 ? prd.hitValue / pushC.numSamples : vec3(0,0,0);
+  prd.hitValue = outlines > 0.01 ? prd.hitValue / pushC.numSamples : vec3(0, 0, 0);
 
 
   // Do accumulation over time
@@ -254,8 +228,9 @@ void main()
   {
     // First frame, replace the value in the buffer
     imageStore(image, ivec2(gl_LaunchIDEXT.xy), vec4(prd.hitValue, 1.f));
-    imageStore(depthImage, ivec2(gl_LaunchIDEXT.xy), vec4(vec3(ddd) , 1.f));
+    imageStore(depthImage, ivec2(gl_LaunchIDEXT.xy), vec4(vec3(ddd), 1.f));
     imageStore(normalImage, ivec2(gl_LaunchIDEXT.xy), vec4(nnn, 1.f));
-    imageStore(idImage, ivec2(gl_LaunchIDEXT.xy), vec4(vec3(prd.object) / float(pushC.numids), 1.f));
+    imageStore(idImage, ivec2(gl_LaunchIDEXT.xy),
+               vec4(vec3(prd.object) / float(pushC.numids), 1.f));
   }
 }

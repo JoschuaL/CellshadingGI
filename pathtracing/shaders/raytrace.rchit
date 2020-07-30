@@ -200,8 +200,9 @@ void main()
       break;
     }
     case 32: {
-      mask = 8;
-      ww   = 1;
+      mask              = 8;
+      ww                = 1;
+      prd.needsSampling = true;
       break;
     }
   }
@@ -269,10 +270,10 @@ void main()
   mc.inDir            = -rayDir;
   mc.eval_color       = vec3(0, 0, 0);
 
-  mc.seed = prd.seed;
+  mc.seed             = prd.seed;
   executeCallableEXT(mask, 0);
 
-  prd.seed = mc.seed;
+  prd.seed  = mc.seed;
 
 
   isShadowed = true;
@@ -321,7 +322,7 @@ void main()
 
 
   prd.weight *= mc.sample_color / (mc.sample_pdf * p);
-  prd.color = prd.weight;
+  //prd.color = prd.weight;
 
 
   prd.rayOrigin    = worldPos;

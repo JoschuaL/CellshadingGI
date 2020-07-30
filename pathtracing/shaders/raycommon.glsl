@@ -10,19 +10,20 @@ struct hitPayload
   bool  done;
   float last_bsdf_pdf;
   bool  specular;
-  bool first;
+  bool  first;
   float depth;
-  vec3 normal;
-  int object;
-  
+  vec3  normal;
+  int   object;
+  bool  needsSampling;
+  float reset;
 };
 
 struct celPayload
 {
-    float depth;
-    vec3 normal;
-    int object;
-    uint celid;
+  float depth;
+  vec3  normal;
+  int   object;
+  uint  celid;
 };
 
 struct AreaLight
@@ -50,7 +51,6 @@ struct materialCall
   vec3  inDir;
   vec3  outDir;
   vec3  position;
-  vec3  emission;
   float fuzzyAngle;
   float ior;
   vec3  eval_color;
@@ -58,7 +58,7 @@ struct materialCall
   float sample_pdf;
   vec3  sample_in;
   float pdf_pdf;
-  bool entering;
+  bool  entering;
 };
 
 
@@ -73,15 +73,15 @@ struct emissionCall
 
 struct directSampleCall
 {
-  vec3      pos;
-  vec3      intensity;
-  float     pdf_area;
-  float     pdf_dir;
-  float     cos_v;
-  AreaLight li;
+  vec3       pos;
+  vec3       intensity;
+  float      pdf_area;
+  float      pdf_dir;
+  float      cos_v;
+  AreaLight  li;
   PointLight p;
-  uint      seed;
-  vec3      from;
+  uint       seed;
+  vec3       from;
 };
 
 struct LocalCoords
@@ -187,14 +187,26 @@ void sample_cosine_hemisphere(LocalCoords coords, float u, float v, inout materi
   mc.sample_in  = d.x * coords.t + d.y * coords.bt + z * coords.n;
   mc.sample_pdf = abs(z) / M_PI;*/
 
-  /*float phi       = 2.0 * M_PI * u;
+  float phi       = 2.0 * M_PI * u;
   float cos_theta = sqrt(v);
   float theta     = acos(cos_theta);
 
   vec3 du       = normalize(cos(phi) * coords.t + sin(phi) * coords.bt);
   vec3 dir      = normalize(cos_theta * coords.n + sin(theta) * du);
   mc.sample_in  = dir;
-  mc.sample_pdf = cos_theta / M_PI;*/
+  mc.sample_pdf = cos_theta / M_PI;
+}
+
+vec3 sample_cosine_hemisphere_direct(LocalCoords coords, float u, float v)
+{
+
+
+  float phi       = 2.0 * M_PI * u;
+  float cos_theta = sqrt(v);
+  float theta     = acos(cos_theta);
+
+  vec3 du = normalize(cos(phi) * coords.t + sin(phi) * coords.bt);
+  return normalize(cos_theta * coords.n + sin(theta) * du);
 }
 
 float cosine_power_hemisphere_pdf(float c, float k)

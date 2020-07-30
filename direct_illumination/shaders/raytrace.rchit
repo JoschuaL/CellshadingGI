@@ -29,23 +29,23 @@ layout(binding = 8, set = 1) buffer PointLightsBuffer { PointLight l[]; } plight
 
 layout(push_constant) uniform Constants
 {
-   vec4 clearColor;
-    vec4 lightColor;
-    vec4 lightPosition;
-    int           numObjs;
-    int numAreaSamples;
-    int frame;
-    int numSamples;
-    float fuzzyAngle;
-    float ior;
-    int           numPointLights;
-  	int numAreaLights;
-    float         celramp;
-    int           celsteps;
-    bool          celatten;
-  	int numids;
-  	float r;
-  	float cut;
+  vec4  clearColor;
+  vec4  lightColor;
+  vec4  lightPosition;
+  int   numObjs;
+  int   numAreaSamples;
+  int   frame;
+  int   numSamples;
+  float fuzzyAngle;
+  float ior;
+  int   numPointLights;
+  int   numAreaLights;
+  float celramp;
+  int   celsteps;
+  bool  celatten;
+  int   numids;
+  float r;
+  float cut;
 }
 pushC;
 
@@ -54,7 +54,7 @@ layout(location = 0) callableDataEXT materialCall mc;
 
 void main()
 {
-  
+
   
 
   // Object of this instance
@@ -63,8 +63,8 @@ void main()
 
   // Indices of the triangle
   const ivec3 ind = ivec3(indices[nonuniformEXT(objId)].i[3 * gl_PrimitiveID + 0],   //
-                    indices[nonuniformEXT(objId)].i[3 * gl_PrimitiveID + 1],   //
-                    indices[nonuniformEXT(objId)].i[3 * gl_PrimitiveID + 2]);  //
+                          indices[nonuniformEXT(objId)].i[3 * gl_PrimitiveID + 1],   //
+                          indices[nonuniformEXT(objId)].i[3 * gl_PrimitiveID + 2]);  //
   // Vertex of the triangle
   Vertex v0 = vertices[nonuniformEXT(objId)].v[ind.x];
   Vertex v1 = vertices[nonuniformEXT(objId)].v[ind.y];
@@ -80,8 +80,8 @@ void main()
   vec3 snormal = v0.nrm * barycentrics.x + v1.nrm * barycentrics.y + v2.nrm * barycentrics.z;
   vec3 gnormal = normalize(cross(v1.pos - v0.pos, v2.pos - v0.pos));
   // Transforming the normal to world space
-  snormal       = normalize(vec3(scnDesc.i[gl_InstanceID].transfoIT * vec4(snormal, 0.0)));
-  gnormal       = normalize(vec3(scnDesc.i[gl_InstanceID].transfoIT * vec4(gnormal, 0.0)));
+  snormal             = normalize(vec3(scnDesc.i[gl_InstanceID].transfoIT * vec4(snormal, 0.0)));
+  gnormal             = normalize(vec3(scnDesc.i[gl_InstanceID].transfoIT * vec4(gnormal, 0.0)));
   const int lightType = floatBitsToInt(pushC.lightPosition.w);
 
   // Computing the coordinates of the hit position
@@ -90,7 +90,7 @@ void main()
   worldPos = vec3(scnDesc.i[gl_InstanceID].transfo * vec4(worldPos, 1.0));
 
   const float inanglecos = dot(gl_WorldRayDirectionEXT, gnormal);
-  const float ins = dot(gl_WorldRayDirectionEXT, snormal);
+  const float ins        = dot(gl_WorldRayDirectionEXT, snormal);
 
   gnormal *= -sign(inanglecos);
   snormal *= -sign(ins);
@@ -98,24 +98,24 @@ void main()
   prd.normal = (matProb & 32) != 0 ? (snormal + vec3(1)) / 2 : vec3(-1);
   prd.object = (matProb & 32) != 0 ? v0.id : 0;
 
-  
+
   worldPos = offset_ray(worldPos, gnormal);
 
   mc.celcounter = 0;
-  prd.celid = (matProb & 32) != 0 ? v0.celid : 0;
-  mc.objId  = objId;
-  mc.pId    = gl_PrimitiveID;
-  mc.instID = gl_InstanceID;
+  prd.celid     = (matProb & 32) != 0 ? v0.celid : 0;
+  mc.objId      = objId;
+  mc.pId        = gl_PrimitiveID;
+  mc.instID     = gl_InstanceID;
   mc.texCoord =
       v0.texCoord * barycentrics.x + v1.texCoord * barycentrics.y + v2.texCoord * barycentrics.z;
   ;
   mc.normal        = snormal;
   mc.outDir        = gl_WorldRayDirectionEXT;
-  mc.origin = gl_WorldRayOriginEXT;
-  mc.inR   = vec3(0, 0, 0);
-  mc.outR = vec3(0,0,0);
+  mc.origin        = gl_WorldRayOriginEXT;
+  mc.inR           = vec3(0, 0, 0);
+  mc.outR          = vec3(0, 0, 0);
   mc.emission      = vec3(0, 0, 0);
-  mc.celradiance = vec3(0);
+  mc.celradiance   = vec3(0);
   mc.celfaccounter = 1;
   vec3 lightsColor = vec3(0.0, 0.0, 0.0);
 
@@ -126,10 +126,10 @@ void main()
   // Point light
   if(lightType == 0)
   {
-    const vec3 lDir      = pushC.lightPosition.xyz - worldPos;
-    lightDistance  = length(lDir);
-    lightColor = pushC.lightColor.xyz / (lightDistance * lightDistance);
-    L              = lDir / lightDistance;
+    const vec3 lDir = pushC.lightPosition.xyz - worldPos;
+    lightDistance   = length(lDir);
+    lightColor      = pushC.lightColor.xyz / (lightDistance * lightDistance);
+    L               = lDir / lightDistance;
   }
   else  // Directional light
   {
@@ -142,26 +142,39 @@ void main()
 
 
   // Diffuse
-  
-  
+
+
   vec3 lcolor = vec3(0);
-   mc.inDir          = L;
-        mc.inR    = lightColor.xyz;
-        mc.emission       = vec3(0, 0, 0);
-    int call = 0;
-    float fac = 1.0;
-  switch(matProb){
-    case 1:{call = 0; break;}
-    case 2:{call = 1; break;}
-    case 3:{call = rnd(prd.seed) > 0.5 ? 1 : 0; fac *= 2; break;}
-    case 32:{call = 4; break;}
+  mc.inDir    = L;
+  mc.inR      = lightColor.xyz;
+  mc.emission = vec3(0, 0, 0);
+  int   call  = 0;
+  float fac   = 1.0;
+  switch(matProb)
+  {
+    case 1: {
+      call = 0;
+      break;
+    }
+    case 2: {
+      call = 1;
+      break;
+    }
+    case 3: {
+      call = rnd(prd.seed) > 0.5 ? 1 : 0;
+      fac *= 2;
+      break;
+    }
+    case 32: {
+      call = 4;
+      break;
+    }
   }
-       
-          executeCallableEXT(call, 0);
- 
-       
- 
-    vec3 emission = mc.emission;
+
+  executeCallableEXT(call, 0);
+
+
+  vec3 emission = mc.emission;
 
   // Tracing shadow ray only if the light is visible from the surface
   if(dot(snormal, L) > 0)
@@ -170,7 +183,7 @@ void main()
     const float tMax   = lightDistance;
     const vec3  rayDir = L;
     const uint  flags  = gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsOpaqueEXT
-                 | gl_RayFlagsSkipClosestHitShaderEXT;
+                       | gl_RayFlagsSkipClosestHitShaderEXT;
     isShadowed = true;
     traceRayEXT(topLevelAS,  // acceleration structure
                 flags,       // rayFlags
@@ -178,195 +191,195 @@ void main()
                 0,           // sbtRecordOffset
                 0,           // sbtRecordStride
                 1,           // missIndex
-                worldPos,      // ray origin
+                worldPos,    // ray origin
                 tMin,        // ray min range
                 rayDir,      // ray direction
                 tMax,        // ray max range
                 1            // payload (location = 1)
     );
-  
-        
 
-           lcolor = mc.outR * fac * float(!isShadowed);
-  
+
+    lcolor = mc.outR * fac * float(!isShadowed);
+  }
+
+
+  for(int i = 0; i < pushC.numPointLights; i++)
+  {
+
+    PointLight li = plights.l[i];
+
+    if(li.color.x + li.color.y + li.color.z <= 0.0)
+    {
+
+      continue;
     }
-   
-        
-       
-    
 
 
-  for(int i = 0; i < pushC.numPointLights; i++){
-   
-   PointLight li = plights.l[i];
-      
-      if(li.color.x + li.color.y + li.color.z <= 0.0)
-      {
-       
-          continue;
-        
+    vec3 pos = li.pos.xyz;
+
+    vec3  ldir = pos - worldPos;
+    float dist = length(ldir);
+    vec3  L    = ldir / dist;
+
+    float outanglecos = dot(L, gnormal);
+
+    if(outanglecos < 0)
+    {
+      continue;
+    }
+
+
+    float tMin   = 0.000;
+    float tMax   = dist;
+    vec3  rayDir = L;
+    uint  flags  = gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsOpaqueEXT
+                 | gl_RayFlagsSkipClosestHitShaderEXT;
+    isShadowed = true;
+
+
+    traceRayEXT(topLevelAS,  // acceleration structure
+                flags,       // rayFlags
+                0xFF,        // cullMask
+                0,           // sbtRecordOffset
+                0,           // sbtRecordStride
+                1,           // missIndex
+                worldPos,    // ray origin
+                tMin,        // ray min range
+                rayDir,      // ray direction
+                tMax,        // ray max range
+                1            // payload (location = 1)
+    );
+
+
+    if(isShadowed)
+    {
+      continue;
+    }
+
+
+    mc.inDir = L;
+    mc.inR   = li.color.xyz / (dist * dist);
+
+
+    int   call = 0;
+    float fac  = 1.0;
+    switch(matProb)
+    {
+      case 1: {
+        call = 0;
+        break;
       }
-     
+      case 2: {
+        call = 1;
+        break;
+      }
+      case 3: {
+        executeCallableEXT(0, 0);
+        call = 1;
+        break;
+      }
+      case 32: {
+        call = 4;
+        break;
+      }
+    }
 
-       
-
-        vec3 pos = li.pos.xyz;
-
-        vec3  ldir = pos - worldPos;
-        float dist = length(ldir);
-        vec3  L    = ldir / dist;
-
-        float outanglecos = dot(L, gnormal);
-
-        if(outanglecos < 0)
-        {
-          continue;
-        }
-       
-
-        float tMin   = 0.000;
-        float tMax   = dist;
-        vec3  rayDir = L;
-        uint  flags  = gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsOpaqueEXT
-                     | gl_RayFlagsSkipClosestHitShaderEXT;
-        isShadowed = true;
-
-
-        traceRayEXT(topLevelAS,  // acceleration structure
-                    flags,       // rayFlags
-                    0xFF,        // cullMask
-                    0,           // sbtRecordOffset
-                    0,           // sbtRecordStride
-                    1,           // missIndex
-                    worldPos,    // ray origin
-                    tMin,        // ray min range
-                    rayDir,      // ray direction
-                    tMax,        // ray max range
-                    1            // payload (location = 1)
-        );
-        
-        
-        if(isShadowed){
-            continue;
-        }
-
-        
-        mc.inDir          = L;
-        mc.inR    = li.color.xyz / (dist * dist);
-       
-       
-
-
-         int call = 0;
-         float fac = 1.0;
-  switch(matProb){
-    case 1:{call = 0; break;}
-    case 2:{call = 1; break;}
-    case 3:{executeCallableEXT(0, 0); call = 1;break;}
-    case 32:{call = 4; break;}
+    executeCallableEXT(call, 0);
   }
-       
-        executeCallableEXT(call, 0);
-        
-      
 
 
-       
-
-      
-
-
-  }
-  
-  
-
-
-  
   {
     for(int i = 0; i < pushC.numAreaLights; i++)
     {
       AreaLight li = lights.l[i];
       if(li.color.x + li.color.y + li.color.z <= 0.0)
       {
-        
-          continue;
-        
+
+        continue;
       }
       vec3 d1        = li.v1.xyz - li.v0.xyz;
       vec3 d2        = li.v2.xyz - li.v0.xyz;
       vec3 ln        = normalize(cross(d1, d2));
       vec3 tempColor = vec3(0, 0, 0);
-      
-        float u = rnd(prd.seed);
-        float v = rnd(prd.seed);
 
-        vec3 lpos = u + v < 1.0 ? li.v0.xyz + (u * d1) + (v * d2) :
-                                  li.v0.xyz + ((1.0 - u) * d1) + ((1.0 - v) * d2);
+      float u = rnd(prd.seed);
+      float v = rnd(prd.seed);
 
-
-        vec3 pos = offset_ray(offset_ray(lpos, ln), ln);
-
-        vec3  ldir = pos - worldPos;
-        float dist = length(ldir);
-        vec3  L    = ldir / dist;
-
-        float outanglecos = dot(L, gnormal);
-
-        if(outanglecos < 0)
-        {
-          
-            continue;
-          
-        }
+      vec3 lpos = u + v < 1.0 ? li.v0.xyz + (u * d1) + (v * d2) :
+                                li.v0.xyz + ((1.0 - u) * d1) + ((1.0 - v) * d2);
 
 
-        float tMin   = 0.000;
-        float tMax   = dist;
-        vec3  rayDir = L;
-        uint  flags  = gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsOpaqueEXT
-                     | gl_RayFlagsSkipClosestHitShaderEXT;
-        isShadowed = true;
+      vec3 pos = offset_ray(offset_ray(lpos, ln), ln);
+
+      vec3  ldir = pos - worldPos;
+      float dist = length(ldir);
+      vec3  L    = ldir / dist;
+
+      float outanglecos = dot(L, gnormal);
+
+      if(outanglecos < 0)
+      {
+
+        continue;
+      }
 
 
-        traceRayEXT(topLevelAS,  // acceleration structure
-                    flags,       // rayFlags
-                    0xFF,        // cullMask
-                    0,           // sbtRecordOffset
-                    0,           // sbtRecordStride
-                    1,           // missIndex
-                    worldPos,    // ray origin
-                    tMin,        // ray min range
-                    rayDir,      // ray direction
-                    tMax,        // ray max range
-                    1            // payload (location = 1)
-        );
-        vec3 specular = vec3(0, 0, 0);
+      float tMin   = 0.000;
+      float tMax   = dist;
+      vec3  rayDir = L;
+      uint  flags  = gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsOpaqueEXT
+                   | gl_RayFlagsSkipClosestHitShaderEXT;
+      isShadowed = true;
+
+
+      traceRayEXT(topLevelAS,  // acceleration structure
+                  flags,       // rayFlags
+                  0xFF,        // cullMask
+                  0,           // sbtRecordOffset
+                  0,           // sbtRecordStride
+                  1,           // missIndex
+                  worldPos,    // ray origin
+                  tMin,        // ray min range
+                  rayDir,      // ray direction
+                  tMax,        // ray max range
+                  1            // payload (location = 1)
+      );
+      vec3 specular = vec3(0, 0, 0);
       if(isShadowed)
-        {
-          
-            continue;
-          
+      {
+
+        continue;
+      }
+
+
+      mc.inDir    = L;
+      mc.inR      = li.color.xyz / (dist * dist);
+      mc.emission = vec3(0, 0, 0);
+      float fac   = 1.0;
+      int   call  = 0;
+
+      switch(matProb)
+      {
+        case 1: {
+          call = 0;
+          break;
         }
+        case 2: {
+          call = 1;
+          break;
+        }
+        case 3: {
+          executeCallableEXT(0, 0);
+          call = 1;
+          break;
+        }
+        case 32: {
+          call = 4;
+          break;
+        }
+      }
 
-
-        
-        mc.inDir          = L;
-        mc.inR    = li.color.xyz / (dist * dist);
-        mc.emission       = vec3(0, 0, 0);
-        float fac = 1.0;
-         int call = 0;
-
-  switch(matProb){
-    case 1:{call = 0; break;}
-    case 2:{call = 1; break;}
-    case 3:{executeCallableEXT(0,0); call = 1; break;}
-    case 32:{call = 4; break;}
-  }
-       
-          executeCallableEXT(call, 0);
-        
-
-      
+      executeCallableEXT(call, 0);
     }
   }
 

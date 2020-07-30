@@ -222,6 +222,38 @@ void HelloVulkan::createGraphicsPipeline()
   m_debug.setObjectName(m_graphicsPipeline, "Graphics");
 }
 
+
+
+
+  // Create the buffers on Device and copy vertices, indices and materials
+  nvvk::CommandPool cmdBufGet(m_device, m_graphicsQueueIndex);
+  vk::CommandBuffer cmdBuf = cmdBufGet.createCommandBuffer();
+  model.vertexBuffer =
+      m_alloc.createBuffer(cmdBuf, loader.m_vertices,
+                           vkBU::eVertexBuffer | vkBU::eStorageBuffer | vkBU::eShaderDeviceAddress);
+  model.indexBuffer =
+      m_alloc.createBuffer(cmdBuf, loader.m_indices,
+                           vkBU::eIndexBuffer | vkBU::eStorageBuffer | vkBU::eShaderDeviceAddress);
+  model.matColorBuffer = m_alloc.createBuffer(cmdBuf, loader.m_materials, vkBU::eStorageBuffer);
+  model.matIndexBuffer = m_alloc.createBuffer(cmdBuf, loader.m_matIndx, vkBU::eStorageBuffer);
+
+
+  // Creates all textures found
+  createTextureImages(cmdBuf, loader.m_textures);
+  cmdBufGet.submitAndWait(cmdBuf);
+  m_alloc.finalizeAndReleaseStaging();
+
+  std::string objNb = std::to_string(instance.objIndex);
+  m_debug.setObjectName(model.vertexBuffer.buffer, (std::string("vertex_" + objNb).c_str()));
+  m_debug.setObjectName(model.indexBuffer.buffer, (std::string("index_" + objNb).c_str()));
+  m_debug.setObjectName(model.matColorBuffer.buffer, (std::string("mat_" + objNb).c_str()));
+  m_debug.setObjectName(model.matIndexBuffer.buffer, (std::string("matIdx_" + objNb).c_str()));
+
+
+  m_objModel.emplace_back(model);
+  m_objInstance.emplace_back(instance);
+}
+
 //--------------------------------------------------------------------------------------------------
 // Loading the OBJ file and setting up all buffers
 //
