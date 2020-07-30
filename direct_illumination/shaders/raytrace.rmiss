@@ -13,8 +13,7 @@ layout(push_constant) uniform Constants
 void main()
 {
   prd.hitValue = clearColor.xyz;
-  prd.normal = vec3(0);
-  prd.depth = 0;
-  prd.object = 0;
-
+  prd.normal   = vec3(0);
+  prd.depth    = -1;
+  prd.object   = 0;
 }

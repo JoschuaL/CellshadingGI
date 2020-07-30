@@ -240,7 +240,7 @@ void HelloVulkan::loadModel(const std::string& filename, float extrusion_width, 
   using vkBU = vk::BufferUsageFlagBits;
 
   ObjLoader loader;
-  loader.loadModel(filename, 1 << m_modelNumber, extrusion_width);
+  loader.loadModel(filename, 1 << m_modelId++, extrusion_width);
 
   // Converting from Srgb to linear
   for(auto& m : loader.m_materials)
@@ -924,7 +924,7 @@ nvvk::RaytracingBuilderKHR::Blas HelloVulkan::objectToVkGeometryKHR(const Extrud
 //
 //
 void HelloVulkan::createBottomLevelAS()
-{for(int i = 0; i < 2; i++)
+{for(int i = 0; i < 1; i++)
   {
     // BLAS - Storing each primitive in a geometry
     std::vector<nvvk::RaytracingBuilderKHR::Blas> allBlas;
@@ -964,7 +964,7 @@ void HelloVulkan::createBottomLevelAS()
 void HelloVulkan::createTopLevelAS()
 {
 
-  for(int j = 0; j < 2; j++)
+  for(int j = 0; j < 1; j++)
   {
     std::vector<nvvk::RaytracingBuilderKHR::Instance> tlas;
     tlas.reserve(m_objInstance.size());
@@ -977,8 +977,8 @@ void HelloVulkan::createTopLevelAS()
       rayInst.blasId     = m_objInstance[i].objIndex;
       rayInst.hitGroupId = 0;  // We will use the same hit group for all objects
       rayInst.flags      = VK_GEOMETRY_INSTANCE_TRIANGLE_FRONT_COUNTERCLOCKWISE_BIT_KHR;
-      //rayInst.mask       = 1 << m_modelNumber++;
-      rayInst.mask = j == 0 ? 0xFF : 0x7F;
+      rayInst.mask       = 1 << i;
+      //rayInst.mask = j == 0 ? 0xFF : 0x7F;
       tlas.emplace_back(rayInst);
     }
     m_rtBuilder.buildTlas(tlas, j, vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastTrace);
@@ -1023,7 +1023,7 @@ void HelloVulkan::createRtDescriptorSet()
 
   m_rtDescSetLayoutBind.addBinding(vkDSLB(4, vkDT::eStorageImage, 1, vkSS::eRaygenKHR));
 
-  m_rtDescSetLayoutBind.addBinding(vkDSLB(5, vkDT::eAccelerationStructureKHR, 1, vkSS::eRaygenKHR | vkSS::eClosestHitKHR));
+  //m_rtDescSetLayoutBind.addBinding(vkDSLB(5, vkDT::eAccelerationStructureKHR, 1, vkSS::eRaygenKHR | vkSS::eClosestHitKHR));
 
   m_rtDescPool      = m_rtDescSetLayoutBind.createPool(m_device);
   m_rtDescSetLayout = m_rtDescSetLayoutBind.createLayout(m_device);
@@ -1034,10 +1034,10 @@ void HelloVulkan::createRtDescriptorSet()
   descASInfo.setAccelerationStructureCount(1);
   descASInfo.setPAccelerationStructures(&tlas);
 
-  vk::AccelerationStructureKHR extTlas = m_rtBuilder.getAccelerationStructure(1);
+  /*vk::AccelerationStructureKHR extTlas = m_rtBuilder.getAccelerationStructure(1);
   vk::WriteDescriptorSetAccelerationStructureKHR extDescASInfo;
   extDescASInfo.setAccelerationStructureCount(1);
-  extDescASInfo.setPAccelerationStructures(&extTlas);
+  extDescASInfo.setPAccelerationStructures(&extTlas);*/
 
 
   vk::DescriptorImageInfo imageInfo{
@@ -1060,7 +1060,7 @@ void HelloVulkan::createRtDescriptorSet()
   writes.emplace_back(m_rtDescSetLayoutBind.makeWrite(m_rtDescSet, 2, &normalInfo));
   writes.emplace_back(m_rtDescSetLayoutBind.makeWrite(m_rtDescSet, 3, &depthInfo));
   writes.emplace_back(m_rtDescSetLayoutBind.makeWrite(m_rtDescSet, 4, &idInfo));
-  writes.emplace_back(m_rtDescSetLayoutBind.makeWrite(m_rtDescSet, 5, &extDescASInfo));
+  //writes.emplace_back(m_rtDescSetLayoutBind.makeWrite(m_rtDescSet, 5, &extDescASInfo));
   m_device.updateDescriptorSets(static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
 }
 

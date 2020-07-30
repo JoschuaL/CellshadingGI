@@ -13,6 +13,7 @@ layout(push_constant) uniform Constants
 void main()
 {
   prd.normal = vec3(0);
-  prd.depth = 0;
+  prd.depth  = -1;
   prd.object = 0;
+  prd.celid  = 0;
 }

@@ -73,6 +73,7 @@ public:
   void onResize(int /*w*/, int /*h*/) override;
   void destroyResources();
   void rasterize(const vk::CommandBuffer& cmdBuff);
+  int m_modelId = 0;
 
   // The OBJ model
   struct ObjModel

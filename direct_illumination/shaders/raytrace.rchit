@@ -55,7 +55,6 @@ layout(location = 0) callableDataEXT materialCall mc;
 void main()
 {
 
-  
 
   // Object of this instance
   const uint objId = scnDesc.i[gl_InstanceID].objId;
@@ -72,7 +71,7 @@ void main()
 
   const int matProb = v0.mat;
 
-  prd.depth = (matProb & 32) != 0 ? gl_HitTEXT : 0;
+  prd.depth = (matProb & 32) != 0 ? gl_HitTEXT : -1;
 
   const vec3 barycentrics = vec3(1.0 - attribs.x - attribs.y, attribs.x, attribs.y);
 

@@ -2,23 +2,24 @@ const float M_PI = 3.1415926535897932384626433832795;
 
 struct hitPayload
 {
-  vec3 hitValue;
-  vec3 attenuation;
-  vec3 rayOrigin;
-  vec3 rayDirection;
-  uint seed;
-  bool done;
+  vec3  hitValue;
+  vec3  attenuation;
+  vec3  rayOrigin;
+  vec3  rayDirection;
+  uint  seed;
+  bool  done;
   float depth;
   vec3  normal;
   int   object;
-  int celid;
+  int   celid;
 };
 
 struct celPayload
 {
-    float depth;
-    vec3 normal;
-    int object;
+  float depth;
+  vec3  normal;
+  int   object;
+  uint  celid;
 };
 
 struct AreaLight

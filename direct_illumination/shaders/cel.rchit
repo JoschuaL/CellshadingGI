@@ -15,10 +15,22 @@ layout(location = 0) rayPayloadInEXT celPayload prd;
 layout(binding = 0, set = 0) uniform accelerationStructureEXT topLevelAS;
 
 
-layout(binding = 2, set = 1, scalar) buffer ScnDesc { sceneDesc i[]; } scnDesc;
+layout(binding = 2, set = 1, scalar) buffer ScnDesc
+{
+  sceneDesc i[];
+}
+scnDesc;
 
-layout(binding = 5, set = 1, scalar) buffer Vertices { Vertex v[]; } vertices[];
-layout(binding = 6, set = 1) buffer Indices { uint i[]; } indices[];
+layout(binding = 5, set = 1, scalar) buffer Vertices
+{
+  Vertex v[];
+}
+vertices[];
+layout(binding = 6, set = 1) buffer Indices
+{
+  uint i[];
+}
+indices[];
 
 
 // clang-format on
@@ -34,17 +46,14 @@ layout(push_constant) uniform Constants
   int   numSamples;
   float fuzzyAngle;
   float ior;
-  int numPointLights;
+  int   numPointLights;
 }
 pushC;
 
 
-
-
 void main()
 {
-   
- 
+
 
   // Object of this instance
   const uint objId = scnDesc.i[gl_InstanceID].objId;
@@ -52,8 +61,8 @@ void main()
 
   // Indices of the triangle
   const ivec3 ind = ivec3(indices[nonuniformEXT(objId)].i[3 * gl_PrimitiveID + 0],   //
-                    indices[nonuniformEXT(objId)].i[3 * gl_PrimitiveID + 1],   //
-                    indices[nonuniformEXT(objId)].i[3 * gl_PrimitiveID + 2]);  //
+                          indices[nonuniformEXT(objId)].i[3 * gl_PrimitiveID + 1],   //
+                          indices[nonuniformEXT(objId)].i[3 * gl_PrimitiveID + 2]);  //
   // Vertex of the triangle
   Vertex v0 = vertices[nonuniformEXT(objId)].v[ind.x];
   Vertex v1 = vertices[nonuniformEXT(objId)].v[ind.y];
@@ -61,8 +70,9 @@ void main()
 
 
   prd.object = (v0.mat & 32) != 0 ? v0.id : 0;
-  prd.depth =  (v0.mat & 32) != 0 ? gl_HitTEXT : 0;
-  
+  prd.depth  = (v0.mat & 32) != 0 ? gl_HitTEXT : -1;
+  prd.celid  = (v0.mat & 32) != 0 ? v0.celid : 0;
+
 
   const vec3 barycentrics = vec3(1.0 - attribs.x - attribs.y, attribs.x, attribs.y);
 
@@ -70,14 +80,10 @@ void main()
   vec3 snormal = v0.nrm * barycentrics.x + v1.nrm * barycentrics.y + v2.nrm * barycentrics.z;
 
   // Transforming the normal to world space
-  snormal       = normalize(vec3(scnDesc.i[gl_InstanceID].transfoIT * vec4(snormal, 0.0)));
+  snormal         = normalize(vec3(scnDesc.i[gl_InstanceID].transfoIT * vec4(snormal, 0.0)));
   const float ins = dot(gl_WorldRayDirectionEXT, snormal);
 
   snormal *= -sign(ins);
 
-  prd.normal =  (v0.mat & 32) != 0 ?  (snormal + vec3(1)) / 2 : vec3(0);
-
-  
-
-  
+  prd.normal = (v0.mat & 32) != 0 ? (snormal + vec3(1)) / 2 : vec3(0);
 }
