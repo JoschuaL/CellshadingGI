@@ -84,6 +84,7 @@ public:
     nvvk::Buffer indexBuffer;     // Device buffer of the indices forming triangles
     nvvk::Buffer matColorBuffer;  // Device buffer of array of 'Wavefront material'
     nvvk::Buffer matIndexBuffer;  // Device buffer of array of 'Wavefront material'
+    nvvk::Buffer celIndiceBuffer;
   };
 
   // Instance of the OBJ
@@ -154,7 +155,7 @@ public:
   void                             updateRtDescriptorSet();
   void                             createRtPipeline();
   void                             createRtShaderBindingTable();
-  void     raytrace(const vk::CommandBuffer& cmdBuf, const nvmath::vec4f& clearColor);
+  void     raytrace(const vk::CommandBuffer& cmdBuf, const nvmath::vec4f& clearColor, int pass);
   void     resetFrame();
   void     updateFrame();
   void     addPointLight(PointLight p);
@@ -181,10 +182,10 @@ public:
   int                                                 m_FrameCount          = 0;
   float                                               m_IOR                 = 0.3f;
 
-  float                                               m_maxRussian          = 1.0;
-  int                                                 m_modelId             = 0;
-  std::vector<PointLight>                             m_PointLights         = {};
-  nvvk::Buffer                                        m_pointLightBuffer;
+  float                   m_maxRussian  = 1.0;
+  int                     m_modelId     = 0;
+  std::vector<PointLight> m_PointLights = {};
+  nvvk::Buffer            m_pointLightBuffer;
 
   nvvk::Image m_offscreenColorImage;
 
@@ -226,12 +227,24 @@ public:
     float         max_russian    = 0.75;
     int           numPointLights = 0;
     int           numIds;
-    int           celsteps = 10;
+    int           celsteps = 3;
     float         celramp  = 0.9;
     float         r        = 0.005;
     float         cut      = 0.7;
     float         maxillum;
+    int           obid   = 0;
+    int           pass   = 0;
+    int           offset = 0;
   } m_rtPushConstants;
+
+  struct CelIndiceInformation
+  {
+    nvmath::vec3f maxdirection;
+    float         max;
+    nvmath::vec3f mindirection;
+    float         min;
+    nvmath::vec4f avg;
+  };
 
   struct PostPushConstant
   {

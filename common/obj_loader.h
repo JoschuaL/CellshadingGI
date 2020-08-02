@@ -35,8 +35,9 @@ struct VertexObj
   nvmath::vec3f color;
   nvmath::vec2f texCoord;
   int mat = 0;
-  int           id  = 0;
+  int  id  = 0;
   int celid = 0;
+
 };
 
 

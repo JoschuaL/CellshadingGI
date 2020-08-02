@@ -23,6 +23,7 @@ layout(binding = 5, set = 1, scalar) buffer Vertices { Vertex v[]; } vertices[];
 layout(binding = 6, set = 1) buffer Indices { uint i[]; } indices[];
 layout(binding = 7, set = 1) buffer AreaLightsBuffer { AreaLight l[]; } lights;
 layout(binding = 8, set = 1) buffer PointLightsBuffer { PointLight l[]; } Plights;
+layout(binding = 9, set = 1) buffer CelInfo { celinfo i[]; } CelInfos[];
 
 // clang-format on
 
@@ -44,6 +45,12 @@ layout(push_constant) uniform Constants
   int   numIds;
   int   celsteps;
   float celramp;
+  float r;
+  float cut;
+  float maxillum;
+  int   obid;
+  int   pass;
+  int   offset;
 }
 pushC;
 
@@ -111,7 +118,9 @@ void main()
   mc.texCoord =
       v0.texCoord * barycentrics.x + v1.texCoord * barycentrics.y + v2.texCoord * barycentrics.z;
   mc.normal = snormal;
-  mc.outDir = gl_WorldRayDirectionEXT;
+  mc.celdir = barycentrics.x * CelInfos[nonuniformEXT(objId)].i[ind.x].max.xyz
+              + barycentrics.y * CelInfos[nonuniformEXT(objId)].i[ind.y].max.xyz
+              + barycentrics.z * CelInfos[nonuniformEXT(objId)].i[ind.z].max.xyz;
 
 
   /* mc.objId  = objId;
@@ -200,7 +209,7 @@ void main()
       break;
     }
     case 32: {
-      mask              = 8;
+      mask              = pushC.pass == 0 ? 8 : 0;
       ww                = 1;
       prd.needsSampling = true;
       break;
@@ -270,10 +279,10 @@ void main()
   mc.inDir            = -rayDir;
   mc.eval_color       = vec3(0, 0, 0);
 
-  mc.seed             = prd.seed;
+  mc.seed = prd.seed;
   executeCallableEXT(mask, 0);
 
-  prd.seed  = mc.seed;
+  prd.seed = mc.seed;
 
 
   isShadowed = true;

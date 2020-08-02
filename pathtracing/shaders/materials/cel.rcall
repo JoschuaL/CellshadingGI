@@ -28,6 +28,7 @@ layout(binding = 4, set = 1) buffer MatIndexColorBuffer
 }
 matIndex[];
 
+
 layout(push_constant) uniform Constants
 {
   vec4  clearColor;
@@ -65,8 +66,8 @@ void main()
     diffuse *= texture(textureSamplers[nonuniformEXT(txtId)], mc.texCoord).xyz;
   }
 
-  float cellfac_eval = ceil(abs(dot(mc.normal, mc.inDir)) * celsteps) / celsteps;
-  cellfac_eval       = max(step(celramp, cellfac_eval) * 1, .3);
+  float cellfac = ceil(abs(dot(mc.normal, mc.celdir)) * celsteps) / celsteps;
+  //cellfac_eval       = max(step(celramp, cellfac_eval) * 1, .3);
 
   //mc.celfaccounter = max(cellfac,mc.celfaccounter);
   //mc.celradiance += mc.inR;
@@ -74,16 +75,14 @@ void main()
 
   //mc.outR += mc.inR * diffuse * mc.celfaccounter;
 
-  mc.eval_color = diffuse * cellfac_eval / M_PI;
+  mc.eval_color = diffuse * cellfac / M_PI;
   //mc.eval_color = vec3(0);
 
   const LocalCoords coords = gen_local_coords(mc.normal);
   sample_cosine_hemisphere(coords, rnd(mc.seed), rnd(mc.seed), mc);
 
-  float cellfac_sample = ceil(abs(dot(mc.outDir, mc.normal)) * celsteps) / celsteps;
-  cellfac_sample       = max(step(celramp, cellfac_sample), 0.3);
 
-  const vec3 color = diffuse * cellfac_sample;
+  const vec3 color = diffuse * cellfac;
 
   make_sample(mc.sample_in, mc.sample_pdf, color, mc.normal, mc);
   mc.pdf_pdf = dot(mc.inDir, mc.normal) / M_PI;

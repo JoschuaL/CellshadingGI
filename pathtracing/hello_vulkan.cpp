@@ -122,14 +122,17 @@ void HelloVulkan::createDescriptorSetLayout()
                                       vkSS::eFragment | vkSS::eClosestHitKHR | vkSS::eCallableKHR));
   // Storing vertices (binding = 5)
   m_descSetLayoutBind.addBinding(  //
-      vkDS(5, vkDT::eStorageBuffer, nbObj, vkSS::eClosestHitKHR));
+      vkDS(5, vkDT::eStorageBuffer, nbObj, vkSS::eClosestHitKHR | vkSS::eRaygenKHR));
   // Storing indices (binding = 6)
   m_descSetLayoutBind.addBinding(  //
-      vkDS(6, vkDT::eStorageBuffer, nbObj, vkSS::eClosestHitKHR));
+      vkDS(6, vkDT::eStorageBuffer, nbObj, vkSS::eClosestHitKHR | vkSS::eRaygenKHR));
   // AreaLights (binding = 7)
   m_descSetLayoutBind.addBinding(vkDS(7, vkDT::eStorageBuffer, 1, vkSS::eClosestHitKHR));
   // Point Lights (binding = 8)
   m_descSetLayoutBind.addBinding(vkDS(8, vkDT::eStorageBuffer, 1, vkSS::eClosestHitKHR));
+  // Cel storage (binding = 9)
+  m_descSetLayoutBind.addBinding(
+      vkDS(9, vkDT::eStorageBuffer, nbObj, vkSS::eRaygenKHR | vkSS::eClosestHitKHR));
 
 
   m_descSetLayout = m_descSetLayoutBind.createLayout(m_device);
@@ -155,17 +158,20 @@ void HelloVulkan::updateDescriptorSet()
   std::vector<vk::DescriptorBufferInfo> dbiMatIdx;
   std::vector<vk::DescriptorBufferInfo> dbiVert;
   std::vector<vk::DescriptorBufferInfo> dbiIdx;
+  std::vector<vk::DescriptorBufferInfo> dbiCel;
   for(size_t i = 0; i < m_objModel.size(); ++i)
   {
     dbiMat.push_back({m_objModel[i].matColorBuffer.buffer, 0, VK_WHOLE_SIZE});
     dbiMatIdx.push_back({m_objModel[i].matIndexBuffer.buffer, 0, VK_WHOLE_SIZE});
     dbiVert.push_back({m_objModel[i].vertexBuffer.buffer, 0, VK_WHOLE_SIZE});
     dbiIdx.push_back({m_objModel[i].indexBuffer.buffer, 0, VK_WHOLE_SIZE});
+    dbiCel.push_back({m_objModel[i].celIndiceBuffer.buffer, 0, VK_WHOLE_SIZE});
   }
   writes.emplace_back(m_descSetLayoutBind.makeWriteArray(m_descSet, 1, dbiMat.data()));
   writes.emplace_back(m_descSetLayoutBind.makeWriteArray(m_descSet, 4, dbiMatIdx.data()));
   writes.emplace_back(m_descSetLayoutBind.makeWriteArray(m_descSet, 5, dbiVert.data()));
   writes.emplace_back(m_descSetLayoutBind.makeWriteArray(m_descSet, 6, dbiIdx.data()));
+  writes.emplace_back(m_descSetLayoutBind.makeWriteArray(m_descSet, 9, dbiCel.data()));
 
   vk::DescriptorBufferInfo lights{m_areaLightsBuffer.buffer, 0, VK_WHOLE_SIZE};
   writes.emplace_back(m_descSetLayoutBind.makeWrite(m_descSet, 7, &lights));
@@ -223,37 +229,6 @@ void HelloVulkan::createGraphicsPipeline()
 }
 
 
-
-
-  // Create the buffers on Device and copy vertices, indices and materials
-  nvvk::CommandPool cmdBufGet(m_device, m_graphicsQueueIndex);
-  vk::CommandBuffer cmdBuf = cmdBufGet.createCommandBuffer();
-  model.vertexBuffer =
-      m_alloc.createBuffer(cmdBuf, loader.m_vertices,
-                           vkBU::eVertexBuffer | vkBU::eStorageBuffer | vkBU::eShaderDeviceAddress);
-  model.indexBuffer =
-      m_alloc.createBuffer(cmdBuf, loader.m_indices,
-                           vkBU::eIndexBuffer | vkBU::eStorageBuffer | vkBU::eShaderDeviceAddress);
-  model.matColorBuffer = m_alloc.createBuffer(cmdBuf, loader.m_materials, vkBU::eStorageBuffer);
-  model.matIndexBuffer = m_alloc.createBuffer(cmdBuf, loader.m_matIndx, vkBU::eStorageBuffer);
-
-
-  // Creates all textures found
-  createTextureImages(cmdBuf, loader.m_textures);
-  cmdBufGet.submitAndWait(cmdBuf);
-  m_alloc.finalizeAndReleaseStaging();
-
-  std::string objNb = std::to_string(instance.objIndex);
-  m_debug.setObjectName(model.vertexBuffer.buffer, (std::string("vertex_" + objNb).c_str()));
-  m_debug.setObjectName(model.indexBuffer.buffer, (std::string("index_" + objNb).c_str()));
-  m_debug.setObjectName(model.matColorBuffer.buffer, (std::string("mat_" + objNb).c_str()));
-  m_debug.setObjectName(model.matIndexBuffer.buffer, (std::string("matIdx_" + objNb).c_str()));
-
-
-  m_objModel.emplace_back(model);
-  m_objInstance.emplace_back(instance);
-}
-
 //--------------------------------------------------------------------------------------------------
 // Loading the OBJ file and setting up all buffers
 //
@@ -262,7 +237,7 @@ void HelloVulkan::loadModel(const std::string& filename, nvmath::mat4f transform
   using vkBU = vk::BufferUsageFlagBits;
 
   ObjLoader loader;
-  loader.loadModel(filename, 1 << m_modelId++);
+  loader.loadModel(filename, 1 << m_modelId++, 0);
 
   // Converting from Srgb to linear
   for(auto& m : loader.m_materials)
@@ -309,6 +284,9 @@ void HelloVulkan::loadModel(const std::string& filename, nvmath::mat4f transform
                            vkBU::eIndexBuffer | vkBU::eStorageBuffer | vkBU::eShaderDeviceAddress);
   model.matColorBuffer = m_alloc.createBuffer(cmdBuf, loader.m_materials, vkBU::eStorageBuffer);
   model.matIndexBuffer = m_alloc.createBuffer(cmdBuf, loader.m_matIndx, vkBU::eStorageBuffer);
+  std::vector<CelIndiceInformation> i(model.nbIndices, {{0,0,0},0,{0,0,0}, 0, {0,0,0,0}});
+  model.celIndiceBuffer =
+      m_alloc.createBuffer(cmdBuf, i, vkBU::eStorageBuffer);
 
 
   // Creates all textures found
@@ -904,8 +882,9 @@ void HelloVulkan::createBottomLevelAS()
     // We could add more geometry in each BLAS, but we add only one for now
     allBlas.emplace_back(blas);
   }
-  m_rtBuilder.buildBlas(allBlas, vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastTrace
-                                     | vk::BuildAccelerationStructureFlagBitsKHR::eAllowCompaction);
+  m_rtBuilder.buildBlas(allBlas, 0,
+                        vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastTrace
+                            | vk::BuildAccelerationStructureFlagBitsKHR::eAllowCompaction);
 }
 
 void HelloVulkan::createTopLevelAS()
@@ -923,7 +902,7 @@ void HelloVulkan::createTopLevelAS()
     rayInst.mask       = 1 << i;
     tlas.emplace_back(rayInst);
   }
-  m_rtBuilder.buildTlas(tlas, vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastTrace);
+  m_rtBuilder.buildTlas(tlas, 0, vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastTrace);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -949,7 +928,7 @@ void HelloVulkan::createRtDescriptorSet()
   m_rtDescSetLayout = m_rtDescSetLayoutBind.createLayout(m_device);
   m_rtDescSet       = m_device.allocateDescriptorSets({m_rtDescPool, 1, &m_rtDescSetLayout})[0];
 
-  vk::AccelerationStructureKHR                   tlas = m_rtBuilder.getAccelerationStructure();
+  vk::AccelerationStructureKHR                   tlas = m_rtBuilder.getAccelerationStructure(0);
   vk::WriteDescriptorSetAccelerationStructureKHR descASInfo;
   descASInfo.setAccelerationStructureCount(1);
   descASInfo.setPAccelerationStructures(&tlas);
@@ -1012,6 +991,11 @@ void HelloVulkan::createRtPipeline()
   vk::ShaderModule raygenSM =
       nvvk::createShaderModule(m_device,  //
                                nvh::loadFile("shaders/raytrace.rgen.spv", true, paths));
+
+  vk::ShaderModule prepassRaygenSM =
+      nvvk::createShaderModule(m_device, nvh::loadFile("shaders/prepass.rgen.spv", true, paths));
+
+
   vk::ShaderModule missSM =
       nvvk::createShaderModule(m_device,  //
                                nvh::loadFile("shaders/raytrace.rmiss.spv", true, paths));
@@ -1033,6 +1017,10 @@ void HelloVulkan::createRtPipeline()
                                             VK_SHADER_UNUSED_KHR, VK_SHADER_UNUSED_KHR,
                                             VK_SHADER_UNUSED_KHR, VK_SHADER_UNUSED_KHR};
   stages.push_back({{}, vk::ShaderStageFlagBits::eRaygenKHR, raygenSM, "main"});
+  rg.setGeneralShader(static_cast<uint32_t>(stages.size() - 1));
+  m_rtShaderGroups.push_back(rg);
+
+  stages.push_back({{}, vk::ShaderStageFlagBits::eRaygenKHR, prepassRaygenSM, "main"});
   rg.setGeneralShader(static_cast<uint32_t>(stages.size() - 1));
   m_rtShaderGroups.push_back(rg);
   // Miss
@@ -1178,6 +1166,7 @@ void HelloVulkan::createRtPipeline()
   m_rtPipeline = m_device.createRayTracingPipelineKHR({}, rayPipelineInfo).value;
 
   m_device.destroy(raygenSM);
+  m_device.destroy(prepassRaygenSM);
   m_device.destroy(missSM);
   m_device.destroy(shadowmissSM);
   m_device.destroy(celmissSM);
@@ -1236,9 +1225,19 @@ void HelloVulkan::createRtShaderBindingTable()
 //--------------------------------------------------------------------------------------------------
 // Ray Tracing the scene
 //
-void HelloVulkan::raytrace(const vk::CommandBuffer& cmdBuf, const nvmath::vec4f& clearColor)
+void HelloVulkan::raytrace(const vk::CommandBuffer& cmdBuf,
+                           const nvmath::vec4f&     clearColor,
+                           int                      pass)
 {
-  updateFrame();
+  if(pass == 0)
+  {
+    updateFrame();
+  }
+  else
+  {
+    m_FrameCount++;
+  }
+
   m_debug.beginLabel(cmdBuf, "Ray trace");
   // Initializing push constant values
   m_rtPushConstants.clearColor     = clearColor;
@@ -1255,6 +1254,7 @@ void HelloVulkan::raytrace(const vk::CommandBuffer& cmdBuf, const nvmath::vec4f&
   m_rtPushConstants.max_russian    = m_maxRussian;
   m_rtPushConstants.numPointLights = m_PointLights.size();
   m_rtPushConstants.numIds         = ObjLoader::id_counter;
+  m_rtPushConstants.pass           = pass;
 
   cmdBuf.bindPipeline(vk::PipelineBindPoint::eRayTracingKHR, m_rtPipeline);
   cmdBuf.bindDescriptorSets(vk::PipelineBindPoint::eRayTracingKHR, m_rtPipelineLayout, 0,
@@ -1267,11 +1267,11 @@ void HelloVulkan::raytrace(const vk::CommandBuffer& cmdBuf, const nvmath::vec4f&
                                        0, m_rtPushConstants);
 
   vk::DeviceSize progSize =
-      m_rtProperties.shaderGroupBaseAlignment;         // Size of a program identifier
-  vk::DeviceSize rayGenOffset        = 0u * progSize;  // Start at the beginning of m_sbtBuffer
-  vk::DeviceSize missOffset          = 1u * progSize;  // Jump over raygen
-  vk::DeviceSize hitGroupOffset      = 4u * progSize;  // Jump over the previous shaders
-  vk::DeviceSize callableGroupOffset = 6u * progSize;
+      m_rtProperties.shaderGroupBaseAlignment;           // Size of a program identifier
+  vk::DeviceSize rayGenOffset        = pass * progSize;  // Start at the beginning of m_sbtBuffer
+  vk::DeviceSize missOffset          = 2u * progSize;    // Jump over raygen
+  vk::DeviceSize hitGroupOffset      = 5u * progSize;    // Jump over the previous shaders
+  vk::DeviceSize callableGroupOffset = 7u * progSize;
 
   vk::DeviceSize sbtSize = progSize * (vk::DeviceSize)m_rtShaderGroups.size();
 
@@ -1283,10 +1283,18 @@ void HelloVulkan::raytrace(const vk::CommandBuffer& cmdBuf, const nvmath::vec4f&
                                                             progSize, sbtSize};
   const vk::StridedBufferRegionKHR callableShaderBindingTable = {
       m_rtSBTBuffer.buffer, callableGroupOffset, progSize, sbtSize};
-
-  cmdBuf.traceRaysKHR(&raygenShaderBindingTable, &missShaderBindingTable, &hitShaderBindingTable,
-                      &callableShaderBindingTable,      //
-                      m_size.width, m_size.height, 1);  //
+  if(pass == 1)
+  {
+    cmdBuf.traceRaysKHR(&raygenShaderBindingTable, &missShaderBindingTable, &hitShaderBindingTable,
+                        &callableShaderBindingTable,     //
+                        m_objModel[0].nbVertices, 1, 1);  //
+  }
+  else
+  {
+    cmdBuf.traceRaysKHR(&raygenShaderBindingTable, &missShaderBindingTable, &hitShaderBindingTable,
+                        &callableShaderBindingTable,  //
+                        m_size.width, m_size.height, 1);
+  }
 
 
   m_debug.endLabel(cmdBuf);

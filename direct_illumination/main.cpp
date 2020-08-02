@@ -215,8 +215,8 @@ int main(int argc, char** argv)
   //helloVk.loadModel(nvh::findFile("media/scenes/ladies/gumi_alone.obj", defaultSearchPaths));
   //helloVk.loadModel(nvh::findFile("media/scenes/ladies/gumi_alone.obj", defaultSearchPaths));
   helloVk.loadModel(nvh::findFile("media/scenes/ladies/walls.obj", defaultSearchPaths));
-  //helloVk.loadModel(nvh::findFile("media/scenes/ladies/gumi_alone.obj", defaultSearchPaths));
-  helloVk.loadModel(nvh::findFile("media/scenes/ladies/cube.obj", defaultSearchPaths));
+  helloVk.loadModel(nvh::findFile("media/scenes/ladies/gumi_alone.obj", defaultSearchPaths));
+  //helloVk.loadModel(nvh::findFile("media/scenes/ladies/cube.obj", defaultSearchPaths));
   //helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Original.obj", defaultSearchPaths));
 
   nvmath::vec4f plc = {10, 10, 10, 1};

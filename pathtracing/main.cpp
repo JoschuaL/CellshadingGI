@@ -61,7 +61,7 @@ static void onErrorCallback(int error, const char* description)
 }
 
 // Extra UI
-void renderUI(HelloVulkan& helloVk)
+void renderUI(HelloVulkan& helloVk, int pass)
 {
   static int item    = 1;
   bool       changed = false;
@@ -94,8 +94,9 @@ void renderUI(HelloVulkan& helloVk)
   changed |= ImGui::InputFloat("Cel Threshold", &helloVk.m_postPushConstants.threshold, 0.1, 1);
   changed |= ImGui::InputFloat("cel radius", &helloVk.m_rtPushConstants.r, 0.001, 0.01);
   changed |= ImGui::InputFloat("cel cut", &helloVk.m_rtPushConstants.cut, 0.01, 0.1);
+  changed |= ImGui::InputInt("Offset", &helloVk.m_rtPushConstants.offset, 50);
   ImGui::Value("Frames", helloVk.m_FrameCount);
-  if(changed)
+  if(changed && pass ==0)
   {
     helloVk.resetFrame();
   }
@@ -250,19 +251,17 @@ int main(int argc, char** argv)
   helloVk.setupGlfwCallbacks(window);
   ImGui_ImplGlfw_InitForVulkan(window, true);
 
-  // Main loop
-  while(!glfwWindowShouldClose(window))
+
+  for(int i = 0; i < 1000 && !glfwWindowShouldClose(window); i++)
   {
     glfwPollEvents();
-    if(helloVk.isMinimized())
-      continue;
 
     // Start the Dear ImGui frame
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
     // Updating camera buffer
-    helloVk.updateUniformBuffer();
+    //helloVk.updateUniformBuffer();
 
     // Show UI window.
     if(1 == 1)
@@ -270,7 +269,7 @@ int main(int argc, char** argv)
       ImGui::ColorEdit3("Clear color", reinterpret_cast<float*>(&clearColor));
       ImGui::Checkbox("Ray Tracer mode", &useRaytracer);  // Switch between raster and ray tracing
 
-      renderUI(helloVk);
+      renderUI(helloVk, 1);
       ImGui::Text("Application average %.3f ms/frame (%.1f FPS)",
                   1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
       ImGui::Render();
@@ -303,7 +302,95 @@ int main(int argc, char** argv)
       // Rendering Scene
       if(useRaytracer)
       {
-        helloVk.raytrace(cmdBuff, clearColor);
+        helloVk.raytrace(cmdBuff, clearColor, 1);
+      }
+      else
+      {
+        cmdBuff.beginRenderPass(offscreenRenderPassBeginInfo, vk::SubpassContents::eInline);
+        helloVk.rasterize(cmdBuff);
+        cmdBuff.endRenderPass();
+      }
+    }
+
+    // 2nd rendering pass: tone mapper, UI
+    {
+      vk::RenderPassBeginInfo postRenderPassBeginInfo;
+      postRenderPassBeginInfo.setClearValueCount(2);
+      postRenderPassBeginInfo.setPClearValues(clearValues);
+      postRenderPassBeginInfo.setRenderPass(helloVk.getRenderPass());
+      postRenderPassBeginInfo.setFramebuffer(helloVk.getFramebuffers()[curFrame]);
+      postRenderPassBeginInfo.setRenderArea({{}, helloVk.getSize()});
+
+      cmdBuff.beginRenderPass(postRenderPassBeginInfo, vk::SubpassContents::eInline);
+      // Rendering tonemapper
+      helloVk.drawPost(cmdBuff);
+      // Rendering UI
+      ImGui::RenderDrawDataVK(cmdBuff, ImGui::GetDrawData());
+      cmdBuff.endRenderPass();
+    }
+
+    // Submit for display
+    cmdBuff.end();
+    helloVk.submitFrame();
+    //helloVk.postFrameWork();
+  }
+
+
+  helloVk.resetFrame();
+  // Main loop
+  while(!glfwWindowShouldClose(window))
+  {
+    glfwPollEvents();
+    if(helloVk.isMinimized())
+      continue;
+
+    // Start the Dear ImGui frame
+    ImGui_ImplGlfw_NewFrame();
+    ImGui::NewFrame();
+
+    // Updating camera buffer
+    helloVk.updateUniformBuffer();
+
+    // Show UI window.
+    if(1 == 1)
+    {
+      ImGui::ColorEdit3("Clear color", reinterpret_cast<float*>(&clearColor));
+      ImGui::Checkbox("Ray Tracer mode", &useRaytracer);  // Switch between raster and ray tracing
+
+      renderUI(helloVk,0);
+      ImGui::Text("Application average %.3f ms/frame (%.1f FPS)",
+                  1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+      ImGui::Render();
+    }
+
+    // Start rendering the scene
+    helloVk.prepareFrame();
+
+    // Start command buffer of this frame
+    auto                     curFrame = helloVk.getCurFrame();
+    const vk::CommandBuffer& cmdBuff  = helloVk.getCommandBuffers()[curFrame];
+
+    cmdBuff.begin({vk::CommandBufferUsageFlagBits::eOneTimeSubmit});
+
+    // Clearing screen
+    vk::ClearValue clearValues[2];
+    clearValues[0].setColor(
+        std::array<float, 4>({clearColor[0], clearColor[1], clearColor[2], clearColor[3]}));
+    clearValues[1].setDepthStencil({1.0f, 0});
+
+    // Offscreen render pass
+    {
+      vk::RenderPassBeginInfo offscreenRenderPassBeginInfo;
+      offscreenRenderPassBeginInfo.setClearValueCount(2);
+      offscreenRenderPassBeginInfo.setPClearValues(clearValues);
+      offscreenRenderPassBeginInfo.setRenderPass(helloVk.m_offscreenRenderPass);
+      offscreenRenderPassBeginInfo.setFramebuffer(helloVk.m_offscreenFramebuffer);
+      offscreenRenderPassBeginInfo.setRenderArea({{}, helloVk.getSize()});
+
+      // Rendering Scene
+      if(useRaytracer)
+      {
+        helloVk.raytrace(cmdBuff, clearColor, 0);
       }
       else
       {

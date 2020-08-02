@@ -43,6 +43,10 @@ layout(push_constant) uniform Constants
   float celramp;
   float r;
   float cut;
+  float maxillum;
+  int   obid;
+  int   pass;
+  int   offset;
 }
 pushC;
 

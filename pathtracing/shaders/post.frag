@@ -1,5 +1,5 @@
 #version 450
-#extension GL_KHR_vulkan_glsl: enable
+#extension GL_KHR_vulkan_glsl : enable
 layout(location = 0) in vec2 outUV;
 layout(location = 0) out vec4 fragColor;
 

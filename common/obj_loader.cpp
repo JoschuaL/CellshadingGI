@@ -72,6 +72,9 @@ void ObjLoader::loadModel(const std::string& filename, int celid, float extrusio
     m_materials.emplace_back(m);
   }
 
+
+
+
   // If there were none, add a default
   if(m_materials.empty())
     m_materials.emplace_back(MaterialObj());
@@ -154,6 +157,8 @@ void ObjLoader::loadModel(const std::string& filename, int celid, float extrusio
 
 
   }
+
+
 
   // Fixing material indices
   for(auto& mi : m_matIndx)

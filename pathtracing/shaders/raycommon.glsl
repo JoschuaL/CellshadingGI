@@ -59,6 +59,7 @@ struct materialCall
   vec3  sample_in;
   float pdf_pdf;
   bool  entering;
+  vec3  celdir;
 };
 
 
@@ -91,6 +92,13 @@ struct LocalCoords
   vec3 bt;  ///< Bitangent
 };
 
+
+struct celinfo
+{
+  vec4 max;
+  vec4 min;
+  vec4 avg;
+};
 const float origin      = 1.0 / 32.0;
 const float float_scale = 1.0 / 65536.0;
 const float int_scale   = 256.0;
