@@ -152,6 +152,14 @@ void main()
     float maxi = 0;
     for(int i = 0; i < pushC.numPointLights; i++)
     {
+      prd.done          = false;
+        prd.weight        = vec3(1, 1, 1);
+        prd.last_bsdf_pdf = 1.0;
+        prd.specular      = true;
+        prd.first         = true;
+        prd.needsSampling = false;
+
+        prd.color = vec3(0, 0, 0);
       PointLight li = plights.l[i];
 
 
@@ -178,17 +186,36 @@ void main()
                           | gl_RayFlagsSkipClosestHitShaderEXT;
       isShadowed = true;
       traceRayEXT(topLevelAS, direct_flags, 0xFF, 0, 0, 1, origin, tMin, L, dist, 1);
+
       if(isShadowed)
       {
-        continue;
+        col = vec3(0);
       }
 
+      for(int i = 0; i <= 32 && !prd.done; i++)
+          {
+            traceRayEXT(topLevelAS,  // acceleration structure
+                        rayFlags,    // rayFlags
+                        0xFF,        // cullMask
+                        0,           // sbtRecordOffset
+                        0,           // sbtRecordStride
+                        0,           // missIndex
+                        origin,      // ray origin
+                        tMin,        // ray min range
+                        L,   // ray direction
+                        tMax,        // ray max range
+                        0            // payload (location = 0)
+            );
 
-      if(maxi < col.x + col.y + col.z)
-      {
-        maxi = col.x + col.y + col.z;
-        maxL = L;
-      }
+
+            origin    = prd.rayOrigin;
+            direction = prd.rayDirection;
+          }
+
+
+      col += prd.color;
+
+
 
 
       if(CelInfos[nonuniformEXT(pushC.obid)].i[xpos].max.w < col.x + col.y + col.z)
@@ -218,6 +245,14 @@ void main()
   else
   {
 
+prd.done          = false;
+  prd.weight        = vec3(1, 1, 1);
+  prd.last_bsdf_pdf = 1.0;
+  prd.specular      = true;
+  prd.first         = true;
+  prd.needsSampling = false;
+
+  prd.color = vec3(0, 0, 0);
 
     for(int i = 0; i <= 32 && !prd.done; i++)
     {
@@ -285,6 +320,7 @@ void main()
                       * pushC.celsteps)
                  / pushC.celsteps);
       vec3  col = c < pushC.celramp ? vec3(1, 0, 0) : vec3(0, 1, 0);
+      imageStore(image, ivec2(x,i), vec4(col,1));
     }
   }
 
