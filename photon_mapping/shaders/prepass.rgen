@@ -1,0 +1,197 @@
+#version 460
+#extension GL_EXT_ray_tracing : require
+#extension GL_GOOGLE_include_directive : enable
+#extension GL_EXT_scalar_block_layout : enable
+#extension GL_EXT_nonuniform_qualifier : enable
+#include "random.glsl"
+#include "raycommon.glsl"
+#include "wavefront.glsl"
+
+layout(binding = 0, set = 0) uniform accelerationStructureEXT topLevelAS;
+layout(binding = 1, set = 0, rgba32f) uniform image2D image;
+layout(binding = 2, set = 0, rgba32f) uniform image2D normalImage;
+layout(binding = 3, set = 0, rgba32f) uniform image2D depthImage;
+layout(binding = 4, set = 0, rgba32f) uniform image2D idImage;
+
+layout(binding = 5, set = 1, scalar) buffer Vertices
+{
+  Vertex v[];
+}
+vertices[];
+
+
+layout(binding = 6, set = 1) buffer Indices
+{
+  uint i[];
+}
+indices[];
+
+
+layout(binding = 9, set = 1) buffer CelInfo
+{
+  celinfo i[];
+}
+CelInfos[];
+
+
+layout(location = 0) rayPayloadEXT hitPayload prd;
+layout(location = 1) rayPayloadEXT celPayload cel;
+
+layout(binding = 0, set = 1) uniform CameraProperties
+{
+  mat4 view;
+  mat4 proj;
+  mat4 viewInverse;
+  mat4 projInverse;
+}
+cam;
+
+layout(push_constant) uniform Constants
+{
+  vec4  clearColor;
+  vec4  lightColor;
+  vec4  lightPosition;
+  int   numObjs;
+  int   numAreaSamples;
+  int   frame;
+  int   numSamples;
+  float fuzzyAngle;
+  float ior;
+  int   numAreaLights;
+  int   maxBounces;
+  float maxRussian;
+  int   numPointLights;
+  int   numIds;
+  int   celsteps;
+  float celramp;
+  float r;
+  float cut;
+  float maxillum;
+  int   obid;
+  int   pass;
+  int   offset;
+}
+pushC;
+
+
+const float gaussian_k[25] = {0.024, 0.034, 0.038, 0.034, 0.024, 0.034, 0.049, 0.055, 0.049,
+                              0.034, 0.038, 0.055, 0.063, 0.055, 0.038, 0.034, 0.049, 0.055,
+                              0.049, 0.034, 0.024, 0.034, 0.038, 0.034, 0.024};
+
+
+const float sobel_x[9] = {1, 0, -1, 2, 0, -2, 1, 0, -1};
+
+const float sobel_y[9] = {1, 2, 1, 0, 0, 0, -1, -2, -1};
+
+const float just_scalingx[9] = {0, 0, 0, -1, 0, 1, 0, 0, 0};
+
+const float just_scalingy[9] = {0, -1, 0, 0, 0, 0, 0, 1, 0};
+
+void main()
+{
+  uint xpos = gl_LaunchIDEXT.x;
+  uint ypos = gl_LaunchIDEXT.y;
+
+  uint mask = 0;
+  // Initialize the random number
+  prd.seed       = tea(gl_LaunchIDEXT.y * gl_LaunchSizeEXT.x + gl_LaunchIDEXT.x, pushC.frame);
+  vec3 hitValues = vec3(0);
+
+
+  const Vertex v = vertices[nonuniformEXT(pushC.obid)].v[xpos];
+
+
+  // Subpixel jitter: send the ray through a different position inside the pixel
+  // each time, to provide antialiasing.
+
+
+  vec3 origin = v.pos;
+  vec3 normal = v.nrm;
+
+  const LocalCoords locale = gen_local_coords(normal);
+  vec3 ogdirection         = sample_cosine_hemisphere_direct(locale, rnd(prd.seed), rnd(prd.seed));
+  vec3 direction           = ogdirection;
+
+  uint  rayFlags = gl_RayFlagsOpaqueEXT;
+  float tMin     = 0.001;
+  float tMax     = 10000.0;
+
+
+  prd.done          = false;
+  prd.weight        = vec3(1, 1, 1);
+  prd.last_bsdf_pdf = 1.0;
+  prd.specular      = true;
+  prd.first         = true;
+  prd.needsSampling = false;
+
+  prd.color = vec3(0, 0, 0);
+
+
+  for(int i = 0; i <= 32 && !prd.done; i++)
+  {
+    traceRayEXT(topLevelAS,  // acceleration structure
+                rayFlags,    // rayFlags
+                0xFF,        // cullMask
+                0,           // sbtRecordOffset
+                0,           // sbtRecordStride
+                0,           // missIndex
+                origin,      // ray origin
+                tMin,        // ray min range
+                direction,   // ray direction
+                tMax,        // ray max range
+                0            // payload (location = 0)
+    );
+
+
+    origin    = prd.rayOrigin;
+    direction = prd.rayDirection;
+  }
+
+  if(CelInfos[nonuniformEXT(pushC.obid)].i[xpos].max.w < prd.color.x + prd.color.y + prd.color.z)
+  {
+    CelInfos[nonuniformEXT(pushC.obid)].i[xpos].max.w   = prd.color.x + prd.color.y + prd.color.z;
+    CelInfos[nonuniformEXT(pushC.obid)].i[xpos].max.xyz = ogdirection;
+  }
+
+  if(CelInfos[nonuniformEXT(pushC.obid)].i[xpos].min.w > prd.color.x + prd.color.y + prd.color.z)
+  {
+    CelInfos[nonuniformEXT(pushC.obid)].i[xpos].min.w   = prd.color.x + prd.color.y + prd.color.z;
+    CelInfos[nonuniformEXT(pushC.obid)].i[xpos].min.xyz = ogdirection;
+  }
+  if(pushC.frame > 0)
+  {
+    const float a         = 1.0f / float(pushC.frame + 1);
+    const vec3  old_color = CelInfos[nonuniformEXT(pushC.obid)].i[xpos].avg.xyz;
+    CelInfos[nonuniformEXT(pushC.obid)].i[xpos].avg.xyz = mix(old_color, prd.color, a);
+  }
+  else
+  {
+    CelInfos[nonuniformEXT(pushC.obid)].i[xpos].avg = vec4(prd.color, 1);
+    // First frame, replace the value in the buffer
+  }
+
+  uint x = (xpos - pushC.offset) % 1920;
+  uint y = (xpos - pushC.offset) / 1920;
+  for(int i = 0; i < 1080; i++)
+  {
+    if(x >= 0 && x < 1920 && y == 0)
+    {
+      float cel =
+          ceil(dot(CelInfos[nonuniformEXT(pushC.obid)].i[xpos].max.xyz, normal) * pushC.celsteps)
+          / pushC.celsteps;
+      if(cel < pushC.celramp)
+      {
+        cel = 0.3;
+      }
+      else
+      {
+        cel = cel;
+      }
+      imageStore(image, ivec2(x, i),
+                 vec4(CelInfos[nonuniformEXT(pushC.obid)].i[xpos].max.xyz + vec3(1) / 2, 1));
+    }
+  }
+
+
+  return;
+}

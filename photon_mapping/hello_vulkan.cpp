@@ -129,8 +129,7 @@ void HelloVulkan::createDescriptorSetLayout()
   // AreaLights (binding = 7)
   m_descSetLayoutBind.addBinding(vkDS(7, vkDT::eStorageBuffer, 1, vkSS::eClosestHitKHR));
   // Point Lights (binding = 8)
-  m_descSetLayoutBind.addBinding(
-      vkDS(8, vkDT::eStorageBuffer, 1, vkSS::eClosestHitKHR | vkSS::eRaygenKHR));
+  m_descSetLayoutBind.addBinding(vkDS(8, vkDT::eStorageBuffer, 1, vkSS::eClosestHitKHR));
   // Cel storage (binding = 9)
   m_descSetLayoutBind.addBinding(
       vkDS(9, vkDT::eStorageBuffer, nbObj, vkSS::eRaygenKHR | vkSS::eClosestHitKHR));
@@ -285,8 +284,9 @@ void HelloVulkan::loadModel(const std::string& filename, nvmath::mat4f transform
                            vkBU::eIndexBuffer | vkBU::eStorageBuffer | vkBU::eShaderDeviceAddress);
   model.matColorBuffer = m_alloc.createBuffer(cmdBuf, loader.m_materials, vkBU::eStorageBuffer);
   model.matIndexBuffer = m_alloc.createBuffer(cmdBuf, loader.m_matIndx, vkBU::eStorageBuffer);
-  std::vector<CelIndiceInformation> i(model.nbIndices, {{0, 0, 0}, 0, {0, 0, 0}, 0, {0, 0, 0, 0}});
-  model.celIndiceBuffer = m_alloc.createBuffer(cmdBuf, i, vkBU::eStorageBuffer);
+  std::vector<CelIndiceInformation> i(model.nbIndices, {{0,0,0},0,{0,0,0}, 0, {0,0,0,0}});
+  model.celIndiceBuffer =
+      m_alloc.createBuffer(cmdBuf, i, vkBU::eStorageBuffer);
 
 
   // Creates all textures found
@@ -461,14 +461,12 @@ void HelloVulkan::destroyResources()
   m_alloc.destroy(m_areaLightsBuffer);
   m_alloc.destroy(m_pointLightBuffer);
 
-
   for(auto& m : m_objModel)
   {
     m_alloc.destroy(m.vertexBuffer);
     m_alloc.destroy(m.indexBuffer);
     m_alloc.destroy(m.matColorBuffer);
     m_alloc.destroy(m.matIndexBuffer);
-    m_alloc.destroy(m.celIndiceBuffer);
   }
 
   for(auto& t : m_textures)
@@ -1288,7 +1286,7 @@ void HelloVulkan::raytrace(const vk::CommandBuffer& cmdBuf,
   if(pass == 1)
   {
     cmdBuf.traceRaysKHR(&raygenShaderBindingTable, &missShaderBindingTable, &hitShaderBindingTable,
-                        &callableShaderBindingTable,      //
+                        &callableShaderBindingTable,     //
                         m_objModel[0].nbVertices, 1, 1);  //
   }
   else

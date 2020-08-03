@@ -58,8 +58,6 @@ layout(location = 0) callableDataEXT materialCall mc;
 layout(location = 1) callableDataEXT emissionCall ec;
 layout(location = 2) callableDataEXT directSampleCall dsc;
 
-const float tMin = 0.0001;
-
 
 void main()
 {
@@ -120,18 +118,9 @@ void main()
   mc.texCoord =
       v0.texCoord * barycentrics.x + v1.texCoord * barycentrics.y + v2.texCoord * barycentrics.z;
   mc.normal = snormal;
-  mc.celdir = barycentrics.x * CelInfos[nonuniformEXT(objId)].i[3 * gl_PrimitiveID + 0].max.xyz
-              + barycentrics.y * CelInfos[nonuniformEXT(objId)].i[3 * gl_PrimitiveID + 1].max.xyz
-              + barycentrics.z * CelInfos[nonuniformEXT(objId)].i[3 * gl_PrimitiveID + 2].max.xyz;
-
-  /*if(pushC.pass == 0)
-  {
-    prd.done  = true;
-    float c   = ceil(abs(dot(mc.celdir, mc.normal)) * pushC.celsteps) / pushC.celsteps;
-    prd.color = c < pushC.celramp ? vec3(1, 0, 0) : vec3(0, 1, 0);
-
-    return;
-  }*/
+  mc.celdir = barycentrics.x * CelInfos[nonuniformEXT(objId)].i[ind.x].max.xyz
+              + barycentrics.y * CelInfos[nonuniformEXT(objId)].i[ind.y].max.xyz
+              + barycentrics.z * CelInfos[nonuniformEXT(objId)].i[ind.z].max.xyz;
 
 
   /* mc.objId  = objId;
@@ -306,7 +295,7 @@ void main()
               0,           // sbtRecordStride
               1,           // missIndex
               dsc.pos,     // ray origin
-              tMin,        // ray min range
+              0.0,         // ray min range
               rayDir,      // ray direction
               dist,        // ray max range
               1            // payload (location = 1)

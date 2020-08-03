@@ -47,12 +47,6 @@ layout(push_constant) uniform Constants
   int   numIds;
   int   celsteps;
   float celramp;
-  float r;
-  float cut;
-  float maxillum;
-  int   obid;
-  int   pass;
-  int   offset;
 }
 pushC;
 
@@ -72,8 +66,7 @@ void main()
     diffuse *= texture(textureSamplers[nonuniformEXT(txtId)], mc.texCoord).xyz;
   }
 
-  float cellfac =
-      (ceil(abs(dot(mc.normal, mc.celdir)) * celsteps) / celsteps) < pushC.celramp ? 0.3 : 0.9;
+  float cellfac = ceil(abs(dot(mc.normal, mc.celdir)) * celsteps) / celsteps;
   //cellfac_eval       = max(step(celramp, cellfac_eval) * 1, .3);
 
   //mc.celfaccounter = max(cellfac,mc.celfaccounter);

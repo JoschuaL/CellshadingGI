@@ -43,7 +43,6 @@ VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 #include "nvvk/appbase_vkpp.hpp"
 #include "nvvk/commands_vk.hpp"
 #include "nvvk/context_vk.hpp"
-#include <iostream>
 
 
 //////////////////////////////////////////////////////////////////////////
@@ -97,7 +96,7 @@ void renderUI(HelloVulkan& helloVk, int pass)
   changed |= ImGui::InputFloat("cel cut", &helloVk.m_rtPushConstants.cut, 0.01, 0.1);
   changed |= ImGui::InputInt("Offset", &helloVk.m_rtPushConstants.offset, 50);
   ImGui::Value("Frames", helloVk.m_FrameCount);
-  if(changed && pass == 0)
+  if(changed && pass ==0)
   {
     helloVk.resetFrame();
   }
@@ -253,12 +252,8 @@ int main(int argc, char** argv)
   ImGui_ImplGlfw_InitForVulkan(window, true);
 
 
-  for(int i = 0; i < (33 * 33 + 1) && !glfwWindowShouldClose(window); i++)
+  for(int i = 0; i < 1000 && !glfwWindowShouldClose(window); i++)
   {
-    if(i % 50 == 0)
-    {
-      std::cout << i << std::endl;
-    }
     glfwPollEvents();
 
     // Start the Dear ImGui frame
@@ -362,7 +357,7 @@ int main(int argc, char** argv)
       ImGui::ColorEdit3("Clear color", reinterpret_cast<float*>(&clearColor));
       ImGui::Checkbox("Ray Tracer mode", &useRaytracer);  // Switch between raster and ray tracing
 
-      renderUI(helloVk, 0);
+      renderUI(helloVk,0);
       ImGui::Text("Application average %.3f ms/frame (%.1f FPS)",
                   1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
       ImGui::Render();

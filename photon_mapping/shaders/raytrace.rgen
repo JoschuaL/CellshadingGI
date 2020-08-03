@@ -120,9 +120,9 @@ void main()
                   0,              // sbtRecordStride
                   2,              // missIndex
                   origin.xyz,     // ray origin
-                  tMin,           // ray min range
+                  0,              // ray min range
                   direction.xyz,  // ray direction
-                  tMax,           // ray max range
+                  10000,          // ray max range
                   1               // payload (location = 0)
       );
 
@@ -150,9 +150,9 @@ void main()
                     0,              // sbtRecordStride
                     2,              // missIndex
                     o.xyz,          // ray origin
-                    tMin,           // ray min range
+                    0,              // ray min range
                     direction.xyz,  // ray direction
-                    tMax,           // ray max range
+                    10000,          // ray max range
                     1               // payload (location = 0)
         );
         c[j] = vec4(cel.normal, cel.depth);
