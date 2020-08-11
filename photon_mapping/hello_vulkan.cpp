@@ -127,12 +127,19 @@ void HelloVulkan::createDescriptorSetLayout()
   m_descSetLayoutBind.addBinding(  //
       vkDS(6, vkDT::eStorageBuffer, nbObj, vkSS::eClosestHitKHR | vkSS::eRaygenKHR));
   // AreaLights (binding = 7)
-  m_descSetLayoutBind.addBinding(vkDS(7, vkDT::eStorageBuffer, 1, vkSS::eClosestHitKHR));
-  // Point Lights (binding = 8)
-  m_descSetLayoutBind.addBinding(vkDS(8, vkDT::eStorageBuffer, 1, vkSS::eClosestHitKHR));
-  // Cel storage (binding = 9)
   m_descSetLayoutBind.addBinding(
-      vkDS(9, vkDT::eStorageBuffer, nbObj, vkSS::eRaygenKHR | vkSS::eClosestHitKHR));
+      vkDS(7, vkDT::eStorageBuffer, 1, vkSS::eClosestHitKHR | vkSS::eRaygenKHR));
+  // Point Lights (binding = 8)
+  m_descSetLayoutBind.addBinding(
+      vkDS(8, vkDT::eStorageBuffer, 1, vkSS::eClosestHitKHR | vkSS::eRaygenKHR));
+  // Photon storage (binding = 9)
+  m_descSetLayoutBind.addBinding(
+      vkDS(9, vkDT::eStorageBuffer, 1, vkSS::eRaygenKHR | vkSS::eClosestHitKHR));
+
+  // HitPoint storage (binding = 10)
+  m_descSetLayoutBind.addBinding(
+      vkDS(10, vkDT::eStorageBuffer, 1, vkSS::eRaygenKHR | vkSS::eClosestHitKHR)
+  );
 
 
   m_descSetLayout = m_descSetLayoutBind.createLayout(m_device);
@@ -158,20 +165,17 @@ void HelloVulkan::updateDescriptorSet()
   std::vector<vk::DescriptorBufferInfo> dbiMatIdx;
   std::vector<vk::DescriptorBufferInfo> dbiVert;
   std::vector<vk::DescriptorBufferInfo> dbiIdx;
-  std::vector<vk::DescriptorBufferInfo> dbiCel;
   for(size_t i = 0; i < m_objModel.size(); ++i)
   {
     dbiMat.push_back({m_objModel[i].matColorBuffer.buffer, 0, VK_WHOLE_SIZE});
     dbiMatIdx.push_back({m_objModel[i].matIndexBuffer.buffer, 0, VK_WHOLE_SIZE});
     dbiVert.push_back({m_objModel[i].vertexBuffer.buffer, 0, VK_WHOLE_SIZE});
     dbiIdx.push_back({m_objModel[i].indexBuffer.buffer, 0, VK_WHOLE_SIZE});
-    dbiCel.push_back({m_objModel[i].celIndiceBuffer.buffer, 0, VK_WHOLE_SIZE});
   }
   writes.emplace_back(m_descSetLayoutBind.makeWriteArray(m_descSet, 1, dbiMat.data()));
   writes.emplace_back(m_descSetLayoutBind.makeWriteArray(m_descSet, 4, dbiMatIdx.data()));
   writes.emplace_back(m_descSetLayoutBind.makeWriteArray(m_descSet, 5, dbiVert.data()));
   writes.emplace_back(m_descSetLayoutBind.makeWriteArray(m_descSet, 6, dbiIdx.data()));
-  writes.emplace_back(m_descSetLayoutBind.makeWriteArray(m_descSet, 9, dbiCel.data()));
 
   vk::DescriptorBufferInfo lights{m_areaLightsBuffer.buffer, 0, VK_WHOLE_SIZE};
   writes.emplace_back(m_descSetLayoutBind.makeWrite(m_descSet, 7, &lights));
@@ -186,6 +190,12 @@ void HelloVulkan::updateDescriptorSet()
 
   vk::DescriptorBufferInfo dbiPLights{m_pointLightBuffer.buffer, 0, VK_WHOLE_SIZE};
   writes.emplace_back(m_descSetLayoutBind.makeWrite(m_descSet, 8, &dbiPLights));
+
+  vk::DescriptorBufferInfo dbiPhotons{m_photonBuffer.buffer, 0, VK_WHOLE_SIZE};
+  writes.emplace_back(m_descSetLayoutBind.makeWrite(m_descSet, 9, &dbiPhotons));
+
+  vk::DescriptorBufferInfo dbiHitPoints{m_hitBuffer.buffer, 0, VK_WHOLE_SIZE};
+  writes.emplace_back(m_descSetLayoutBind.makeWrite(m_descSet, 10, &dbiHitPoints));
 
 
   // Writing the information
@@ -284,9 +294,6 @@ void HelloVulkan::loadModel(const std::string& filename, nvmath::mat4f transform
                            vkBU::eIndexBuffer | vkBU::eStorageBuffer | vkBU::eShaderDeviceAddress);
   model.matColorBuffer = m_alloc.createBuffer(cmdBuf, loader.m_materials, vkBU::eStorageBuffer);
   model.matIndexBuffer = m_alloc.createBuffer(cmdBuf, loader.m_matIndx, vkBU::eStorageBuffer);
-  std::vector<CelIndiceInformation> i(model.nbIndices, {{0,0,0},0,{0,0,0}, 0, {0,0,0,0}});
-  model.celIndiceBuffer =
-      m_alloc.createBuffer(cmdBuf, i, vkBU::eStorageBuffer);
 
 
   // Creates all textures found
@@ -307,30 +314,44 @@ void HelloVulkan::loadModel(const std::string& filename, nvmath::mat4f transform
 
 void HelloVulkan::postModelSetup()
 {
+  using vkBU = vk::BufferUsageFlagBits;
+  nvvk::CommandPool cmdBufGet(m_device, m_graphicsQueueIndex);
+  vk::CommandBuffer cmdBuf = cmdBufGet.createCommandBuffer();
   if(m_AreaLightsPerObject.size() > 0)
   {
-    using vkBU = vk::BufferUsageFlagBits;
-    nvvk::CommandPool cmdBufGet(m_device, m_graphicsQueueIndex);
-    vk::CommandBuffer cmdBuf = cmdBufGet.createCommandBuffer();
+
+
     m_areaLightsBuffer = m_alloc.createBuffer(cmdBuf, m_AreaLightsPerObject, vkBU::eStorageBuffer);
-    cmdBufGet.submitAndWait(cmdBuf);
-
-    m_alloc.finalizeAndReleaseStaging();
-
-    m_debug.setObjectName(m_areaLightsBuffer.buffer, (std::string("Arealights").c_str()));
   }
   else
   {
-    using vkBU = vk::BufferUsageFlagBits;
-    nvvk::CommandPool cmdBufGet(m_device, m_graphicsQueueIndex);
-    vk::CommandBuffer cmdBuf = cmdBufGet.createCommandBuffer();
-    m_areaLightsBuffer       = m_alloc.createBuffer(cmdBuf, dummy, vkBU::eStorageBuffer);
-    cmdBufGet.submitAndWait(cmdBuf);
 
-    m_alloc.finalizeAndReleaseStaging();
-
-    m_debug.setObjectName(m_areaLightsBuffer.buffer, (std::string("Arealights").c_str()));
+    m_areaLightsBuffer = m_alloc.createBuffer(cmdBuf, dummy, vkBU::eStorageBuffer);
   }
+
+  std::vector<Photon> i(
+      m_size.width * 32,
+      {{0, 0, 0}, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}});
+  m_photonBuffer = m_alloc.createBuffer(cmdBuf, i, vkBU::eStorageBuffer | vkBU::eTransferSrc | vkBU::eTransferDst);
+
+  std::vector<HitInfo> h(m_size.width * m_size.height, {
+                                                           {0, 0, 0},
+                                                           0,
+                                                           {0, 0, 0, 0},
+                                                           {0, 0, 0, 0},
+                                                           {0, 0, 0, 0},
+                                                           {0, 0, 0, 0},
+                                                           {0,0,0,0},
+                                                           {0,0,0,0},
+                                                       0});
+  m_hitBuffer = m_alloc.createBuffer(cmdBuf, h, vkBU::eStorageBuffer | vkBU::eTransferSrc | vkBU::eTransferDst);
+
+
+  cmdBufGet.submitAndWait(cmdBuf);
+
+  m_alloc.finalizeAndReleaseStaging();
+
+  m_debug.setObjectName(m_areaLightsBuffer.buffer, (std::string("Arealights").c_str()));
 }
 
 
@@ -460,6 +481,9 @@ void HelloVulkan::destroyResources()
   m_alloc.destroy(m_sceneDesc);
   m_alloc.destroy(m_areaLightsBuffer);
   m_alloc.destroy(m_pointLightBuffer);
+  m_alloc.destroy(m_photonBuffer);
+  m_alloc.destroy(m_hitBuffer);
+
 
   for(auto& m : m_objModel)
   {
@@ -566,9 +590,9 @@ void HelloVulkan::createOffscreenRender()
   {
     auto colorCreateInfo = nvvk::makeImage2DCreateInfo(m_size, m_offscreenColorFormat,
                                                        vk::ImageUsageFlagBits::eColorAttachment
-                                                           | vk::ImageUsageFlagBits::eSampled
-                                                           | vk::ImageUsageFlagBits::eStorage
-                                                           | vk::ImageUsageFlagBits::eTransferSrc);
+                                                       | vk::ImageUsageFlagBits::eSampled
+                                                       | vk::ImageUsageFlagBits::eStorage
+                                                       | vk::ImageUsageFlagBits::eTransferSrc);
 
 
     m_offscreenColorImage = m_alloc.createImage(colorCreateInfo);
@@ -581,8 +605,8 @@ void HelloVulkan::createOffscreenRender()
   {
     auto normalCreateInfo = nvvk::makeImage2DCreateInfo(m_size, m_offscreenNormalFormat,
                                                         vk::ImageUsageFlagBits::eColorAttachment
-                                                            | vk::ImageUsageFlagBits::eSampled
-                                                            | vk::ImageUsageFlagBits::eStorage);
+                                                        | vk::ImageUsageFlagBits::eSampled
+                                                        | vk::ImageUsageFlagBits::eStorage);
 
 
     m_offscreenNormalImage = m_alloc.createImage(normalCreateInfo);
@@ -595,8 +619,8 @@ void HelloVulkan::createOffscreenRender()
   {
     auto depthCreateInfoRT = nvvk::makeImage2DCreateInfo(m_size, m_offscreenDepthFormatRT,
                                                          vk::ImageUsageFlagBits::eColorAttachment
-                                                             | vk::ImageUsageFlagBits::eSampled
-                                                             | vk::ImageUsageFlagBits::eStorage);
+                                                         | vk::ImageUsageFlagBits::eSampled
+                                                         | vk::ImageUsageFlagBits::eStorage);
 
 
     m_offscreenDepthImageRT = m_alloc.createImage(depthCreateInfoRT);
@@ -609,8 +633,8 @@ void HelloVulkan::createOffscreenRender()
   {
     auto idCreateInfo = nvvk::makeImage2DCreateInfo(m_size, m_offscreenIdFormat,
                                                     vk::ImageUsageFlagBits::eColorAttachment
-                                                        | vk::ImageUsageFlagBits::eSampled
-                                                        | vk::ImageUsageFlagBits::eStorage);
+                                                    | vk::ImageUsageFlagBits::eSampled
+                                                    | vk::ImageUsageFlagBits::eStorage);
 
 
     m_offscreenIdImage = m_alloc.createImage(idCreateInfo);
@@ -623,9 +647,9 @@ void HelloVulkan::createOffscreenRender()
   {
     auto idCreateInfo = nvvk::makeImage2DCreateInfo(m_size, m_saveFormat,
                                                     vk::ImageUsageFlagBits::eColorAttachment
-                                                        | vk::ImageUsageFlagBits::eSampled
-                                                        | vk::ImageUsageFlagBits::eStorage
-                                                        | vk::ImageUsageFlagBits::eTransferSrc);
+                                                    | vk::ImageUsageFlagBits::eSampled
+                                                    | vk::ImageUsageFlagBits::eStorage
+                                                    | vk::ImageUsageFlagBits::eTransferSrc);
 
 
     m_saveImage                    = m_alloc.createImage(idCreateInfo);
@@ -814,7 +838,7 @@ void HelloVulkan::initRayTracing()
 {
   // Requesting ray tracing properties
   auto properties = m_physicalDevice.getProperties2<vk::PhysicalDeviceProperties2,
-                                                    vk::PhysicalDeviceRayTracingPropertiesKHR>();
+      vk::PhysicalDeviceRayTracingPropertiesKHR>();
   m_rtProperties  = properties.get<vk::PhysicalDeviceRayTracingPropertiesKHR>();
   m_rtBuilder.setup(m_device, &m_alloc, m_graphicsQueueIndex);
 }
@@ -884,7 +908,7 @@ void HelloVulkan::createBottomLevelAS()
   }
   m_rtBuilder.buildBlas(allBlas, 0,
                         vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastTrace
-                            | vk::BuildAccelerationStructureFlagBitsKHR::eAllowCompaction);
+                        | vk::BuildAccelerationStructureFlagBitsKHR::eAllowCompaction);
 }
 
 void HelloVulkan::createTopLevelAS()
@@ -1009,6 +1033,8 @@ void HelloVulkan::createRtPipeline()
   vk::ShaderModule celmissSM =
       nvvk::createShaderModule(m_device, nvh::loadFile("shaders/cel.rmiss.spv", true, paths));
 
+  vk::ShaderModule photonmissSM = nvvk::createShaderModule(m_device, nvh::loadFile("shaders/prepass.rmiss.spv", true, paths));
+
 
   std::vector<vk::PipelineShaderStageCreateInfo> stages;
 
@@ -1039,6 +1065,10 @@ void HelloVulkan::createRtPipeline()
   mg.setGeneralShader(static_cast<uint32_t>(stages.size() - 1));
   m_rtShaderGroups.push_back(mg);
 
+  stages.push_back({{}, vk::ShaderStageFlagBits::eMissKHR, photonmissSM, "main"});
+  mg.setGeneralShader(static_cast<uint32_t>(stages.size() - 1));
+  m_rtShaderGroups.push_back(mg);
+
   // Hit Group - Closest Hit + AnyHit
   vk::ShaderModule chitSM =
       nvvk::createShaderModule(m_device,  //
@@ -1048,6 +1078,9 @@ void HelloVulkan::createRtPipeline()
       nvvk::createShaderModule(m_device,  //
                                nvh::loadFile("shaders/cel.rchit.spv", true, paths));
 
+  vk::ShaderModule eyechitSM =
+      nvvk::createShaderModule(m_device, nvh::loadFile("shaders/eye.rchit.spv", true, paths));
+
   vk::RayTracingShaderGroupCreateInfoKHR hg{vk::RayTracingShaderGroupTypeKHR::eTrianglesHitGroup,
                                             VK_SHADER_UNUSED_KHR, VK_SHADER_UNUSED_KHR,
                                             VK_SHADER_UNUSED_KHR, VK_SHADER_UNUSED_KHR};
@@ -1056,6 +1089,10 @@ void HelloVulkan::createRtPipeline()
   m_rtShaderGroups.push_back(hg);
 
   stages.push_back({{}, vk::ShaderStageFlagBits::eClosestHitKHR, celchitSM, "main"});
+  hg.setClosestHitShader(static_cast<uint32_t>(stages.size() - 1));
+  m_rtShaderGroups.push_back(hg);
+
+  stages.push_back({{}, vk::ShaderStageFlagBits::eClosestHitKHR, eyechitSM, "main"});
   hg.setClosestHitShader(static_cast<uint32_t>(stages.size() - 1));
   m_rtShaderGroups.push_back(hg);
 
@@ -1137,9 +1174,9 @@ void HelloVulkan::createRtPipeline()
 
   // Push constant: we want to be able to update constants used by the shaders
   vk::PushConstantRange pushConstant{vk::ShaderStageFlagBits::eRaygenKHR
-                                         | vk::ShaderStageFlagBits::eClosestHitKHR
-                                         | vk::ShaderStageFlagBits::eMissKHR
-                                         | vk::ShaderStageFlagBits::eCallableKHR,
+                                     | vk::ShaderStageFlagBits::eClosestHitKHR
+                                     | vk::ShaderStageFlagBits::eMissKHR
+                                     | vk::ShaderStageFlagBits::eCallableKHR,
                                      0, sizeof(RtPushConstant)};
   pipelineLayoutCreateInfo.setPushConstantRangeCount(1);
   pipelineLayoutCreateInfo.setPPushConstantRanges(&pushConstant);
@@ -1158,7 +1195,7 @@ void HelloVulkan::createRtPipeline()
   rayPipelineInfo.setPStages(stages.data());
 
   rayPipelineInfo.setGroupCount(static_cast<uint32_t>(
-      m_rtShaderGroups.size()));  // 1-raygen, n-miss, n-(hit[+anyhit+intersect])
+                                    m_rtShaderGroups.size()));  // 1-raygen, n-miss, n-(hit[+anyhit+intersect])
   rayPipelineInfo.setPGroups(m_rtShaderGroups.data());
 
   rayPipelineInfo.setMaxRecursionDepth(2);  // Ray depth
@@ -1181,6 +1218,8 @@ void HelloVulkan::createRtPipeline()
   m_device.destroy(pointEmittSM);
   m_device.destroy(areaEmittSM);
   m_device.destroy(celSM);
+  m_device.destroy(eyechitSM);
+  m_device.destroy(photonmissSM);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1205,7 +1244,7 @@ void HelloVulkan::createRtShaderBindingTable()
   // Write the handles in the SBT
   m_rtSBTBuffer = m_alloc.createBuffer(sbtSize, vk::BufferUsageFlagBits::eTransferSrc,
                                        vk::MemoryPropertyFlagBits::eHostVisible
-                                           | vk::MemoryPropertyFlagBits::eHostCoherent);
+                                       | vk::MemoryPropertyFlagBits::eHostCoherent);
   m_debug.setObjectName(m_rtSBTBuffer.buffer, std::string("SBT").c_str());
 
   // Write the handles in the SBT
@@ -1255,39 +1294,40 @@ void HelloVulkan::raytrace(const vk::CommandBuffer& cmdBuf,
   m_rtPushConstants.numPointLights = m_PointLights.size();
   m_rtPushConstants.numIds         = ObjLoader::id_counter;
   m_rtPushConstants.pass           = pass;
+  m_rtPushConstants.width          = m_size.width;
 
   cmdBuf.bindPipeline(vk::PipelineBindPoint::eRayTracingKHR, m_rtPipeline);
   cmdBuf.bindDescriptorSets(vk::PipelineBindPoint::eRayTracingKHR, m_rtPipelineLayout, 0,
                             {m_rtDescSet, m_descSet}, {});
   cmdBuf.pushConstants<RtPushConstant>(m_rtPipelineLayout,
                                        vk::ShaderStageFlagBits::eRaygenKHR
-                                           | vk::ShaderStageFlagBits::eClosestHitKHR
-                                           | vk::ShaderStageFlagBits::eMissKHR
-                                           | vk::ShaderStageFlagBits::eCallableKHR,
+                                       | vk::ShaderStageFlagBits::eClosestHitKHR
+                                       | vk::ShaderStageFlagBits::eMissKHR
+                                       | vk::ShaderStageFlagBits::eCallableKHR,
                                        0, m_rtPushConstants);
 
   vk::DeviceSize progSize =
       m_rtProperties.shaderGroupBaseAlignment;           // Size of a program identifier
   vk::DeviceSize rayGenOffset        = pass * progSize;  // Start at the beginning of m_sbtBuffer
   vk::DeviceSize missOffset          = 2u * progSize;    // Jump over raygen
-  vk::DeviceSize hitGroupOffset      = 5u * progSize;    // Jump over the previous shaders
-  vk::DeviceSize callableGroupOffset = 7u * progSize;
+  vk::DeviceSize hitGroupOffset      = 6u * progSize;    // Jump over the previous shaders
+  vk::DeviceSize callableGroupOffset = 9u * progSize;
 
   vk::DeviceSize sbtSize = progSize * (vk::DeviceSize)m_rtShaderGroups.size();
 
   const vk::StridedBufferRegionKHR raygenShaderBindingTable = {m_rtSBTBuffer.buffer, rayGenOffset,
                                                                progSize, sbtSize};
   const vk::StridedBufferRegionKHR missShaderBindingTable   = {m_rtSBTBuffer.buffer, missOffset,
-                                                             progSize, sbtSize};
+                                                               progSize, sbtSize};
   const vk::StridedBufferRegionKHR hitShaderBindingTable    = {m_rtSBTBuffer.buffer, hitGroupOffset,
-                                                            progSize, sbtSize};
+                                                               progSize, sbtSize};
   const vk::StridedBufferRegionKHR callableShaderBindingTable = {
       m_rtSBTBuffer.buffer, callableGroupOffset, progSize, sbtSize};
   if(pass == 1)
   {
     cmdBuf.traceRaysKHR(&raygenShaderBindingTable, &missShaderBindingTable, &hitShaderBindingTable,
-                        &callableShaderBindingTable,     //
-                        m_objModel[0].nbVertices, 1, 1);  //
+                        &callableShaderBindingTable,  //
+                        m_size.width, 1, 1);          //
   }
   else
   {
@@ -1343,8 +1383,6 @@ uint32_t HelloVulkan::getMemoryTypeIndex(uint32_t typeBits, VkMemoryPropertyFlag
 
 void HelloVulkan::saveImage()
 {
-
-
   float* imagedata;
   {
     // Create the linear tiled destination image to copy to and to read the memory from
@@ -1372,7 +1410,7 @@ void HelloVulkan::saveImage()
     // Memory must be host visible to copy from
     memAllocInfo.memoryTypeIndex = getMemoryTypeIndex(memRequirements.memoryTypeBits,
                                                       VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
-                                                          | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+                                                      | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
     VK_CHECK_RESULT(vkAllocateMemory(m_device, &memAllocInfo, nullptr, &dstImageMemory));
     VK_CHECK_RESULT(vkBindImageMemory(m_device, dstImage, dstImageMemory, 0));
 
@@ -1562,4 +1600,127 @@ void HelloVulkan::postFrameWork()
     
     return;
   }*/
+}
+
+void HelloVulkan::savePhotons()
+{
+
+  Photon* photonData;
+  {
+    VkBufferCreateInfo bfCreateInfo(vks::initializers::bufferCreateInfo());
+    bfCreateInfo.sType       = VkStructureType::VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    bfCreateInfo.size        = sizeof(Photon) * m_size.width * 32;
+    bfCreateInfo.usage       = VkBufferUsageFlagBits::VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+    bfCreateInfo.sharingMode = VkSharingMode::VK_SHARING_MODE_EXCLUSIVE;
+    VkBuffer dstBuffer;
+    VK_CHECK_RESULT(vkCreateBuffer(m_device, &bfCreateInfo, nullptr, &dstBuffer));
+    VkMemoryRequirements memRequirements;
+    vkGetBufferMemoryRequirements(m_device, dstBuffer, &memRequirements);
+    VkMemoryAllocateInfo allocInfo{};
+    allocInfo.sType          = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    allocInfo.allocationSize = memRequirements.size;
+    VkDeviceMemory bufferMemory;
+    allocInfo.memoryTypeIndex = getMemoryTypeIndex(memRequirements.memoryTypeBits,
+                                                   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+                                                   | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    VK_CHECK_RESULT(vkAllocateMemory(m_device, &allocInfo, nullptr, &bufferMemory));
+    VK_CHECK_RESULT(vkBindBufferMemory(m_device, dstBuffer, bufferMemory, 0));
+
+
+    // Do the actual blit from the offscreen image to our host visible destination image
+
+    nvvk::CommandPool cmdGen(m_device, m_graphicsQueueIndex);
+
+
+    vk::CommandBuffer cmdBuf = cmdGen.createCommandBuffer();
+
+    VkBufferCopy bufferCopyRegion{};
+    bufferCopyRegion.srcOffset = 0;
+    bufferCopyRegion.srcOffset = 0;
+    bufferCopyRegion.size      = sizeof(Photon) * m_size.width * 32;
+    vkCmdCopyBuffer(cmdBuf, m_photonBuffer.buffer, dstBuffer, 1, &bufferCopyRegion);
+
+
+    cmdGen.submitAndWait(cmdBuf);
+    m_alloc.finalizeAndReleaseStaging();
+
+    vkMapMemory(m_device, bufferMemory, 0, VK_WHOLE_SIZE, 0, (void**)&photonData);
+
+    for(int i = 0; i< 32*m_size.width; i++){
+      if(photonData[i].used > 0){
+        m_photons.push_back(photonData[i]);
+      }
+    }
+    std::cout << m_photons.size() << std::endl;
+
+
+
+    vkUnmapMemory(m_device, bufferMemory);
+    vkDestroyBuffer(m_device, dstBuffer, nullptr);
+    vkFreeMemory(m_device, bufferMemory, nullptr);
+
+
+
+
+
+
+
+
+  }
+  {
+    VkBufferCreateInfo bfCreateInfo(vks::initializers::bufferCreateInfo());
+    bfCreateInfo.sType       = VkStructureType::VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    bfCreateInfo.size        = sizeof(Photon) * m_size.width * 32;
+    bfCreateInfo.usage       = VkBufferUsageFlagBits::VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+    bfCreateInfo.sharingMode = VkSharingMode::VK_SHARING_MODE_EXCLUSIVE;
+    VkBuffer srcBuffer;
+    VK_CHECK_RESULT(vkCreateBuffer(m_device, &bfCreateInfo, nullptr, &srcBuffer));
+    VkMemoryRequirements memRequirements;
+    vkGetBufferMemoryRequirements(m_device, srcBuffer, &memRequirements);
+    VkMemoryAllocateInfo allocInfo{};
+    allocInfo.sType          = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    allocInfo.allocationSize = memRequirements.size;
+    VkDeviceMemory bufferMemory;
+    allocInfo.memoryTypeIndex = getMemoryTypeIndex(memRequirements.memoryTypeBits,
+                                                   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+                                                   | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    VK_CHECK_RESULT(vkAllocateMemory(m_device, &allocInfo, nullptr, &bufferMemory));
+    VK_CHECK_RESULT(vkBindBufferMemory(m_device, srcBuffer, bufferMemory, 0));
+
+    void* data;
+    vkMapMemory(m_device, bufferMemory, 0, m_size.width * 32 * sizeof(Photon), 0, &data);
+    memset(data, 0, sizeof(Photon) * 32 * m_size.width);
+    vkUnmapMemory(m_device, bufferMemory);
+
+
+    // Do the actual blit from the offscreen image to our host visible destination image
+
+    nvvk::CommandPool cmdGen(m_device, m_graphicsQueueIndex);
+
+
+    vk::CommandBuffer cmdBuf = cmdGen.createCommandBuffer();
+
+    VkBufferCopy bufferCopyRegion{};
+    bufferCopyRegion.srcOffset = 0;
+    bufferCopyRegion.srcOffset = 0;
+    bufferCopyRegion.size      = sizeof(Photon) * m_size.width * 32;
+    vkCmdCopyBuffer(cmdBuf, srcBuffer, m_photonBuffer.buffer, 1, &bufferCopyRegion);
+
+
+
+    cmdGen.submitAndWait(cmdBuf);
+    m_alloc.finalizeAndReleaseStaging();
+
+
+    vkDestroyBuffer(m_device, srcBuffer, nullptr);
+    vkFreeMemory(m_device, bufferMemory, nullptr);
+  }
+
+
+
+}
+
+void HelloVulkan::calculatePhotons()
+{
+
 }

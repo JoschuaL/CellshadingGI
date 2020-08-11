@@ -36,6 +36,7 @@
 // #VKRay
 #include "AreaLight.h"
 #include "nvvk/raytraceKHR_vk.hpp"
+#include "hash_grid.h"
 
 //--------------------------------------------------------------------------------------------------
 // Simple rasterizer of OBJ objects
@@ -84,7 +85,6 @@ public:
     nvvk::Buffer indexBuffer;     // Device buffer of the indices forming triangles
     nvvk::Buffer matColorBuffer;  // Device buffer of array of 'Wavefront material'
     nvvk::Buffer matIndexBuffer;  // Device buffer of array of 'Wavefront material'
-    nvvk::Buffer celIndiceBuffer;
   };
 
   // Instance of the OBJ
@@ -162,6 +162,8 @@ public:
   uint32_t getMemoryTypeIndex(uint32_t typeBits, VkMemoryPropertyFlags properties);
   void     saveImage();
   void     postFrameWork();
+  void     savePhotons();
+  void calculatePhotons();
 
 
   vk::PhysicalDeviceRayTracingPropertiesKHR           m_rtProperties;
@@ -210,6 +212,39 @@ public:
 
   std::vector<int> dummy = {0};
 
+  nvvk::Buffer m_photonBuffer;
+  nvvk::Buffer m_hitBuffer;
+
+
+
+  struct Photon
+  {
+    nvmath::vec3f  pos;
+    int used;
+    nvmath::vec4f  gnrm;
+    nvmath::vec4f  snrm;
+    nvmath::vec4f inDir;
+    nvmath::vec4f color;
+  };
+
+  std::vector<Photon> m_photons = {};
+
+  struct HitInfo
+  {
+    nvmath::vec3f pos;
+    int used;
+    nvmath::vec4f gnrm;
+    nvmath::vec4f snrm;
+    nvmath::vec4f in;
+    nvmath::vec4f out;
+    nvmath::vec4f color;
+    nvmath::vec4f weight;
+    int material;
+  };
+
+
+
+
   struct RtPushConstant
   {
     nvmath::vec4f clearColor;
@@ -232,19 +267,12 @@ public:
     float         r        = 0.005;
     float         cut      = 0.7;
     float         maxillum;
-    int           obid   = 0;
-    int           pass   = 0;
-    int           offset = 0;
+    int           obid  = 0;
+    int           pass  = 0;
+    int           width = 0;
   } m_rtPushConstants;
 
-  struct CelIndiceInformation
-  {
-    nvmath::vec3f maxdirection;
-    float         max;
-    nvmath::vec3f mindirection;
-    float         min;
-    nvmath::vec4f avg;
-  };
+
 
   struct PostPushConstant
   {

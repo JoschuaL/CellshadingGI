@@ -3,7 +3,7 @@
 #extension GL_GOOGLE_include_directive : enable
 #include "raycommon.glsl"
 
-layout(location = 0) rayPayloadInEXT hitPayload prd;
+layout(location = 0) rayPayloadInEXT photonPayload prd;
 
 layout(push_constant) uniform Constants
 {
@@ -12,8 +12,7 @@ layout(push_constant) uniform Constants
 
 void main()
 {
-  prd.done   = true;
-  prd.color  = vec3(0);
-  prd.weight = vec3(0);
+  prd.done    = true;
+  prd.color   = vec3(0);
+  prd.emplace = false;
 }
-

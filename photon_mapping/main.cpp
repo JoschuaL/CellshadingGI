@@ -43,6 +43,7 @@ VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 #include "nvvk/appbase_vkpp.hpp"
 #include "nvvk/commands_vk.hpp"
 #include "nvvk/context_vk.hpp"
+#include <iostream>
 
 
 //////////////////////////////////////////////////////////////////////////
@@ -94,9 +95,8 @@ void renderUI(HelloVulkan& helloVk, int pass)
   changed |= ImGui::InputFloat("Cel Threshold", &helloVk.m_postPushConstants.threshold, 0.1, 1);
   changed |= ImGui::InputFloat("cel radius", &helloVk.m_rtPushConstants.r, 0.001, 0.01);
   changed |= ImGui::InputFloat("cel cut", &helloVk.m_rtPushConstants.cut, 0.01, 0.1);
-  changed |= ImGui::InputInt("Offset", &helloVk.m_rtPushConstants.offset, 50);
   ImGui::Value("Frames", helloVk.m_FrameCount);
-  if(changed && pass ==0)
+  if(changed && pass == 0)
   {
     helloVk.resetFrame();
   }
@@ -114,6 +114,8 @@ static int const SAMPLE_HEIGHT = 1080;
 int main(int argc, char** argv)
 {
   UNUSED(argc);
+
+  int *xx,*yy;
 
   // Setup GLFW window
   glfwSetErrorCallback(onErrorCallback);
@@ -252,8 +254,12 @@ int main(int argc, char** argv)
   ImGui_ImplGlfw_InitForVulkan(window, true);
 
 
-  for(int i = 0; i < 1000 && !glfwWindowShouldClose(window); i++)
+  for(int i = 0; i < 10000 && !glfwWindowShouldClose(window); i++)
   {
+    if(i % 50 == 0)
+    {
+      std::cout << i << std::endl;
+    }
     glfwPollEvents();
 
     // Start the Dear ImGui frame
@@ -303,6 +309,8 @@ int main(int argc, char** argv)
       if(useRaytracer)
       {
         helloVk.raytrace(cmdBuff, clearColor, 1);
+        helloVk.raytrace(cmdBuff, clearColor, 0);
+
       }
       else
       {
@@ -311,6 +319,8 @@ int main(int argc, char** argv)
         cmdBuff.endRenderPass();
       }
     }
+
+
 
     // 2nd rendering pass: tone mapper, UI
     {
@@ -332,8 +342,20 @@ int main(int argc, char** argv)
     // Submit for display
     cmdBuff.end();
     helloVk.submitFrame();
+    helloVk.savePhotons();
+    helloVk.calculatePhotons();
     //helloVk.postFrameWork();
   }
+  helloVk.getDevice().waitIdle();
+  helloVk.destroyResources();
+  helloVk.destroy();
+
+  vkctx.deinit();
+
+  glfwDestroyWindow(window);
+  glfwTerminate();
+
+  return 0;
 
 
   helloVk.resetFrame();
@@ -357,7 +379,7 @@ int main(int argc, char** argv)
       ImGui::ColorEdit3("Clear color", reinterpret_cast<float*>(&clearColor));
       ImGui::Checkbox("Ray Tracer mode", &useRaytracer);  // Switch between raster and ray tracing
 
-      renderUI(helloVk,0);
+      renderUI(helloVk, 0);
       ImGui::Text("Application average %.3f ms/frame (%.1f FPS)",
                   1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
       ImGui::Render();

@@ -14,6 +14,7 @@ layout(binding = 4, set = 0, rgba32f) uniform image2D idImage;
 layout(location = 0) rayPayloadEXT hitPayload prd;
 layout(location = 1) rayPayloadEXT celPayload cel;
 
+
 layout(binding = 0, set = 1) uniform CameraProperties
 {
   mat4 view;
@@ -22,6 +23,12 @@ layout(binding = 0, set = 1) uniform CameraProperties
   mat4 projInverse;
 }
 cam;
+
+layout(binding = 10, set = 1) buffer HitInfoInfo
+{
+  HitInfo h[];
+}
+HitInfos;
 
 layout(push_constant) uniform Constants
 {
@@ -46,7 +53,7 @@ layout(push_constant) uniform Constants
   float maxillum;
   int   obid;
   int   pass;
-  int   offset;
+  int   width;
 }
 pushC;
 
@@ -95,9 +102,10 @@ void main()
   prd.last_bsdf_pdf = 1.0;
   prd.specular      = true;
   prd.first         = true;
-  prd.needsSampling = false;
-
-  prd.color = vec3(0, 0, 0);
+  prd.rayOrigin     = origin.xyz;
+  prd.rayDirection  = direction.xyz;
+  prd.photons       = false;
+  prd.color         = vec3(0, 0, 0);
 
   vec2 m[9] = vec2[](vec2(-pushC.r, pushC.r), vec2(0, pushC.r), vec2(pushC.r, pushC.r),
                      vec2(-pushC.r, 0), vec2(0, 0), vec2(pushC.r, 0), vec2(-pushC.r, -pushC.r),
@@ -106,10 +114,14 @@ void main()
 
   vec4  c[9];
   float outlines = 1;
+  vec3  weight;
 
 
   for(int i = 0; i <= 32 && !prd.done; i++)
   {
+    origin.xyz    = prd.rayOrigin;
+    direction.xyz = prd.rayDirection;
+    weight        = prd.weight;
     if(true)
     {
 
@@ -120,9 +132,9 @@ void main()
                   0,              // sbtRecordStride
                   2,              // missIndex
                   origin.xyz,     // ray origin
-                  0,              // ray min range
+                  tMin,           // ray min range
                   direction.xyz,  // ray direction
-                  10000,          // ray max range
+                  tMax,           // ray max range
                   1               // payload (location = 0)
       );
 
@@ -150,9 +162,9 @@ void main()
                     0,              // sbtRecordStride
                     2,              // missIndex
                     o.xyz,          // ray origin
-                    0,              // ray min range
+                    tMin,           // ray min range
                     direction.xyz,  // ray direction
-                    10000,          // ray max range
+                    tMax,           // ray max range
                     1               // payload (location = 0)
         );
         c[j] = vec4(cel.normal, cel.depth);
@@ -163,7 +175,7 @@ void main()
 
       vec4 devx = vec4(0);
       vec4 devy = vec4(0);
-      if(false)
+      if(true)
       {
         int w_k = 3;
         int h_k = 3;
@@ -192,14 +204,17 @@ void main()
 
     if(outlines <= 0.01)
     {
-      break;
+      HitInfos.h[pushC.width * gl_LaunchIDEXT.y + gl_LaunchIDEXT.x] =
+          HitInfo(vec4(0, 0, 0, intBitsToFloat(1)), vec4(0), vec4(0), vec4(0), vec4(0), vec4(0),
+                  vec4(0), 0);
+      return;
     }
 
 
     traceRayEXT(topLevelAS,     // acceleration structure
                 rayFlags,       // rayFlags
                 0xFF,           // cullMask
-                0,              // sbtRecordOffset
+                2,              // sbtRecordOffset
                 0,              // sbtRecordStride
                 0,              // missIndex
                 origin.xyz,     // ray origin
@@ -208,27 +223,24 @@ void main()
                 tMax,           // ray max range
                 0               // payload (location = 0)
     );
-
-
-    origin.xyz    = prd.rayOrigin;
-    direction.xyz = prd.rayDirection;
   }
-
-
-  // Do accumulation over time
-  if(pushC.frame > 0)
+  if(true)
   {
-
-    const float a         = 1.0f / float(pushC.frame + 1);
-    const vec3  old_color = imageLoad(image, ivec2(gl_LaunchIDEXT.xy)).xyz;
-    imageStore(image, ivec2(gl_LaunchIDEXT.xy), vec4(mix(old_color, prd.color, a), 1.f));
+    HitInfos.h[pushC.width * gl_LaunchIDEXT.y + gl_LaunchIDEXT.x] =
+        HitInfo(vec4(origin.xyz, intBitsToFloat(1)), vec4(prd.gnrm, 1), vec4(prd.snrm, 1),
+                vec4(prd.rayDirection, 1), vec4(direction.xyz, 1), vec4(prd.color, 1),
+                vec4(weight, 1), prd.material);
   }
+
   else
   {
-    // First frame, replace the value in the buffer
-    imageStore(image, ivec2(gl_LaunchIDEXT.xy), vec4(prd.color, 1.f));
-    imageStore(depthImage, ivec2(gl_LaunchIDEXT.xy), vec4(vec3(prd.depth), 1.f));
-    imageStore(normalImage, ivec2(gl_LaunchIDEXT.xy), vec4(prd.normal, 1.f));
-    imageStore(idImage, ivec2(gl_LaunchIDEXT.xy), vec4(vec3(prd.object) / pushC.numIds, 1.f));
+    HitInfos.h[pushC.width * gl_LaunchIDEXT.y + gl_LaunchIDEXT.x] =
+        HitInfo(vec4(0, 0, 0, intBitsToFloat(1)), vec4(0, 0, 0, 1), vec4(0), vec4(0), vec4(0),
+                vec4(prd.color, 1), vec4(0), 0);
   }
+
+  imageStore(image, ivec2(gl_LaunchIDEXT.xy),
+             vec4((HitInfos.h[pushC.width * gl_LaunchIDEXT.y + gl_LaunchIDEXT.x].gnrm.xyz + vec3(1))
+                      / 2,
+                  1.f));
 }
