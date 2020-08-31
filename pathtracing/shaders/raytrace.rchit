@@ -227,6 +227,8 @@ void main()
     }
   }
 
+  bool nee = mask == 0 || mask == 32;
+
   mc.objId  = objId;
   mc.pId    = gl_PrimitiveID;
   mc.instID = gl_InstanceID;
@@ -240,93 +242,155 @@ void main()
   mc.ior        = pushC.ior;
   mc.inDir;
 
-
-  const int cl = min(int(rnd(prd.seed) * (pushC.numAreaLights + pushC.numPointLights)),
-                     pushC.numAreaLights + pushC.numPointLights - 1);
-  int       lightType;
-  if(cl < pushC.numAreaLights)
+  if(nee)
   {
-    const AreaLight li   = lights.l[cl];
-    const vec3      e1   = li.v1.xyz - li.v0.xyz;
-    const vec3      e2   = li.v2.xyz - li.v0.xyz;
-    const vec3      ln   = normalize(cross(e1, e2));
-    const float     u    = rnd(prd.seed);
-    const float     v    = rnd(prd.seed);
-    const vec3      lpos = u + v < 1.0 ? li.v0.xyz + (u * e1) + (v * e2) :
-                                    li.v0.xyz + ((1.0 - u) * e1) + ((1.0 - v) * e2);
-    const vec3 pos = offset_ray(offset_ray(lpos, ln), ln);
+    for(int i = 0; i < pushC.numAreaLights; i++)
+    {
+      const AreaLight li   = lights.l[i];
+      const vec3      e1   = li.v1.xyz - li.v0.xyz;
+      const vec3      e2   = li.v2.xyz - li.v0.xyz;
+      const vec3      ln   = normalize(cross(e1, e2));
+      const float     u    = rnd(prd.seed);
+      const float     v    = rnd(prd.seed);
+      const vec3      lpos = u + v < 1.0 ? li.v0.xyz + (u * e1) + (v * e2) :
+                                      li.v0.xyz + ((1.0 - u) * e1) + ((1.0 - v) * e2);
+      const vec3 pos = offset_ray(offset_ray(lpos, ln), ln);
 
-    dsc.pos   = pos;
-    dsc.li    = li;
-    lightType = 1;
+      dsc.pos       = pos;
+      dsc.li        = li;
+      int lightType = 1;
+
+      dsc.seed = prd.seed;
+
+      dsc.from = worldPos;
+
+
+      const int call = 6 + lightType;
+      executeCallableEXT(call, 2);
+      prd.seed = dsc.seed;
+
+
+      const vec3  dir     = worldPos - dsc.pos;
+      const float d2      = dot(dir, dir);
+      const float dist    = sqrt(d2);
+      const vec3  rayDir  = dir / dist;
+      const float cos_hit = dot(rayDir, gnormal);
+      mc.inDir            = -rayDir;
+      mc.eval_color       = vec3(0, 0, 0);
+
+      mc.seed = prd.seed;
+      executeCallableEXT(mask, 0);
+
+      prd.seed = mc.seed;
+
+
+      isShadowed = true;
+
+
+      traceRayEXT(topLevelAS,  // acceleration structure
+                  flags,       // rayFlags
+                  0xFF,        // cullMask
+                  0,           // sbtRecordOffset
+                  0,           // sbtRecordStride
+                  1,           // missIndex
+                  dsc.pos,     // ray origin
+                  tMin,        // ray min range
+                  rayDir,      // ray direction
+                  dist,        // ray max range
+                  1            // payload (location = 1)
+      );
+
+
+      if(!isShadowed)
+      {
+        const float pne = ((dsc.pdf_area * d2) / (dsc.cos_v));
+
+
+        const float p_bsdf = mc.pdf_pdf;
+
+        const float mis_weight = lightType == 1 ? pne / (pne + p_bsdf) : 1.0;
+
+
+        prd.color += ww * dsc.intensity * mis_weight
+                     * ((prd.weight * mc.eval_color * dsc.cos_v) / (d2 * dsc.pdf_area));
+      }
+    }
+
+    for(int i = 0; i < pushC.numPointLights; i++)
+    {
+      const PointLight p = Plights.l[i];
+
+      dsc.p   = p;
+      dsc.pos = p.pos.xyz;
+
+      int lightType = 0;
+
+      dsc.seed = prd.seed;
+
+      dsc.from = worldPos;
+
+
+      const int call = 6 + lightType;
+      executeCallableEXT(call, 2);
+      prd.seed = dsc.seed;
+
+
+      const vec3  dir     = worldPos - dsc.pos;
+      const float d2      = dot(dir, dir);
+      const float dist    = sqrt(d2);
+      const vec3  rayDir  = dir / dist;
+      const float cos_hit = dot(rayDir, gnormal);
+      mc.inDir            = -rayDir;
+      mc.eval_color       = vec3(0, 0, 0);
+
+      mc.seed = prd.seed;
+      executeCallableEXT(mask, 0);
+
+      prd.seed = mc.seed;
+
+
+      isShadowed = true;
+
+
+      traceRayEXT(topLevelAS,  // acceleration structure
+                  flags,       // rayFlags
+                  0xFF,        // cullMask
+                  0,           // sbtRecordOffset
+                  0,           // sbtRecordStride
+                  1,           // missIndex
+                  dsc.pos,     // ray origin
+                  tMin,        // ray min range
+                  rayDir,      // ray direction
+                  dist,        // ray max range
+                  1            // payload (location = 1)
+      );
+
+
+      if(!isShadowed)
+      {
+
+
+        prd.color +=
+            ww * dsc.intensity * ((prd.weight * mc.eval_color * dsc.cos_v) / (d2 * dsc.pdf_area));
+      }
+    }
   }
   else
   {
 
-    const PointLight p = Plights.l[cl - pushC.numAreaLights];
 
-    dsc.p   = p;
-    dsc.pos = p.pos.xyz;
+    const vec3  dir     = worldPos - dsc.pos;
+    const float d2      = dot(dir, dir);
+    const float dist    = sqrt(d2);
+    const vec3  rayDir  = dir / dist;
+    const float cos_hit = dot(rayDir, gnormal);
+    mc.inDir            = -rayDir;
+    mc.eval_color       = vec3(0, 0, 0);
 
-    lightType = 0;
-  }
+    mc.seed = prd.seed;
+    executeCallableEXT(mask, 0);
 
-
-  dsc.seed = prd.seed;
-
-  dsc.from = worldPos;
-
-
-  const int call = 6 + lightType;
-  executeCallableEXT(call, 2);
-  prd.seed = dsc.seed;
-
-
-  const vec3  dir     = worldPos - dsc.pos;
-  const float d2      = dot(dir, dir);
-  const float dist    = sqrt(d2);
-  const vec3  rayDir  = dir / dist;
-  const float cos_hit = dot(rayDir, gnormal);
-  mc.inDir            = -rayDir;
-  mc.eval_color       = vec3(0, 0, 0);
-
-  mc.seed = prd.seed;
-  executeCallableEXT(mask, 0);
-
-  prd.seed = mc.seed;
-
-
-  isShadowed = true;
-
-
-  traceRayEXT(topLevelAS,  // acceleration structure
-              flags,       // rayFlags
-              0xFF,        // cullMask
-              0,           // sbtRecordOffset
-              0,           // sbtRecordStride
-              1,           // missIndex
-              dsc.pos,     // ray origin
-              tMin,        // ray min range
-              rayDir,      // ray direction
-              dist,        // ray max range
-              1            // payload (location = 1)
-  );
-
-
-  if(!isShadowed)
-  {
-    const float pne = ((dsc.pdf_area * d2) / (dsc.cos_v * pushC.numAreaLights));
-
-
-    const float p_bsdf = mc.pdf_pdf;
-
-    const float mis_weight = lightType == 1 ? pne / (pne + p_bsdf) : 1.0;
-
-
-    prd.color +=
-        ww * dsc.intensity * mis_weight
-        * ((prd.weight * mc.eval_color * dsc.cos_v * (pushC.numAreaLights + pushC.numPointLights))
-           / (d2 * dsc.pdf_area));
+    prd.seed = mc.seed;
   }
 
 

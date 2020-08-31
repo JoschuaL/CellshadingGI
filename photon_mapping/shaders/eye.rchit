@@ -64,9 +64,7 @@ const float tMin = 0.0001;
 void main()
 {
 
-  prd.photons = true;
-  prd.gnrm    = vec3(1, 0, 0);
-  return;
+
   const uint flags =
       gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsOpaqueEXT | gl_RayFlagsSkipClosestHitShaderEXT;
   // Object of this instance
@@ -90,15 +88,18 @@ void main()
   vec3 snormal = v0.nrm * barycentrics.x + v1.nrm * barycentrics.y + v2.nrm * barycentrics.z;
   vec3 gnormal = normalize(cross(v1.pos - v0.pos, v2.pos - v0.pos));
   // Transforming the normal to world space
-  snormal       = normalize(vec3(scnDesc.i[gl_InstanceID].transfoIT * vec4(snormal, 0.0)));
-  gnormal       = normalize(vec3(scnDesc.i[gl_InstanceID].transfoIT * vec4(gnormal, 0.0)));
-  prd.snrm      = snormal;
-  prd.gnrm      = gnormal;
+  snormal = normalize(vec3(scnDesc.i[gl_InstanceID].transfoIT * vec4(snormal, 0.0)));
+  gnormal = normalize(vec3(scnDesc.i[gl_InstanceID].transfoIT * vec4(gnormal, 0.0)));
+
   bool entering = dot(gl_WorldRayDirectionEXT, gnormal) < 0;
 
   mc.entering = entering;
   gnormal     = entering ? gnormal : -gnormal;
   snormal     = entering ? snormal : -snormal;
+  prd.snrm    = snormal;
+  prd.gnrm    = gnormal;
+  prd.photons = true;
+  return;
 
   const vec3 worldPos = offset_ray(
       vec3(

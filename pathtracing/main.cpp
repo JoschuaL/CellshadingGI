@@ -211,9 +211,9 @@ int main(int argc, char** argv)
   //helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Glossy-Floor.obj", defaultSearchPaths));
   //helloVk.loadModel(nvh::findFile("media/scenes/plane.obj", defaultSearchPaths));
 
-  helloVk.loadModel(nvh::findFile("media/scenes/ladies/gumi_alone_highp.obj", defaultSearchPaths));
+  helloVk.loadModel(nvh::findFile("media/scenes/ladies/gumi_alone_medp.obj", defaultSearchPaths));
   helloVk.loadModel(nvh::findFile("media/scenes/ladies/walls.obj", defaultSearchPaths));
-  nvmath::vec4f plc = {10, 10, 10, 1};
+  nvmath::vec4f plc = {15, 15, 15, 1};
   nvmath::vec4f b   = {0, 0, 0, 1};
 
   helloVk.addPointLight({plc, {3.5, 10, 2.5, 1}});

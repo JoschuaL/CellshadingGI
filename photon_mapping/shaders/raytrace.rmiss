@@ -15,5 +15,6 @@ void main()
   prd.done   = true;
   prd.color  = vec3(0);
   prd.weight = vec3(0);
+  prd.gnrm   = vec3(0);
+  prd.snrm   = vec3(0);
 }
-

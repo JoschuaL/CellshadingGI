@@ -33,10 +33,12 @@
 #include "nvvk/debug_util_vk.hpp"
 #include "nvvk/descriptorsets_vk.hpp"
 
+
 // #VKRay
 #include "AreaLight.h"
 #include "nvvk/raytraceKHR_vk.hpp"
 #include "hash_grid.h"
+#include "photonContainer.h"
 
 //--------------------------------------------------------------------------------------------------
 // Simple rasterizer of OBJ objects
@@ -53,6 +55,8 @@ enum LightType
   Spot,
   Area
 };
+
+
 
 
 class HelloVulkan : public nvvk::AppBase
@@ -216,18 +220,164 @@ public:
   nvvk::Buffer m_hitBuffer;
 
 
+    struct Photon
+    {
+        nvmath::vec3f  pos;
+        int used;
+        nvmath::vec4f  gnrm;
+        nvmath::vec4f  snrm;
+        nvmath::vec4f inDir;
+        nvmath::vec4f color;
+    };
 
-  struct Photon
-  {
-    nvmath::vec3f  pos;
-    int used;
-    nvmath::vec4f  gnrm;
-    nvmath::vec4f  snrm;
-    nvmath::vec4f inDir;
-    nvmath::vec4f color;
-  };
 
-  std::vector<Photon> m_photons = {};
+    class photonContainer
+    {
+    public:
+        explicit photonContainer(std::vector<Photon>&& photons, int cells){
+            this->cells = cells;
+            this->photons = new std::vector<Photon>[cells*cells*cells];
+            auto ph = std::move(photons);
+            size = ph.size();
+             minx = std::numeric_limits<float>::infinity();
+             miny = std::numeric_limits<float>::infinity();
+             minz = std::numeric_limits<float>::infinity();
+             maxx = -std::numeric_limits<float>::infinity();
+             maxy = -std::numeric_limits<float>::infinity();
+             maxz = -std::numeric_limits<float>::infinity();
+            for(auto& photon: ph){
+                minx = std::min(minx, photon.pos.x);
+                miny = std::min(miny, photon.pos.y);
+                minz = std::min(minz, photon.pos.z);
+                maxx = std::max(maxx, photon.pos.x);
+                maxy = std::max(maxy, photon.pos.y);
+                maxz = std::max(maxz, photon.pos.z);
+            }
+
+            float x = std::abs(maxx - minx) / static_cast<float>(cells);
+            float y = std::abs(maxy - miny) / static_cast<float>(cells);
+            float z = std::abs(maxz - minz) / static_cast<float>(cells);
+            dim = std::max(std::max(x,y),z);
+            for(auto&& photon: ph){
+                this->photons[static_cast<size_t>(photon.pos.x / dim) * cells * cells + static_cast<size_t>(photon.pos.y / dim) * cells + static_cast<size_t>(photon.pos.z / dim)].push_back(photon);
+            }
+            this->built = true;
+
+        }
+        photonContainer(int cells){
+            this->cells = cells;
+            this->photons = new std::vector<Photon>[cells*cells*cells];
+        }
+        void                             rebuild(){
+            if(!built){
+                 minx = std::numeric_limits<float>::infinity();
+                 miny = std::numeric_limits<float>::infinity();
+                 minz = std::numeric_limits<float>::infinity();
+                 maxx = -std::numeric_limits<float>::infinity();
+                 maxy = -std::numeric_limits<float>::infinity();
+                 maxz = -std::numeric_limits<float>::infinity();
+                auto ph = std::move(photons[0]);
+                for(auto& photon: ph){
+                    minx = std::min(minx, photon.pos.x);
+                    miny = std::min(miny, photon.pos.y);
+                    minz = std::min(minz, photon.pos.z);
+                    maxx = std::max(maxx, photon.pos.x);
+                    maxy = std::max(maxy, photon.pos.y);
+                    maxz = std::max(maxz, photon.pos.z);
+                }
+
+                float x = std::abs(maxx - minx) / static_cast<float>(cells);
+                float y = std::abs(maxy - miny) / static_cast<float>(cells);
+                float z = std::abs(maxz - minz) / static_cast<float>(cells);
+                dim = std::max(std::max(x,y),z);
+                for(auto&& photon: ph){
+                  int a = static_cast<size_t>(std::abs(photon.pos.x - minx) / dim);
+                  int b = static_cast<size_t>(std::abs(photon.pos.y - miny) / dim);
+                  int c = static_cast<size_t>(std::abs(photon.pos.z - minz) / dim);
+                    this->photons[(a * cells * cells) + (b * cells) + c].push_back(photon);
+                }
+                this->built = true;
+            }
+        }
+        void                             addPhoton(Photon&& p){
+          size++;
+            photons[0].push_back(std::move(p));
+        }
+
+        void addPhotons(std::vector<Photon>&& ph){
+          size += ph.size();
+          photons[0].insert(photons[0].end(), std::make_move_iterator(ph.begin()), std::make_move_iterator(ph.end()));
+        }
+
+        std::vector<Photon> findKNearst(nvmath::vec3f point, int k){
+            std::vector<Photon>closest = {};
+            int startx = std::abs(static_cast<size_t>(std::max(std::min(point.x, maxx), minx) - minx) / dim);
+            int starty = std::abs(static_cast<size_t>(std::max(std::min(point.y, maxy), miny) - miny) / dim);
+            int startz = std::abs(static_cast<size_t>(std::max(std::min(point.z, maxz), minz) - minz) / dim);
+            int i = -1;
+            while(closest.size() < k  && !(startx - i < 0 && starty - i < 0 && startz - i < 0 && startx + i >= cells && starty + i >= cells && startz + i >= cells)){
+              i++;
+                for(int x = -i; x <= i; x++){
+                    for(int y = -i; y <= i; y++){
+                        for(int z = -i; z <= i; z++){
+                            if(std::abs(x) != i && std::abs(y) != i && std::abs(z) != i){
+                                continue;
+                            }
+                            if(startx + x < 0 || starty + y < 0 || startz + z < 0 || startx + x >= cells || starty + y >= cells || startz + z >= cells){
+                              continue;
+                            } else
+                            {
+                                for(auto& p: photons[((startx + x) * cells * cells) + ((starty + y) * cells) + startz+z]){
+                                  if(closest.empty()){
+                                    closest.push_back(p);
+                                  } else {
+                                    bool inserted = false;
+                                    for(int i = 0; i < closest.size() && !inserted; i++){
+                                        if(nvmath::length(closest[i].pos - point) > nvmath::length(p.pos - point)){
+                                            closest.insert(closest.begin() + i, p);
+                                            inserted = true;
+                                            if(closest.size() >= k){
+                                                closest.resize(k);
+                                            }
+                                        }
+                                    }
+                                    if(!inserted && closest.size() < k){
+                                      closest.push_back(p);
+                                    }
+                                  }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            return closest;
+
+        }
+        ~photonContainer(){
+          delete this->photons;
+        }
+
+        int size = 0;
+    private:
+        std::vector<Photon>* photons;
+        float dim = 0;
+        float minx, miny,minz,maxx,maxy,maxz;
+        bool built = false;
+        int cells;
+    };
+
+
+
+
+
+
+
+
+
+
+
+    photonContainer m_photonContainer = photonContainer(500);
 
   struct HitInfo
   {
@@ -284,4 +434,6 @@ public:
     int   blurRange = 1;
 
   } m_postPushConstants;
+
+
 };

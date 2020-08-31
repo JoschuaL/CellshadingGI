@@ -98,7 +98,7 @@ void main()
   float tMin        = 0.001;
   float tMax        = 10000.0;
   prd.done          = false;
-  prd.weight        = vec3(1, 1, 1);
+  prd.weight        = vec3(1);
   prd.last_bsdf_pdf = 1.0;
   prd.specular      = true;
   prd.first         = true;
@@ -106,6 +106,8 @@ void main()
   prd.rayDirection  = direction.xyz;
   prd.photons       = false;
   prd.color         = vec3(0, 0, 0);
+  prd.gnrm          = vec3(0);
+  prd.snrm          = vec3(0);
 
   vec2 m[9] = vec2[](vec2(-pushC.r, pushC.r), vec2(0, pushC.r), vec2(pushC.r, pushC.r),
                      vec2(-pushC.r, 0), vec2(0, 0), vec2(pushC.r, 0), vec2(-pushC.r, -pushC.r),
@@ -114,15 +116,16 @@ void main()
 
   vec4  c[9];
   float outlines = 1;
-  vec3  weight;
+  vec4  weight;
 
 
   for(int i = 0; i <= 32 && !prd.done; i++)
   {
     origin.xyz    = prd.rayOrigin;
     direction.xyz = prd.rayDirection;
-    weight        = prd.weight;
-    if(true)
+    weight        = vec4(prd.weight, 1);
+
+    if(false)
     {
 
       traceRayEXT(topLevelAS,     // acceleration structure
@@ -135,7 +138,7 @@ void main()
                   tMin,           // ray min range
                   direction.xyz,  // ray direction
                   tMax,           // ray max range
-                  1               // payload (location = 0)
+                  1               // payload (location = 1)
       );
 
       c[4] = vec4(cel.normal, cel.depth);
@@ -223,24 +226,22 @@ void main()
                 tMax,           // ray max range
                 0               // payload (location = 0)
     );
-  }
-  if(true)
-  {
-    HitInfos.h[pushC.width * gl_LaunchIDEXT.y + gl_LaunchIDEXT.x] =
-        HitInfo(vec4(origin.xyz, intBitsToFloat(1)), vec4(prd.gnrm, 1), vec4(prd.snrm, 1),
-                vec4(prd.rayDirection, 1), vec4(direction.xyz, 1), vec4(prd.color, 1),
-                vec4(weight, 1), prd.material);
-  }
+    if(prd.photons)
+    {
 
-  else
-  {
-    HitInfos.h[pushC.width * gl_LaunchIDEXT.y + gl_LaunchIDEXT.x] =
-        HitInfo(vec4(0, 0, 0, intBitsToFloat(1)), vec4(0, 0, 0, 1), vec4(0), vec4(0), vec4(0),
-                vec4(prd.color, 1), vec4(0), 0);
+      HitInfos.h[pushC.width * gl_LaunchIDEXT.y + gl_LaunchIDEXT.x] =
+          HitInfo(vec4(prd.rayOrigin, 1), vec4(prd.gnrm, 1), vec4(prd.snrm, 1), direction,
+                  vec4(prd.rayDirection, 1), vec4(prd.color, 1), weight, prd.material);
+      imageStore(
+          image, ivec2(gl_LaunchIDEXT.xy),
+          vec4((HitInfos.h[pushC.width * gl_LaunchIDEXT.y + gl_LaunchIDEXT.x].snrm.xyz + vec3(1))
+                   / 2,
+               1));
+    }
+    else
+    {
+      imageStore(image, ivec2(gl_LaunchIDEXT.xy), vec4(vec3(0), 1));
+    }
   }
-
-  imageStore(image, ivec2(gl_LaunchIDEXT.xy),
-             vec4((HitInfos.h[pushC.width * gl_LaunchIDEXT.y + gl_LaunchIDEXT.x].gnrm.xyz + vec3(1))
-                      / 2,
-                  1.f));
+  return;
 }

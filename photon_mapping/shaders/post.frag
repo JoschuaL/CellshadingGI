@@ -141,6 +141,7 @@ void main()
                        1;
   vec4 c = pow(vec4(texture(noisyTxt, uv).rgb * outlines, 1.0), vec4(gamma));
 
-  imageStore(save, ivec2(uv * vec2(pushc.width, pushc.height)), c);
-  fragColor = c;
+  //imageStore(save, ivec2(uv * vec2(pushc.width, pushc.height)), c);
+
+  fragColor = imageLoad(save, ivec2(uv * vec2(pushc.width, pushc.height)));
 }

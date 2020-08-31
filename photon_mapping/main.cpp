@@ -115,7 +115,7 @@ int main(int argc, char** argv)
 {
   UNUSED(argc);
 
-  int *xx,*yy;
+  int *xx, *yy;
 
   // Setup GLFW window
   glfwSetErrorCallback(onErrorCallback);
@@ -212,7 +212,7 @@ int main(int argc, char** argv)
   //helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Glossy-Floor.obj", defaultSearchPaths));
   //helloVk.loadModel(nvh::findFile("media/scenes/plane.obj", defaultSearchPaths));
 
-  helloVk.loadModel(nvh::findFile("media/scenes/ladies/gumi_alone.obj", defaultSearchPaths));
+  helloVk.loadModel(nvh::findFile("media/scenes/ladies/gumi_alone_lowp.obj", defaultSearchPaths));
   helloVk.loadModel(nvh::findFile("media/scenes/ladies/walls.obj", defaultSearchPaths));
   nvmath::vec4f plc = {10, 10, 10, 1};
   nvmath::vec4f b   = {0, 0, 0, 1};
@@ -309,8 +309,6 @@ int main(int argc, char** argv)
       if(useRaytracer)
       {
         helloVk.raytrace(cmdBuff, clearColor, 1);
-        helloVk.raytrace(cmdBuff, clearColor, 0);
-
       }
       else
       {
@@ -319,7 +317,6 @@ int main(int argc, char** argv)
         cmdBuff.endRenderPass();
       }
     }
-
 
 
     // 2nd rendering pass: tone mapper, UI
@@ -343,21 +340,11 @@ int main(int argc, char** argv)
     cmdBuff.end();
     helloVk.submitFrame();
     helloVk.savePhotons();
-    helloVk.calculatePhotons();
+
     //helloVk.postFrameWork();
   }
-  helloVk.getDevice().waitIdle();
-  helloVk.destroyResources();
-  helloVk.destroy();
 
-  vkctx.deinit();
-
-  glfwDestroyWindow(window);
-  glfwTerminate();
-
-  return 0;
-
-
+  helloVk.calculatePhotons();
   helloVk.resetFrame();
   // Main loop
   while(!glfwWindowShouldClose(window))
@@ -442,7 +429,7 @@ int main(int argc, char** argv)
     // Submit for display
     cmdBuff.end();
     helloVk.submitFrame();
-    //helloVk.postFrameWork();
+    helloVk.postFrameWork();
   }
   helloVk.saveImage();
   // Cleanup

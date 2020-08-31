@@ -105,8 +105,8 @@ void main()
   vec3 hitValues = vec3(0);
 
 
-  const ivec3 ind = ivec3(indices[nonuniformEXT(pushC.obid)].i[xpos - (xpos % 3) + 0],  //
-                          indices[nonuniformEXT(pushC.obid)].i[xpos - (xpos % 3) + 1],  //
+  const ivec3 ind = ivec3(indices[nonuniformEXT(pushC.obid)].i[xpos - (xpos % 3) + 0],
+                          indices[nonuniformEXT(pushC.obid)].i[xpos - (xpos % 3) + 1],
                           indices[nonuniformEXT(pushC.obid)].i[xpos - (xpos % 3) + 2]);
 
   const Vertex[3] v = Vertex[3](vertices[nonuniformEXT(pushC.obid)].v[ind.x],
@@ -117,8 +117,9 @@ void main()
   // Subpixel jitter: send the ray through a different position inside the pixel
   // each time, to provide antialiasing.
 
-  vec3 normal = normalize(cross(v[1].pos - v[0].pos, v[2].pos - v[0].pos));
-  vec3 origin = v[xpos % 3].pos;
+  vec3       normal   = normalize(cross(v[1].pos - v[0].pos, v[2].pos - v[0].pos));
+  const vec3 ogorigin = v[xpos % 3].pos;
+
 
   float r    = 33.0;
   int   rint = 33;
@@ -128,8 +129,8 @@ void main()
   vr         = min(max(0, vr), 1);
 
   const LocalCoords locale      = gen_local_coords(normal);
-  vec3              ogdirection = sample_cosine_hemisphere_direct(locale, ur, vr);
-  vec3              direction   = ogdirection;
+  const vec3        ogdirection = sample_cosine_hemisphere_direct(locale, ur, vr);
+
 
   uint  rayFlags = gl_RayFlagsOpaqueEXT;
   float tMin     = 0.001;
@@ -153,19 +154,19 @@ void main()
     for(int i = 0; i < pushC.numPointLights; i++)
     {
       prd.done          = false;
-        prd.weight        = vec3(1, 1, 1);
-        prd.last_bsdf_pdf = 1.0;
-        prd.specular      = true;
-        prd.first         = true;
-        prd.needsSampling = false;
+      prd.weight        = vec3(1, 1, 1);
+      prd.last_bsdf_pdf = 1.0;
+      prd.specular      = true;
+      prd.first         = true;
+      prd.needsSampling = false;
 
-        prd.color = vec3(0, 0, 0);
+      prd.color     = vec3(0, 0, 0);
       PointLight li = plights.l[i];
 
 
       vec3 pos = li.pos.xyz;
 
-      vec3  ldir        = pos - origin;
+      vec3  ldir        = pos - ogorigin;
       float dist        = length(ldir);
       vec3  L           = normalize(ldir);
       float outanglecos = dot(L, normal);
@@ -185,37 +186,38 @@ void main()
       uint direct_flags = gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsOpaqueEXT
                           | gl_RayFlagsSkipClosestHitShaderEXT;
       isShadowed = true;
-      traceRayEXT(topLevelAS, direct_flags, 0xFF, 0, 0, 1, origin, tMin, L, dist, 1);
+      traceRayEXT(topLevelAS, direct_flags, 0xFF, 0, 0, 1, ogorigin, tMin, L, dist, 1);
 
       if(isShadowed)
       {
         col = vec3(0);
       }
 
+      vec3 origin    = ogorigin;
+      vec3 direction = L;
+
       for(int i = 0; i <= 32 && !prd.done; i++)
-          {
-            traceRayEXT(topLevelAS,  // acceleration structure
-                        rayFlags,    // rayFlags
-                        0xFF,        // cullMask
-                        0,           // sbtRecordOffset
-                        0,           // sbtRecordStride
-                        0,           // missIndex
-                        origin,      // ray origin
-                        tMin,        // ray min range
-                        L,   // ray direction
-                        tMax,        // ray max range
-                        0            // payload (location = 0)
-            );
+      {
+        traceRayEXT(topLevelAS,  // acceleration structure
+                    rayFlags,    // rayFlags
+                    0xFF,        // cullMask
+                    0,           // sbtRecordOffset
+                    0,           // sbtRecordStride
+                    0,           // missIndex
+                    origin,      // ray origin
+                    tMin,        // ray min range
+                    direction,   // ray direction
+                    tMax,        // ray max range
+                    0            // payload (location = 0)
+        );
 
 
-            origin    = prd.rayOrigin;
-            direction = prd.rayDirection;
-          }
+        origin    = prd.rayOrigin;
+        direction = prd.rayDirection;
+      }
 
 
       col += prd.color;
-
-
 
 
       if(CelInfos[nonuniformEXT(pushC.obid)].i[xpos].max.w < col.x + col.y + col.z)
@@ -245,14 +247,16 @@ void main()
   else
   {
 
-prd.done          = false;
-  prd.weight        = vec3(1, 1, 1);
-  prd.last_bsdf_pdf = 1.0;
-  prd.specular      = true;
-  prd.first         = true;
-  prd.needsSampling = false;
+    prd.done          = false;
+    prd.weight        = vec3(1, 1, 1);
+    prd.last_bsdf_pdf = 1.0;
+    prd.specular      = true;
+    prd.first         = true;
+    prd.needsSampling = false;
 
-  prd.color = vec3(0, 0, 0);
+    prd.color      = vec3(0, 0, 0);
+    vec3 origin    = ogorigin;
+    vec3 direction = ogdirection;
 
     for(int i = 0; i <= 32 && !prd.done; i++)
     {
@@ -320,7 +324,7 @@ prd.done          = false;
                       * pushC.celsteps)
                  / pushC.celsteps);
       vec3  col = c < pushC.celramp ? vec3(1, 0, 0) : vec3(0, 1, 0);
-      imageStore(image, ivec2(x,i), vec4(col,1));
+      imageStore(image, ivec2(x, i), vec4(col, 1));
     }
   }
 

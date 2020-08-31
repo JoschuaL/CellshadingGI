@@ -46,6 +46,7 @@ extern std::vector<std::string> defaultSearchPaths;
 #include "nvvk/pipeline_vk.hpp"
 #include "nvvk/renderpasses_vk.hpp"
 #include "nvvk/shaders_vk.hpp"
+#include "photonContainer.h"
 
 
 // Holding the camera matrices
@@ -138,8 +139,7 @@ void HelloVulkan::createDescriptorSetLayout()
 
   // HitPoint storage (binding = 10)
   m_descSetLayoutBind.addBinding(
-      vkDS(10, vkDT::eStorageBuffer, 1, vkSS::eRaygenKHR | vkSS::eClosestHitKHR)
-  );
+      vkDS(10, vkDT::eStorageBuffer, 1, vkSS::eRaygenKHR | vkSS::eClosestHitKHR));
 
 
   m_descSetLayout = m_descSetLayoutBind.createLayout(m_device);
@@ -329,22 +329,24 @@ void HelloVulkan::postModelSetup()
     m_areaLightsBuffer = m_alloc.createBuffer(cmdBuf, dummy, vkBU::eStorageBuffer);
   }
 
-  std::vector<Photon> i(
-      m_size.width * 32,
-      {{0, 0, 0}, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}});
-  m_photonBuffer = m_alloc.createBuffer(cmdBuf, i, vkBU::eStorageBuffer | vkBU::eTransferSrc | vkBU::eTransferDst);
+  std::vector<Photon> i(m_size.width * 32,
+                        {{0, 0, 0}, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}});
+  m_photonBuffer =
+      m_alloc.createBuffer(cmdBuf, i,
+                           vkBU::eStorageBuffer | vkBU::eTransferSrc | vkBU::eTransferDst);
 
-  std::vector<HitInfo> h(m_size.width * m_size.height, {
-                                                           {0, 0, 0},
-                                                           0,
-                                                           {0, 0, 0, 0},
-                                                           {0, 0, 0, 0},
-                                                           {0, 0, 0, 0},
-                                                           {0, 0, 0, 0},
-                                                           {0,0,0,0},
-                                                           {0,0,0,0},
-                                                       0});
-  m_hitBuffer = m_alloc.createBuffer(cmdBuf, h, vkBU::eStorageBuffer | vkBU::eTransferSrc | vkBU::eTransferDst);
+  std::vector<HitInfo> h(m_size.width * m_size.height, {{0, 0, 0},
+                                                        0,
+                                                        {0, 0, 0, 0},
+                                                        {0, 0, 0, 0},
+                                                        {0, 0, 0, 0},
+                                                        {0, 0, 0, 0},
+                                                        {0, 0, 0, 0},
+                                                        {0, 0, 0, 0},
+                                                        0});
+  m_hitBuffer =
+      m_alloc.createBuffer(cmdBuf, h,
+                           vkBU::eStorageBuffer | vkBU::eTransferSrc | vkBU::eTransferDst);
 
 
   cmdBufGet.submitAndWait(cmdBuf);
@@ -590,9 +592,9 @@ void HelloVulkan::createOffscreenRender()
   {
     auto colorCreateInfo = nvvk::makeImage2DCreateInfo(m_size, m_offscreenColorFormat,
                                                        vk::ImageUsageFlagBits::eColorAttachment
-                                                       | vk::ImageUsageFlagBits::eSampled
-                                                       | vk::ImageUsageFlagBits::eStorage
-                                                       | vk::ImageUsageFlagBits::eTransferSrc);
+                                                           | vk::ImageUsageFlagBits::eSampled
+                                                           | vk::ImageUsageFlagBits::eStorage
+                                                           | vk::ImageUsageFlagBits::eTransferSrc);
 
 
     m_offscreenColorImage = m_alloc.createImage(colorCreateInfo);
@@ -605,8 +607,8 @@ void HelloVulkan::createOffscreenRender()
   {
     auto normalCreateInfo = nvvk::makeImage2DCreateInfo(m_size, m_offscreenNormalFormat,
                                                         vk::ImageUsageFlagBits::eColorAttachment
-                                                        | vk::ImageUsageFlagBits::eSampled
-                                                        | vk::ImageUsageFlagBits::eStorage);
+                                                            | vk::ImageUsageFlagBits::eSampled
+                                                            | vk::ImageUsageFlagBits::eStorage);
 
 
     m_offscreenNormalImage = m_alloc.createImage(normalCreateInfo);
@@ -619,8 +621,8 @@ void HelloVulkan::createOffscreenRender()
   {
     auto depthCreateInfoRT = nvvk::makeImage2DCreateInfo(m_size, m_offscreenDepthFormatRT,
                                                          vk::ImageUsageFlagBits::eColorAttachment
-                                                         | vk::ImageUsageFlagBits::eSampled
-                                                         | vk::ImageUsageFlagBits::eStorage);
+                                                             | vk::ImageUsageFlagBits::eSampled
+                                                             | vk::ImageUsageFlagBits::eStorage);
 
 
     m_offscreenDepthImageRT = m_alloc.createImage(depthCreateInfoRT);
@@ -633,8 +635,8 @@ void HelloVulkan::createOffscreenRender()
   {
     auto idCreateInfo = nvvk::makeImage2DCreateInfo(m_size, m_offscreenIdFormat,
                                                     vk::ImageUsageFlagBits::eColorAttachment
-                                                    | vk::ImageUsageFlagBits::eSampled
-                                                    | vk::ImageUsageFlagBits::eStorage);
+                                                        | vk::ImageUsageFlagBits::eSampled
+                                                        | vk::ImageUsageFlagBits::eStorage);
 
 
     m_offscreenIdImage = m_alloc.createImage(idCreateInfo);
@@ -647,9 +649,9 @@ void HelloVulkan::createOffscreenRender()
   {
     auto idCreateInfo = nvvk::makeImage2DCreateInfo(m_size, m_saveFormat,
                                                     vk::ImageUsageFlagBits::eColorAttachment
-                                                    | vk::ImageUsageFlagBits::eSampled
-                                                    | vk::ImageUsageFlagBits::eStorage
-                                                    | vk::ImageUsageFlagBits::eTransferSrc);
+                                                        | vk::ImageUsageFlagBits::eSampled
+                                                        | vk::ImageUsageFlagBits::eStorage
+                                                        | vk::ImageUsageFlagBits::eTransferSrc);
 
 
     m_saveImage                    = m_alloc.createImage(idCreateInfo);
@@ -838,7 +840,7 @@ void HelloVulkan::initRayTracing()
 {
   // Requesting ray tracing properties
   auto properties = m_physicalDevice.getProperties2<vk::PhysicalDeviceProperties2,
-      vk::PhysicalDeviceRayTracingPropertiesKHR>();
+                                                    vk::PhysicalDeviceRayTracingPropertiesKHR>();
   m_rtProperties  = properties.get<vk::PhysicalDeviceRayTracingPropertiesKHR>();
   m_rtBuilder.setup(m_device, &m_alloc, m_graphicsQueueIndex);
 }
@@ -908,7 +910,7 @@ void HelloVulkan::createBottomLevelAS()
   }
   m_rtBuilder.buildBlas(allBlas, 0,
                         vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastTrace
-                        | vk::BuildAccelerationStructureFlagBitsKHR::eAllowCompaction);
+                            | vk::BuildAccelerationStructureFlagBitsKHR::eAllowCompaction);
 }
 
 void HelloVulkan::createTopLevelAS()
@@ -1033,7 +1035,8 @@ void HelloVulkan::createRtPipeline()
   vk::ShaderModule celmissSM =
       nvvk::createShaderModule(m_device, nvh::loadFile("shaders/cel.rmiss.spv", true, paths));
 
-  vk::ShaderModule photonmissSM = nvvk::createShaderModule(m_device, nvh::loadFile("shaders/prepass.rmiss.spv", true, paths));
+  vk::ShaderModule photonmissSM =
+      nvvk::createShaderModule(m_device, nvh::loadFile("shaders/prepass.rmiss.spv", true, paths));
 
 
   std::vector<vk::PipelineShaderStageCreateInfo> stages;
@@ -1174,9 +1177,9 @@ void HelloVulkan::createRtPipeline()
 
   // Push constant: we want to be able to update constants used by the shaders
   vk::PushConstantRange pushConstant{vk::ShaderStageFlagBits::eRaygenKHR
-                                     | vk::ShaderStageFlagBits::eClosestHitKHR
-                                     | vk::ShaderStageFlagBits::eMissKHR
-                                     | vk::ShaderStageFlagBits::eCallableKHR,
+                                         | vk::ShaderStageFlagBits::eClosestHitKHR
+                                         | vk::ShaderStageFlagBits::eMissKHR
+                                         | vk::ShaderStageFlagBits::eCallableKHR,
                                      0, sizeof(RtPushConstant)};
   pipelineLayoutCreateInfo.setPushConstantRangeCount(1);
   pipelineLayoutCreateInfo.setPPushConstantRanges(&pushConstant);
@@ -1195,7 +1198,7 @@ void HelloVulkan::createRtPipeline()
   rayPipelineInfo.setPStages(stages.data());
 
   rayPipelineInfo.setGroupCount(static_cast<uint32_t>(
-                                    m_rtShaderGroups.size()));  // 1-raygen, n-miss, n-(hit[+anyhit+intersect])
+      m_rtShaderGroups.size()));  // 1-raygen, n-miss, n-(hit[+anyhit+intersect])
   rayPipelineInfo.setPGroups(m_rtShaderGroups.data());
 
   rayPipelineInfo.setMaxRecursionDepth(2);  // Ray depth
@@ -1244,7 +1247,7 @@ void HelloVulkan::createRtShaderBindingTable()
   // Write the handles in the SBT
   m_rtSBTBuffer = m_alloc.createBuffer(sbtSize, vk::BufferUsageFlagBits::eTransferSrc,
                                        vk::MemoryPropertyFlagBits::eHostVisible
-                                       | vk::MemoryPropertyFlagBits::eHostCoherent);
+                                           | vk::MemoryPropertyFlagBits::eHostCoherent);
   m_debug.setObjectName(m_rtSBTBuffer.buffer, std::string("SBT").c_str());
 
   // Write the handles in the SBT
@@ -1301,9 +1304,9 @@ void HelloVulkan::raytrace(const vk::CommandBuffer& cmdBuf,
                             {m_rtDescSet, m_descSet}, {});
   cmdBuf.pushConstants<RtPushConstant>(m_rtPipelineLayout,
                                        vk::ShaderStageFlagBits::eRaygenKHR
-                                       | vk::ShaderStageFlagBits::eClosestHitKHR
-                                       | vk::ShaderStageFlagBits::eMissKHR
-                                       | vk::ShaderStageFlagBits::eCallableKHR,
+                                           | vk::ShaderStageFlagBits::eClosestHitKHR
+                                           | vk::ShaderStageFlagBits::eMissKHR
+                                           | vk::ShaderStageFlagBits::eCallableKHR,
                                        0, m_rtPushConstants);
 
   vk::DeviceSize progSize =
@@ -1318,9 +1321,9 @@ void HelloVulkan::raytrace(const vk::CommandBuffer& cmdBuf,
   const vk::StridedBufferRegionKHR raygenShaderBindingTable = {m_rtSBTBuffer.buffer, rayGenOffset,
                                                                progSize, sbtSize};
   const vk::StridedBufferRegionKHR missShaderBindingTable   = {m_rtSBTBuffer.buffer, missOffset,
-                                                               progSize, sbtSize};
+                                                             progSize, sbtSize};
   const vk::StridedBufferRegionKHR hitShaderBindingTable    = {m_rtSBTBuffer.buffer, hitGroupOffset,
-                                                               progSize, sbtSize};
+                                                            progSize, sbtSize};
   const vk::StridedBufferRegionKHR callableShaderBindingTable = {
       m_rtSBTBuffer.buffer, callableGroupOffset, progSize, sbtSize};
   if(pass == 1)
@@ -1410,7 +1413,7 @@ void HelloVulkan::saveImage()
     // Memory must be host visible to copy from
     memAllocInfo.memoryTypeIndex = getMemoryTypeIndex(memRequirements.memoryTypeBits,
                                                       VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
-                                                      | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+                                                          | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
     VK_CHECK_RESULT(vkAllocateMemory(m_device, &memAllocInfo, nullptr, &dstImageMemory));
     VK_CHECK_RESULT(vkBindImageMemory(m_device, dstImage, dstImageMemory, 0));
 
@@ -1493,17 +1496,111 @@ void HelloVulkan::saveImage()
 
 void HelloVulkan::postFrameWork()
 {
-  return;
-  /*VkCommandPool           commandPool;
-  VkCommandPoolCreateInfo cmdPoolInfo = {};
-  cmdPoolInfo.sType                   = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-  cmdPoolInfo.queueFamilyIndex        = 1;
-  cmdPoolInfo.flags                   = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-  VK_CHECK_RESULT(vkCreateCommandPool(m_device, &cmdPoolInfo, nullptr, &commandPool));
-
-  float* imagedata;
+  std::vector<nvmath::vec4f> pixels = std::vector<nvmath::vec4f>(m_size.width * m_size.height, {0,0,1,0});
+  nvmath::vec4f* imageData;
+  HitInfo* hitInfoData;
   {
-    // Create the linear tiled destination image to copy to and to read the memory from
+    VkBufferCreateInfo bfCreateInfo(vks::initializers::bufferCreateInfo());
+    bfCreateInfo.sType       = VkStructureType::VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    bfCreateInfo.size        = sizeof(HitInfo) * m_size.width * m_size.height;
+    bfCreateInfo.usage       = VkBufferUsageFlagBits::VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+    bfCreateInfo.sharingMode = VkSharingMode::VK_SHARING_MODE_EXCLUSIVE;
+    VkBuffer dstBuffer;
+    VK_CHECK_RESULT(vkCreateBuffer(m_device, &bfCreateInfo, nullptr, &dstBuffer));
+    VkMemoryRequirements memRequirements;
+    vkGetBufferMemoryRequirements(m_device, dstBuffer, &memRequirements);
+    VkMemoryAllocateInfo allocInfo{};
+    allocInfo.sType          = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    allocInfo.allocationSize = memRequirements.size;
+    VkDeviceMemory bufferMemory;
+    allocInfo.memoryTypeIndex = getMemoryTypeIndex(memRequirements.memoryTypeBits,
+                                                   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+                                                       | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    VK_CHECK_RESULT(vkAllocateMemory(m_device, &allocInfo, nullptr, &bufferMemory));
+    VK_CHECK_RESULT(vkBindBufferMemory(m_device, dstBuffer, bufferMemory, 0));
+
+
+    // Do the actual blit from the offscreen image to our host visible destination image
+
+    nvvk::CommandPool cmdGen(m_device, m_graphicsQueueIndex);
+
+
+    vk::CommandBuffer cmdBuf = cmdGen.createCommandBuffer();
+
+    VkBufferCopy bufferCopyRegion{};
+    bufferCopyRegion.srcOffset = 0;
+    bufferCopyRegion.srcOffset = 0;
+    bufferCopyRegion.size      = sizeof(HitInfo) * m_size.width * m_size.height;
+    vkCmdCopyBuffer(cmdBuf, m_hitBuffer.buffer, dstBuffer, 1, &bufferCopyRegion);
+
+
+    cmdGen.submitAndWait(cmdBuf);
+    m_alloc.finalizeAndReleaseStaging();
+
+    vkMapMemory(m_device, bufferMemory, 0, VK_WHOLE_SIZE, 0, (void**)&hitInfoData);
+#pragma omp parallel for
+    for(int i = 0; i < m_size.height * m_size.width; i++)
+    {
+      HitInfo h = hitInfoData[i];
+      auto photons = m_photonContainer.findKNearst(h.pos, 10);
+      if(i % m_size.width == 0){
+        std::cout << i / m_size.width << std::endl;
+      }
+    }
+
+
+    vkUnmapMemory(m_device, bufferMemory);
+    vkDestroyBuffer(m_device, dstBuffer, nullptr);
+    vkFreeMemory(m_device, bufferMemory, nullptr);
+  }
+  {
+    VkBufferCreateInfo bfCreateInfo(vks::initializers::bufferCreateInfo());
+    bfCreateInfo.sType       = VkStructureType::VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    bfCreateInfo.size        = sizeof(HitInfo) * m_size.width * m_size.height;
+    bfCreateInfo.usage       = VkBufferUsageFlagBits::VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+    bfCreateInfo.sharingMode = VkSharingMode::VK_SHARING_MODE_EXCLUSIVE;
+    VkBuffer srcBuffer;
+    VK_CHECK_RESULT(vkCreateBuffer(m_device, &bfCreateInfo, nullptr, &srcBuffer));
+    VkMemoryRequirements memRequirements;
+    vkGetBufferMemoryRequirements(m_device, srcBuffer, &memRequirements);
+    VkMemoryAllocateInfo allocInfo{};
+    allocInfo.sType          = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    allocInfo.allocationSize = memRequirements.size;
+    VkDeviceMemory bufferMemory;
+    allocInfo.memoryTypeIndex = getMemoryTypeIndex(memRequirements.memoryTypeBits,
+                                                   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+                                                       | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    VK_CHECK_RESULT(vkAllocateMemory(m_device, &allocInfo, nullptr, &bufferMemory));
+    VK_CHECK_RESULT(vkBindBufferMemory(m_device, srcBuffer, bufferMemory, 0));
+
+    void* data;
+    vkMapMemory(m_device, bufferMemory, 0, m_size.width * m_size.height * sizeof(HitInfo), 0, &data);
+    memset(data, 0, sizeof(HitInfo) * m_size.height * m_size.width);
+    vkUnmapMemory(m_device, bufferMemory);
+
+
+    // Do the actual blit from the offscreen image to our host visible destination image
+
+    nvvk::CommandPool cmdGen(m_device, m_graphicsQueueIndex);
+
+
+    vk::CommandBuffer cmdBuf = cmdGen.createCommandBuffer();
+
+    VkBufferCopy bufferCopyRegion{};
+    bufferCopyRegion.srcOffset = 0;
+    bufferCopyRegion.srcOffset = 0;
+    bufferCopyRegion.size      = sizeof(HitInfo) * m_size.width * m_size.height;
+    vkCmdCopyBuffer(cmdBuf, srcBuffer, m_hitBuffer.buffer, 1, &bufferCopyRegion);
+
+
+    cmdGen.submitAndWait(cmdBuf);
+    m_alloc.finalizeAndReleaseStaging();
+
+
+    vkDestroyBuffer(m_device, srcBuffer, nullptr);
+    vkFreeMemory(m_device, bufferMemory, nullptr);
+  }
+  {
     VkImageCreateInfo imgCreateInfo(vks::initializers::imageCreateInfo());
     imgCreateInfo.imageType     = VK_IMAGE_TYPE_2D;
     imgCreateInfo.format        = VK_FORMAT_R32G32B32A32_SFLOAT;
@@ -1515,37 +1612,72 @@ void HelloVulkan::postFrameWork()
     imgCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     imgCreateInfo.samples       = VK_SAMPLE_COUNT_1_BIT;
     imgCreateInfo.tiling        = VK_IMAGE_TILING_LINEAR;
-    imgCreateInfo.usage         = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    imgCreateInfo.usage         = VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
     // Create the image
-    VkImage dstImage;
-    VK_CHECK_RESULT(vkCreateImage(m_device, &imgCreateInfo, nullptr, &dstImage));
+    VkImage srcImage;
+    VK_CHECK_RESULT(vkCreateImage(m_device, &imgCreateInfo, nullptr, &srcImage));
     // Create memory to back up the image
     VkMemoryRequirements memRequirements;
     VkMemoryAllocateInfo memAllocInfo(vks::initializers::memoryAllocateInfo());
-    VkDeviceMemory       dstImageMemory;
-    vkGetImageMemoryRequirements(m_device, dstImage, &memRequirements);
+    VkDeviceMemory       srcImageMemory;
+    vkGetImageMemoryRequirements(m_device, srcImage, &memRequirements);
     memAllocInfo.allocationSize = memRequirements.size;
     // Memory must be host visible to copy from
     memAllocInfo.memoryTypeIndex = getMemoryTypeIndex(memRequirements.memoryTypeBits,
                                                       VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
-                                                          | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-    VK_CHECK_RESULT(vkAllocateMemory(m_device, &memAllocInfo, nullptr, &dstImageMemory));
-    VK_CHECK_RESULT(vkBindImageMemory(m_device, dstImage, dstImageMemory, 0));
+                                                      | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    VK_CHECK_RESULT(vkAllocateMemory(m_device, &memAllocInfo, nullptr, &srcImageMemory));
+    VK_CHECK_RESULT(vkBindImageMemory(m_device, srcImage, srcImageMemory, 0));
 
     // Do the actual blit from the offscreen image to our host visible destination image
-    VkCommandBufferAllocateInfo cmdBufAllocateInfo =
-        vks::initializers::commandBufferAllocateInfo(commandPool, VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-                                                     1);
+
     nvvk::CommandPool          cmdGen(m_device, m_graphicsQueueIndex);
-    std::vector<nvmath::vec4f> img(m_size.width * m_size.height, {0, 0, 0, 0});
+
 
     vk::CommandBuffer cmdBuf = cmdGen.createCommandBuffer();
 
 
+
+    vks::tools::insertImageMemoryBarrier(
+        cmdBuf, srcImage, 0, VK_ACCESS_MEMORY_WRITE_BIT,
+        VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL,
+        VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VkImageSubresourceRange{VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1});
+
+    cmdGen.submitAndWait(cmdBuf);
+    m_alloc.finalizeAndReleaseStaging();
+
+
+    // Get layout of the image (including row pitch)
+    VkImageSubresource subResource{};
+    subResource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    VkSubresourceLayout subResourceLayout;
+
+    vkGetImageSubresourceLayout(m_device, srcImage, &subResource, &subResourceLayout);
+
+    // Map image memory so we can start copying from it
+    vkMapMemory(m_device, srcImageMemory, 0, VK_WHOLE_SIZE, 0, (void**)&imageData);
+    imageData += subResourceLayout.offset;
+
+    for(int i = 0; i < m_size.width * m_size.height; i++)
+    {
+      imageData[i] = pixels[i];
+    }
+    vkUnmapMemory(m_device, srcImageMemory);
+
+    cmdBuf = cmdGen.createCommandBuffer();
+
+    vks::tools::insertImageMemoryBarrier(
+        cmdBuf, m_save.image, 0, VK_ACCESS_TRANSFER_WRITE_BIT, VK_IMAGE_LAYOUT_GENERAL,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VkImageSubresourceRange{VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1});
+
+
     // Transition destination image to transfer destination layout
     vks::tools::insertImageMemoryBarrier(
-        cmdBuf, dstImage, 0, VK_ACCESS_TRANSFER_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED,
-        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_PIPELINE_STAGE_TRANSFER_BIT,
+        cmdBuf, srcImage, 0, VK_ACCESS_TRANSFER_WRITE_BIT, VK_IMAGE_LAYOUT_GENERAL,
+        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_PIPELINE_STAGE_TRANSFER_BIT,
         VK_PIPELINE_STAGE_TRANSFER_BIT,
         VkImageSubresourceRange{VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1});
 
@@ -1559,13 +1691,12 @@ void HelloVulkan::postFrameWork()
     imageCopyRegion.extent.width              = m_size.width;
     imageCopyRegion.extent.height             = m_size.height;
     imageCopyRegion.extent.depth              = 1;
+    vkCmdCopyImage(cmdBuf, srcImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, m_saveImage.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopyRegion);
 
-    vkCmdCopyImage(cmdBuf, m_saveImage.image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dstImage,
-                   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopyRegion);
 
     // Transition destination image to general layout, which is the required layout for mapping the image memory later on
     vks::tools::insertImageMemoryBarrier(
-        cmdBuf, dstImage, VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_MEMORY_READ_BIT,
+        cmdBuf, m_saveImage.image, VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_MEMORY_READ_BIT,
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL,
         VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
         VkImageSubresourceRange{VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1});
@@ -1575,31 +1706,11 @@ void HelloVulkan::postFrameWork()
 
 
     // Get layout of the image (including row pitch)
-    VkImageSubresource subResource{};
-    subResource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    VkSubresourceLayout subResourceLayout;
 
-    vkGetImageSubresourceLayout(m_device, dstImage, &subResource, &subResourceLayout);
-
-    // Map image memory so we can start copying from it
-    vkMapMemory(m_device, dstImageMemory, 0, VK_WHOLE_SIZE, 0, (void**)&imagedata);
-    imagedata += subResourceLayout.offset;
-    std::vector<float> max = std::vector<float>(m_size.height, 0);
-#pragma omp parallel for
-    for(int j = 0; j < m_size.height; j++)
-    {
-
-      for(int i = 0; i < m_size.width; i += 4)
-      {
-        max[j] = std::max(imagedata[j * m_size.width + i] + imagedata[j * m_size.width + i + 1]
-                              + imagedata[j * m_size.width + i + 2],
-                          max[j]);
-      }
-    }
-    m_rtPushConstants.maxillum = *(std::max_element(std::begin(max), std::end(max)));
-    
+    vkDestroyImage(m_device, srcImage, nullptr);
+    vkFreeMemory(m_device, srcImageMemory, nullptr);
     return;
-  }*/
+  }
 }
 
 void HelloVulkan::savePhotons()
@@ -1622,7 +1733,7 @@ void HelloVulkan::savePhotons()
     VkDeviceMemory bufferMemory;
     allocInfo.memoryTypeIndex = getMemoryTypeIndex(memRequirements.memoryTypeBits,
                                                    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
-                                                   | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+                                                       | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
     VK_CHECK_RESULT(vkAllocateMemory(m_device, &allocInfo, nullptr, &bufferMemory));
     VK_CHECK_RESULT(vkBindBufferMemory(m_device, dstBuffer, bufferMemory, 0));
 
@@ -1646,26 +1757,19 @@ void HelloVulkan::savePhotons()
 
     vkMapMemory(m_device, bufferMemory, 0, VK_WHOLE_SIZE, 0, (void**)&photonData);
 
-    for(int i = 0; i< 32*m_size.width; i++){
-      if(photonData[i].used > 0){
-        m_photons.push_back(photonData[i]);
+    for(int i = 0; i < 32 * m_size.width; i++)
+    {
+      if(photonData[i].used > 0)
+      {
+        m_photonContainer.addPhoton(std::move(photonData[i]));
       }
     }
-    std::cout << m_photons.size() << std::endl;
-
+    std::cout << m_photonContainer.size << std::endl;
 
 
     vkUnmapMemory(m_device, bufferMemory);
     vkDestroyBuffer(m_device, dstBuffer, nullptr);
     vkFreeMemory(m_device, bufferMemory, nullptr);
-
-
-
-
-
-
-
-
   }
   {
     VkBufferCreateInfo bfCreateInfo(vks::initializers::bufferCreateInfo());
@@ -1683,7 +1787,7 @@ void HelloVulkan::savePhotons()
     VkDeviceMemory bufferMemory;
     allocInfo.memoryTypeIndex = getMemoryTypeIndex(memRequirements.memoryTypeBits,
                                                    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
-                                                   | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+                                                       | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
     VK_CHECK_RESULT(vkAllocateMemory(m_device, &allocInfo, nullptr, &bufferMemory));
     VK_CHECK_RESULT(vkBindBufferMemory(m_device, srcBuffer, bufferMemory, 0));
 
@@ -1707,7 +1811,6 @@ void HelloVulkan::savePhotons()
     vkCmdCopyBuffer(cmdBuf, srcBuffer, m_photonBuffer.buffer, 1, &bufferCopyRegion);
 
 
-
     cmdGen.submitAndWait(cmdBuf);
     m_alloc.finalizeAndReleaseStaging();
 
@@ -1715,12 +1818,8 @@ void HelloVulkan::savePhotons()
     vkDestroyBuffer(m_device, srcBuffer, nullptr);
     vkFreeMemory(m_device, bufferMemory, nullptr);
   }
-
-
-
 }
 
-void HelloVulkan::calculatePhotons()
-{
-
+void HelloVulkan::calculatePhotons() {
+  m_photonContainer.rebuild();
 }

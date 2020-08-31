@@ -219,7 +219,6 @@ void main()
     origin.xyz    = prd.rayOrigin;
     direction.xyz = prd.rayDirection;
   }
-  return;
   for(int i = 0; i < 1080; i++)
   {
     imageStore(image, ivec2(gl_LaunchIDEXT.x, i),
