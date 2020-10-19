@@ -11,12 +11,24 @@ struct hitPayload
   float last_bsdf_pdf;
   bool  specular;
   bool  first;
-  float depth;
-  vec3  normal;
-  int   object;
-  bool  needsSampling;
-  float reset;
+  vec3  gnrm;
+  vec3  snrm;
+  bool  photons;
+  int   material;
 };
+
+struct photonPayload
+{
+  vec3 color;
+  vec3 rayOrigin;
+  vec3 rayDirection;
+  uint seed;
+  bool done;
+  vec3 gnrm;
+  vec3 snrm;
+  bool emplace;
+};
+
 
 struct celPayload
 {
@@ -85,6 +97,27 @@ struct directSampleCall
   vec3       from;
 };
 
+struct Photon
+{
+  vec4 pos;
+  vec4 gnrm;
+  vec4 snrm;
+  vec4 inDir;
+  vec4 color;
+};
+
+struct HitInfo
+{
+  vec4 pos;
+  vec4 gnrm;
+  vec4 snrm;
+  vec4 inDir;
+  vec4 outDir;
+  vec4 color;
+  vec4 weight;
+  int  material;
+};
+
 struct LocalCoords
 {
   vec3 n;   ///< Normal
@@ -98,7 +131,6 @@ struct celinfo
   vec4 max;
   vec4 min;
   vec4 avg;
-  vec4 celv;
 };
 const float origin      = 1.0 / 32.0;
 const float float_scale = 1.0 / 65536.0;
@@ -206,7 +238,13 @@ void sample_cosine_hemisphere(LocalCoords coords, float u, float v, inout materi
   mc.sample_pdf = cos_theta / M_PI;
 }
 
-vec3 sample_cosine_hemisphere_direct(LocalCoords coords, float u, float v)
+struct DirSample
+{
+  vec3  dir;
+  float pdf;
+};
+
+DirSample sample_cosine_hemisphere_direct(LocalCoords coords, float u, float v)
 {
 
 
@@ -215,7 +253,7 @@ vec3 sample_cosine_hemisphere_direct(LocalCoords coords, float u, float v)
   float theta     = acos(cos_theta);
 
   vec3 du = normalize(cos(phi) * coords.t + sin(phi) * coords.bt);
-  return normalize(cos_theta * coords.n + sin(theta) * du);
+  return DirSample(normalize(cos_theta * coords.n + sin(theta) * du), cos_theta / M_PI);
 }
 
 float cosine_power_hemisphere_pdf(float c, float k)

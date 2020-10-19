@@ -203,7 +203,7 @@ int main(int argc, char** argv)
 
   // Creation of the example
   //helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Empty-White.obj", defaultSearchPaths));
-  //helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Original.obj", defaultSearchPaths));
+  helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Original.obj", defaultSearchPaths));
   //helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Sphere.obj", defaultSearchPaths));
   //helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Glossy.obj", defaultSearchPaths));
   //helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Mirror.obj", defaultSearchPaths));
@@ -211,17 +211,17 @@ int main(int argc, char** argv)
   //helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Glossy-Floor.obj", defaultSearchPaths));
   //helloVk.loadModel(nvh::findFile("media/scenes/plane.obj", defaultSearchPaths));
 
-  helloVk.loadModel(nvh::findFile("media/scenes/ladies/gumi_alone_medp.obj", defaultSearchPaths));
-  helloVk.loadModel(nvh::findFile("media/scenes/ladies/walls.obj", defaultSearchPaths));
-  nvmath::vec4f plc = {15, 15, 15, 1};
+  //helloVk.loadModel(     nvh::findFile("media/scenes/ladies/gumi_alone_medp.mtl.obj", defaultSearchPaths));
+  //helloVk.loadModel(nvh::findFile("media/scenes/ladies/walls.obj", defaultSearchPaths));
+  nvmath::vec4f plc = {100, 100, 100, 1};
   nvmath::vec4f b   = {0, 0, 0, 1};
 
-  helloVk.addPointLight({plc, {3.5, 10, 2.5, 1}});
-  helloVk.addPointLight({plc, {-3.5, 10, 2.5, 1}});
-  helloVk.addPointLight({plc, {3.5, 10, 6.5, 1}});
-  helloVk.addPointLight({plc, {-3.5, 10, 6.5, 1}});
-  helloVk.addPointLight({plc, {0, 10, -0.5, 1}});
-  helloVk.addPointLight({plc, {0, 10, 9, 1}});
+  //helloVk.addPointLight({plc, {3.5, 10, 2.5, 1}});
+  //helloVk.addPointLight({plc, {-3.5, 10, 2.5, 1}});
+  //helloVk.addPointLight({plc, {3.5, 10, 6.5, 1}});
+  //helloVk.addPointLight({plc, {-3.5, 10, 6.5, 1}});
+  // helloVk.addPointLight({plc, {0, 10, -0.5, 1}});
+  //helloVk.addPointLight({plc, {0, 10, 9, 1}});
 
   helloVk.postModelSetup();
 

@@ -69,7 +69,8 @@ void main()
   Vertex v1 = vertices[nonuniformEXT(objId)].v[ind.y];
   Vertex v2 = vertices[nonuniformEXT(objId)].v[ind.z];
 
-  const int matProb = v0.mat;
+  //const int matProb = v0.mat;
+  const int matProb = 32;
 
   prd.depth = (matProb & 32) != 0 ? gl_HitTEXT : -1;
 
@@ -101,6 +102,9 @@ void main()
   worldPos = offset_ray(worldPos, gnormal);
 
   mc.celcounter = 0;
+  mc.cel1       = 0;
+  mc.cel2       = 0;
+  mc.cel3       = 0;
   prd.celid     = (matProb & 32) != 0 ? v0.celid : 0;
   mc.objId      = objId;
   mc.pId        = gl_PrimitiveID;
@@ -285,8 +289,9 @@ void main()
 
     executeCallableEXT(call, 0);
   }
-
-
+  vec3 ac = mc.outR;
+  mc.outR = vec3(0);
+  for(int pp = 0; pp < 100; pp++)
   {
     for(int i = 0; i < pushC.numAreaLights; i++)
     {
@@ -381,6 +386,7 @@ void main()
       executeCallableEXT(call, 0);
     }
   }
+  mc.outR = mc.outR / 100.0 + ac;
 
   if((matProb & 8) != 0)
   {
@@ -408,5 +414,5 @@ void main()
   }
 
 
-  prd.hitValue = lcolor + mc.outR + emission;
+  prd.hitValue = lcolor + mc.outR;
 }

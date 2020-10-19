@@ -242,6 +242,23 @@ void main()
         CelInfos[nonuniformEXT(pushC.obid)].i[xpos].avg = vec4(col, 1);
         // First frame, replace the value in the buffer
       }
+      int step = max(min(int(ceil(abs(dot(normal, L) * 3))), 3), 1);
+      if(step == 1)
+      {
+        CelInfos[nonuniformEXT(pushC.obid)].i[xpos].celv.x += col.x + col.y + col.z;
+      }
+      else if(step == 2)
+      {
+        CelInfos[nonuniformEXT(pushC.obid)].i[xpos].celv.y += col.x + col.y + col.z;
+      }
+      else if(step == 3)
+      {
+        CelInfos[nonuniformEXT(pushC.obid)].i[xpos].celv.z += col.x + col.y + col.z;
+      }
+      else
+      {
+        CelInfos[nonuniformEXT(pushC.obid)].i[xpos].celv.w += col.x + col.y + col.z;
+      }
     }
   }
   else
@@ -301,6 +318,23 @@ void main()
       CelInfos[nonuniformEXT(pushC.obid)].i[xpos].avg = vec4(prd.color, 1);
       // First frame, replace the value in the buffer
     }
+    int step = max(min(int(ceil(abs(dot(normal, ogdirection) * 3))), 3), 1);
+    if(step == 1)
+    {
+      CelInfos[nonuniformEXT(pushC.obid)].i[xpos].celv.x += prd.color.x + prd.color.y + prd.color.z;
+    }
+    else if(step == 2)
+    {
+      CelInfos[nonuniformEXT(pushC.obid)].i[xpos].celv.y += prd.color.x + prd.color.y + prd.color.z;
+    }
+    else if(step == 3)
+    {
+      CelInfos[nonuniformEXT(pushC.obid)].i[xpos].celv.z += prd.color.x + prd.color.y + prd.color.z;
+    }
+    else
+    {
+      CelInfos[nonuniformEXT(pushC.obid)].i[xpos].celv.w += prd.color.x + prd.color.y + prd.color.z;
+    }
   }
 
   uint x = (xpos - pushC.offset) % 1920;
@@ -324,6 +358,15 @@ void main()
                       * pushC.celsteps)
                  / pushC.celsteps);
       vec3  col = c < pushC.celramp ? vec3(1, 0, 0) : vec3(0, 1, 0);
+      col       = CelInfos[nonuniformEXT(pushC.obid)].i[xpos].celv.x
+                        > CelInfos[nonuniformEXT(pushC.obid)].i[xpos].celv.y
+                    && CelInfos[nonuniformEXT(pushC.obid)].i[xpos].celv.x
+                           > CelInfos[nonuniformEXT(pushC.obid)].i[xpos].celv.z ?
+                vec3(1, 0, 0) :
+                CelInfos[nonuniformEXT(pushC.obid)].i[xpos].celv.y
+                        > CelInfos[nonuniformEXT(pushC.obid)].i[xpos].celv.z ?
+                vec3(1, 1, 0) :
+                vec3(0, 1, 0);
       imageStore(image, ivec2(x, i), vec4(col, 1));
     }
   }

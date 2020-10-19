@@ -29,23 +29,23 @@ matIndex[];
 
 layout(push_constant) uniform Constants
 {
-   vec4 clearColor;
-    vec4 lightColor;
-    vec4 lightPosition;
-    int           numObjs;
-    int numAreaSamples;
-    int frame;
-    int numSamples;
-    float fuzzyAngle;
-    float ior;
-    int           numPointLights;
-  	int numAreaLights;
-    float         celramp;
-    int           celsteps;
-    bool          celatten;
-  	int numids;
-  	float r;
-  	float cut;
+  vec4  clearColor;
+  vec4  lightColor;
+  vec4  lightPosition;
+  int   numObjs;
+  int   numAreaSamples;
+  int   frame;
+  int   numSamples;
+  float fuzzyAngle;
+  float ior;
+  int   numPointLights;
+  int   numAreaLights;
+  float celramp;
+  int   celsteps;
+  bool  celatten;
+  int   numids;
+  float r;
+  float cut;
 }
 pushC;
 
@@ -55,8 +55,7 @@ pushC;
 void main()
 {
 
-    int celsteps = pushC.celsteps;
-    float celramp = pushC.celramp;
+
   int               matIdx  = matIndex[nonuniformEXT(mc.objId)].i[mc.pId];
   WaveFrontMaterial mat     = materials[nonuniformEXT(mc.objId)].m[matIdx];
   uint              txtId   = 0;
@@ -66,13 +65,48 @@ void main()
     txtId = mat.textureId + scnDesc.i[mc.instID].txtOffset;
     diffuse *= texture(textureSamplers[nonuniformEXT(txtId)], mc.texCoord).xyz;
   }
-  mc.emission = pushC.celatten ?  diffuse / celsteps : vec3(0);
-  float cellfac = ceil(dot(mc.normal, mc.inDir) * celsteps) / celsteps;
-  cellfac = max(step(celramp, cellfac) * 1, 0.3);
-  mc.celfaccounter = max(cellfac,mc.celfaccounter);
+
+  float celbin = max(min(ceil(dot(mc.normal, mc.inDir) * 3), 3), 1);
+  mc.cel1 += float(celbin == 1) * (mc.inR.x + mc.inR.y + mc.inR.z);
+  mc.cel2 += float(celbin == 2) * (mc.inR.x + mc.inR.y + mc.inR.z);
+  mc.cel3 += float(celbin == 3) * (mc.inR.x + mc.inR.y + mc.inR.z);
+  /*mc.outR = vec3(float(mc.cel1 > mc.cel3 || mc.cel2 > mc.cel3),
+                 float(mc.cel3 > mc.cel1 || mc.cel2 > mc.cel1), 0.0);*/
+  float f = 0;
+  if(mc.cel1 > mc.cel2 && mc.cel1 > mc.cel3)
+  {
+    f = 0.3;
+  }
+  else if(mc.cel2 > mc.cel3)
+  {
+    f = 0.6;
+  }
+  else
+  {
+    f = 1;
+  }
+
+  mc.outR += mc.inR * diffuse * f / M_PI;
+  mc.emission = mat.emission;
+
+  return;
+  int   celsteps = pushC.celsteps;
+  float celramp  = pushC.celramp;
+
+  if(mat.textureId >= 0)
+  {
+    txtId = mat.textureId + scnDesc.i[mc.instID].txtOffset;
+    diffuse *= texture(textureSamplers[nonuniformEXT(txtId)], mc.texCoord).xyz;
+  }
+  mc.emission      = pushC.celatten ? diffuse / celsteps : vec3(0);
+  float cellfac    = ceil(dot(mc.normal, mc.inDir) * celsteps) / celsteps;
+  cellfac          = max(step(celramp, cellfac) * 1, 0.3);
+  mc.celfaccounter = max(cellfac, mc.celfaccounter);
   mc.celradiance += mc.inR;
   mc.celcounter += 1;
   mc.outR += mc.inR * diffuse * mc.celfaccounter;
 
-  
+
+  mc.outR += mc.inR * diffuse * max(dot(mc.normal, mc.inDir), 0.0) / M_PI;
+  mc.emission = mat.emission;
 }

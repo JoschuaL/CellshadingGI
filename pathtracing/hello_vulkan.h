@@ -244,6 +244,7 @@ public:
     nvmath::vec3f mindirection;
     float         min;
     nvmath::vec4f avg;
+    nvmath::vec4f celv;
   };
 
   struct PostPushConstant

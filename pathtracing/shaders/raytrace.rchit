@@ -120,9 +120,28 @@ void main()
   mc.texCoord =
       v0.texCoord * barycentrics.x + v1.texCoord * barycentrics.y + v2.texCoord * barycentrics.z;
   mc.normal = snormal;
-  mc.celdir = barycentrics.x * CelInfos[nonuniformEXT(objId)].i[3 * gl_PrimitiveID + 0].max.xyz
-              + barycentrics.y * CelInfos[nonuniformEXT(objId)].i[3 * gl_PrimitiveID + 1].max.xyz
-              + barycentrics.z * CelInfos[nonuniformEXT(objId)].i[3 * gl_PrimitiveID + 2].max.xyz;
+  vec3 celv = barycentrics.x * CelInfos[nonuniformEXT(objId)].i[3 * gl_PrimitiveID + 0].celv.xyz
+              + barycentrics.y * CelInfos[nonuniformEXT(objId)].i[3 * gl_PrimitiveID + 1].celv.xyz
+              + barycentrics.z * CelInfos[nonuniformEXT(objId)].i[3 * gl_PrimitiveID + 2].celv.xyz;
+  mc.celdir = celv;
+  /*if(pushC.pass == 0)
+  {
+    if(celv.x > celv.y && celv.x > celv.z)
+    {
+      prd.color = vec3(1, 0, 0);
+    }
+    else if(celv.y > celv.z)
+    {
+      prd.color = vec3(1, 1, 0);
+    }
+    else
+    {
+      prd.color = vec3(0, 1, 0);
+    }
+    prd.done = true;
+    return;
+  }*/
+
 
   /*if(pushC.pass == 0)
   {

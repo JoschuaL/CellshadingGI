@@ -55,6 +55,9 @@ struct materialCall
   float celfaccounter;
   int   celcounter;
   vec3  celradiance;
+  float cel1;
+  float cel2;
+  float cel3;
 };
 
 const float origin      = 1.0 / 32.0;

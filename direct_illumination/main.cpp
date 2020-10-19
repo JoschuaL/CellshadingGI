@@ -95,7 +95,8 @@ void renderUI(HelloVulkan& helloVk)
   changed |= ImGui::InputInt("Blur Kernel Range", &helloVk.m_postPushConstants.blurRange);
   changed |= ImGui::InputFloat("cel cut", &helloVk.m_rtPushConstants.cut, 0.01f, 0.01f);
   changed |= ImGui::InputInt("use ray based edges", &helloVk.m_rtPushConstants.rayEdges, 1);
-  changed |= ImGui::InputInt("use extrusion based edges", &helloVk.m_rtPushConstants.useExtrusion, 1);
+  changed |=
+      ImGui::InputInt("use extrusion based edges", &helloVk.m_rtPushConstants.useExtrusion, 1);
   ImGui::Value("Frames", helloVk.m_FrameCount);
   if(changed)
   {
@@ -211,22 +212,22 @@ int main(int argc, char** argv)
 
 
   //helloVk.loadModel(nvh::findFile("media/scenes/ladies/separatewalls.obj", defaultSearchPaths));
-  //helloVk.loadModel(nvh::findFile("media/scenes/ladies/gumi.obj", defaultSearchPaths));
+  helloVk.loadModel(nvh::findFile("media/scenes/ladies/gumi.obj", defaultSearchPaths));
   //helloVk.loadModel(nvh::findFile("media/scenes/ladies/gumi_alone.obj", defaultSearchPaths));
   //helloVk.loadModel(nvh::findFile("media/scenes/ladies/gumi_alone.obj", defaultSearchPaths));
-  helloVk.loadModel(nvh::findFile("media/scenes/ladies/walls.obj", defaultSearchPaths));
-  helloVk.loadModel(nvh::findFile("media/scenes/ladies/gumi_alone.obj", defaultSearchPaths));
+  //helloVk.loadModel(nvh::findFile("media/scenes/ladies/walls.obj", defaultSearchPaths));
+  //helloVk.loadModel(nvh::findFile("media/scenes/ladies/gumi_alone.obj", defaultSearchPaths));
   //helloVk.loadModel(nvh::findFile("media/scenes/ladies/cube.obj", defaultSearchPaths));
   //helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Original.obj", defaultSearchPaths));
 
   nvmath::vec4f plc = {10, 10, 10, 1};
   nvmath::vec4f b   = {0, 0, 0, 1};
 
-  helloVk.addPointLight({plc, {3.5, 10, 2.5, 1}});
-  helloVk.addPointLight({plc, {-3.5, 10, 2.5, 1}});
-  helloVk.addPointLight({plc, {3.5, 10, 6.5, 1}});
-  helloVk.addPointLight({plc, {-3.5, 10, 6.5, 1}});
-  helloVk.addPointLight({plc, {0, 10, -0.5, 1}});
+  //helloVk.addPointLight({plc, {3.5, 10, 2.5, 1}});
+  //helloVk.addPointLight({plc, {-3.5, 10, 2.5, 1}});
+  //helloVk.addPointLight({plc, {3.5, 10, 6.5, 1}});
+  //helloVk.addPointLight({plc, {-3.5, 10, 6.5, 1}});
+  //helloVk.addPointLight({plc, {0, 10, -0.5, 1}});
   helloVk.addPointLight({plc, {0, 10, 9, 1}});
 
 

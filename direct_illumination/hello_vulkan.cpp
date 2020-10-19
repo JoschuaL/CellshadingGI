@@ -231,11 +231,12 @@ void HelloVulkan::createGraphicsPipeline()
 }
 
 
-
 //--------------------------------------------------------------------------------------------------
 // Loading the OBJ file and setting up all buffers
 //
-void HelloVulkan::loadModel(const std::string& filename, float extrusion_width, nvmath::mat4f transform)
+void HelloVulkan::loadModel(const std::string& filename,
+                            float              extrusion_width,
+                            nvmath::mat4f      transform)
 {
   using vkBU = vk::BufferUsageFlagBits;
 
@@ -924,7 +925,8 @@ nvvk::RaytracingBuilderKHR::Blas HelloVulkan::objectToVkGeometryKHR(const Extrud
 //
 //
 void HelloVulkan::createBottomLevelAS()
-{for(int i = 0; i < 1; i++)
+{
+  for(int i = 0; i < 1; i++)
   {
     // BLAS - Storing each primitive in a geometry
     std::vector<nvvk::RaytracingBuilderKHR::Blas> allBlas;
@@ -953,10 +955,9 @@ void HelloVulkan::createBottomLevelAS()
         // We could add more geometry in each BLAS, but we add only one for now
         extAllBlas.emplace_back(blas);
       }
-      m_rtBuilder.buildBlas(extAllBlas,1,
+      m_rtBuilder.buildBlas(extAllBlas, 1,
                             vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastTrace
-                                | vk::BuildAccelerationStructureFlagBitsKHR::eAllowCompaction
-                            );
+                                | vk::BuildAccelerationStructureFlagBitsKHR::eAllowCompaction);
     }
   }
 }
@@ -991,7 +992,7 @@ void HelloVulkan::createTopLevelAS()
     {
       nvvk::RaytracingBuilderKHR::Instance rayInst;
       rayInst.transform  = m_extObjInstance[i].transform;  // Position of the instance
-      rayInst.instanceId = i;                           // gl_InstanceID
+      rayInst.instanceId = i;                              // gl_InstanceID
       rayInst.blasId     = m_extObjInstance[i].extObjIndex;
       rayInst.hitGroupId = 0;  // We will use the same hit group for all objects
       rayInst.flags      = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
@@ -1481,7 +1482,7 @@ void HelloVulkan::saveImage()
     // Map image memory so we can start copying from it
     vkMapMemory(m_device, dstImageMemory, 0, VK_WHOLE_SIZE, 0, (void**)&imagedata);
     imagedata += subResourceLayout.offset;
-    stbi_write_hdr("K:\\testy.hdr", m_size.width, m_size.height, 4, imagedata);
+    stbi_write_hdr("testy.png", m_size.width, m_size.height, 4, imagedata);
 
     std::vector<uint8_t> pngdata(m_size.width * m_size.height * 4, 0);
     for(int i = 0; i < m_size.width * m_size.height * 4; i++)
@@ -1493,7 +1494,7 @@ void HelloVulkan::saveImage()
         imagedata[i] = 0;
       }
     }
-    stbi_write_png("K:\\testy.png", m_size.width, m_size.height, 4, pngdata.data(), 0);
+    stbi_write_png("testy.png", m_size.width, m_size.height, 4, pngdata.data(), 0);
     vkUnmapMemory(m_device, dstImageMemory);
     vkDestroyImage(m_device, dstImage, nullptr);
     vkFreeMemory(m_device, dstImageMemory, nullptr);

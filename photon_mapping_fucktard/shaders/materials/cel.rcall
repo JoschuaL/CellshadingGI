@@ -88,9 +88,7 @@ void main()
   const LocalCoords coords = gen_local_coords(mc.normal);
   sample_cosine_hemisphere(coords, rnd(mc.seed), rnd(mc.seed), mc);
 
-  cellfac = mc.celdir.x > mc.celdir.y && mc.celdir.x > mc.celdir.z ?
-                0.3 :
-                mc.celdir.y > mc.celdir.z ? 0.6 : 1.0;
+
   const vec3 color = diffuse * cellfac;
 
   make_sample(mc.sample_in, mc.sample_pdf, color, mc.normal, mc);
