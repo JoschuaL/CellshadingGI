@@ -280,7 +280,7 @@ int main(int argc, char** argv)
     std::cout << "lookat: (" << lookat.x << ", " << lookat.y << ", " << lookat.z << ")" << std::endl;*/
 
     // Show UI window.
-    if(!helloVk.m_uiHide)
+    if(true)
     {
       ImGui::ColorEdit3("Clear color", reinterpret_cast<float*>(&clearColor));
       ImGui::Checkbox("Ray Tracer mode", &useRaytracer);  // Switch between raster and ray tracing

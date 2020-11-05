@@ -452,10 +452,10 @@ void HelloVulkan::createTextureImages(const vk::CommandBuffer&        cmdBuf,
 //
 void HelloVulkan::destroyResources()
 {
-  m_device.destroy(m_graphicsPipeline);
-  m_device.destroy(m_pipelineLayout);
-  m_device.destroy(m_descPool);
-  m_device.destroy(m_descSetLayout);
+  m_device.destroy(m_graphicsPipeline, nullptr);
+  m_device.destroy(m_pipelineLayout, nullptr);
+  m_device.destroy(m_descPool, nullptr);
+  m_device.destroy(m_descSetLayout, nullptr);
   m_alloc.destroy(m_cameraMat);
   m_alloc.destroy(m_sceneDesc);
   m_alloc.destroy(m_areaLightsBuffer);
@@ -477,25 +477,25 @@ void HelloVulkan::destroyResources()
   }
 
   //#Post
-  m_device.destroy(m_postPipeline);
-  m_device.destroy(m_postPipelineLayout);
-  m_device.destroy(m_postDescPool);
-  m_device.destroy(m_postDescSetLayout);
+  m_device.destroy(m_postPipeline, nullptr);
+  m_device.destroy(m_postPipelineLayout, nullptr);
+  m_device.destroy(m_postDescPool, nullptr);
+  m_device.destroy(m_postDescSetLayout, nullptr);
   m_alloc.destroy(m_offscreenColor);
   m_alloc.destroy(m_offscreenDepth);
   m_alloc.destroy(m_offscreenDepthRT);
   m_alloc.destroy(m_offscreenNormal);
   m_alloc.destroy(m_offscreenId);
   m_alloc.destroy(m_save);
-  m_device.destroy(m_offscreenRenderPass);
-  m_device.destroy(m_offscreenFramebuffer);
+  m_device.destroy(m_offscreenRenderPass, nullptr);
+  m_device.destroy(m_offscreenFramebuffer, nullptr);
 
   // #VKRay
   m_rtBuilder.destroy();
-  m_device.destroy(m_rtDescPool);
-  m_device.destroy(m_rtDescSetLayout);
-  m_device.destroy(m_rtPipeline);
-  m_device.destroy(m_rtPipelineLayout);
+  m_device.destroy(m_rtDescPool, nullptr);
+  m_device.destroy(m_rtDescSetLayout, nullptr);
+  m_device.destroy(m_rtPipeline, nullptr);
+  m_device.destroy(m_rtPipelineLayout, nullptr);
   m_alloc.destroy(m_rtSBTBuffer);
 }
 
@@ -687,7 +687,7 @@ void HelloVulkan::createOffscreenRender()
   std::vector<vk::ImageView> attachments = {m_offscreenColor.descriptor.imageView,
                                             m_offscreenDepth.descriptor.imageView};
 
-  m_device.destroy(m_offscreenFramebuffer);
+  m_device.destroy(m_offscreenFramebuffer, nullptr);
   vk::FramebufferCreateInfo info;
   info.setRenderPass(m_offscreenRenderPass);
   info.setAttachmentCount(2);
@@ -884,7 +884,7 @@ void HelloVulkan::createBottomLevelAS()
     // We could add more geometry in each BLAS, but we add only one for now
     allBlas.emplace_back(blas);
   }
-  m_rtBuilder.buildBlas(allBlas, 0,
+  m_rtBuilder.buildBlas(allBlas,
                         vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastTrace
                             | vk::BuildAccelerationStructureFlagBitsKHR::eAllowCompaction);
 }
@@ -904,7 +904,7 @@ void HelloVulkan::createTopLevelAS()
     rayInst.mask       = 1 << i;
     tlas.emplace_back(rayInst);
   }
-  m_rtBuilder.buildTlas(tlas, 0, vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastTrace);
+  m_rtBuilder.buildTlas(tlas, vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastTrace);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -930,7 +930,7 @@ void HelloVulkan::createRtDescriptorSet()
   m_rtDescSetLayout = m_rtDescSetLayoutBind.createLayout(m_device);
   m_rtDescSet       = m_device.allocateDescriptorSets({m_rtDescPool, 1, &m_rtDescSetLayout})[0];
 
-  vk::AccelerationStructureKHR                   tlas = m_rtBuilder.getAccelerationStructure(0);
+  vk::AccelerationStructureKHR                   tlas = m_rtBuilder.getAccelerationStructure();
   vk::WriteDescriptorSetAccelerationStructureKHR descASInfo;
   descASInfo.setAccelerationStructureCount(1);
   descASInfo.setPAccelerationStructures(&tlas);
@@ -1167,22 +1167,22 @@ void HelloVulkan::createRtPipeline()
   rayPipelineInfo.setLayout(m_rtPipelineLayout);
   m_rtPipeline = m_device.createRayTracingPipelineKHR({}, rayPipelineInfo).value;
 
-  m_device.destroy(raygenSM);
-  m_device.destroy(prepassRaygenSM);
-  m_device.destroy(missSM);
-  m_device.destroy(shadowmissSM);
-  m_device.destroy(celmissSM);
-  m_device.destroy(chitSM);
-  m_device.destroy(celchitSM);
-  m_device.destroy(lambertSM);
-  m_device.destroy(blinnSM);
-  m_device.destroy(mirrorSM);
-  m_device.destroy(glassSM);
-  m_device.destroy(pointDirectSampleSM);
-  m_device.destroy(areaDirectSampleSM);
-  m_device.destroy(pointEmittSM);
-  m_device.destroy(areaEmittSM);
-  m_device.destroy(celSM);
+  m_device.destroy(raygenSM, nullptr);
+  m_device.destroy(prepassRaygenSM, nullptr);
+  m_device.destroy(missSM, nullptr);
+  m_device.destroy(shadowmissSM, nullptr);
+  m_device.destroy(celmissSM, nullptr);
+  m_device.destroy(chitSM, nullptr);
+  m_device.destroy(celchitSM, nullptr);
+  m_device.destroy(lambertSM, nullptr);
+  m_device.destroy(blinnSM, nullptr);
+  m_device.destroy(mirrorSM, nullptr);
+  m_device.destroy(glassSM, nullptr);
+  m_device.destroy(pointDirectSampleSM, nullptr);
+  m_device.destroy(areaDirectSampleSM, nullptr);
+  m_device.destroy(pointEmittSM, nullptr);
+  m_device.destroy(areaEmittSM, nullptr);
+  m_device.destroy(celSM, nullptr);
 }
 
 //--------------------------------------------------------------------------------------------------
