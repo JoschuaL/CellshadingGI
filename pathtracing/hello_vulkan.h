@@ -52,8 +52,6 @@ enum LightType
   Spot,
   Area
 };
-
-
 class HelloVulkan : public nvvk::AppBase
 {
 public:
@@ -70,7 +68,7 @@ public:
   void createSceneDescriptionBuffer();
   void createTextureImages(const vk::CommandBuffer&        cmdBuf,
                            const std::vector<std::string>& textures);
-  void updateUniformBuffer();
+  void updateUniformBuffer(const vk::CommandBuffer& cmdBuf);
   void onResize(int /*w*/, int /*h*/) override;
   void destroyResources();
   void rasterize(const vk::CommandBuffer& cmdBuff);
@@ -122,7 +120,6 @@ public:
   nvvk::Buffer               m_sceneDesc;  // Device buffer of the OBJ instances
   std::vector<nvvk::Texture> m_textures;   // vector of all textures of the scene
 
-
   nvvk::AllocatorDedicated m_alloc;  // Allocator for buffer, images, acceleration structures
   nvvk::DebugUtil          m_debug;  // Utility to name objects
 
@@ -147,14 +144,14 @@ public:
   vk::Format                  m_offscreenDepthFormat{vk::Format::eD32Sfloat};
 
   // #VKRay
-  void                             initRayTracing();
-  nvvk::RaytracingBuilderKHR::Blas objectToVkGeometryKHR(const ObjModel& model);
-  void                             createBottomLevelAS();
-  void                             createTopLevelAS();
-  void                             createRtDescriptorSet();
-  void                             updateRtDescriptorSet();
-  void                             createRtPipeline();
-  void                             createRtShaderBindingTable();
+  void                                  initRayTracing();
+  nvvk::RaytracingBuilderKHR::BlasInput objectToVkGeometryKHR(const ObjModel& model);
+  void                                  createBottomLevelAS();
+  void                                  createTopLevelAS();
+  void                                  createRtDescriptorSet();
+  void                                  updateRtDescriptorSet();
+  void                                  createRtPipeline();
+  void                                  createRtShaderBindingTable();
   void     raytrace(const vk::CommandBuffer& cmdBuf, const nvmath::vec4f& clearColor, int pass);
   void     resetFrame();
   void     updateFrame();
@@ -164,7 +161,7 @@ public:
   void     postFrameWork();
 
 
-  vk::PhysicalDeviceRayTracingPropertiesKHR           m_rtProperties;
+  vk::PhysicalDeviceRayTracingPipelinePropertiesKHR   m_rtProperties;
   nvvk::RaytracingBuilderKHR                          m_rtBuilder;
   nvvk::DescriptorSetBindings                         m_rtDescSetLayoutBind;
   vk::DescriptorPool                                  m_rtDescPool;
