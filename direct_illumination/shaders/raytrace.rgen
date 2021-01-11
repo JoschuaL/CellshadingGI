@@ -276,7 +276,7 @@ void main()
   }
 
 
-  prd.hitValue = outlines > 0.01 ? prd.hitValue / pushC.numSamples : vec3(0, 0, 0);
+  prd.hitValue = outlines > 0.01 ? hitValues / pushC.numSamples : vec3(0, 0, 0);
 
 
   // Do accumulation over time

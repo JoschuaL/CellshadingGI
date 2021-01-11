@@ -38,6 +38,7 @@ VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 #include "imgui_impl_glfw.h"
 
 #include "hello_vulkan.h"
+#include "imgui_camera_widget.h"
 #include "nvh/cameramanipulator.hpp"
 #include "nvh/fileoperations.hpp"
 #include "nvpsystem.hpp"
@@ -143,18 +144,21 @@ int main(int argc, char** argv)
   NVPSystem system(argv[0], PROJECT_NAME);
 
   // Search path for shaders and other media
-  defaultSearchPaths = {PROJECT_ABSDIRECTORY, PROJECT_ABSDIRECTORY "../",
+  defaultSearchPaths = {PROJECT_ABSDIRECTORY,
+                        PROJECT_ABSDIRECTORY "..",
+                        NVPSystem::exePath(),
+                        NVPSystem::exePath() + "..",
+                        NVPSystem::exePath() + std::string(PROJECT_NAME),
                         NVPSystem::exePath() + std::string(PROJECT_RELDIRECTORY),
                         NVPSystem::exePath() + std::string(PROJECT_RELDIRECTORY)
-                            + std::string("../"),
-                        NVPSystem::exePath()};
-
+                            + std::string("..")};
 
   // Requesting Vulkan extensions and layers
   nvvk::ContextCreateInfo contextInfo(true);
   contextInfo.setVersion(1, 2);
   contextInfo.addInstanceLayer("VK_LAYER_KHRONOS_validation", true);
   contextInfo.addInstanceLayer("VK_LAYER_LUNARG_monitor", true);
+  contextInfo.addInstanceExtension(VK_EXT_DEBUG_UTILS_EXTENSION_NAME, true);
   contextInfo.addInstanceExtension(VK_KHR_SURFACE_EXTENSION_NAME);
 #ifdef WIN32
   contextInfo.addInstanceExtension(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
@@ -167,8 +171,12 @@ int main(int argc, char** argv)
   contextInfo.addDeviceExtension(VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME);
   contextInfo.addDeviceExtension(VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME);
   // #VKRay: Activate the ray tracing extension
-  vk::PhysicalDeviceRayTracingFeaturesKHR raytracingFeature;
-  contextInfo.addDeviceExtension(VK_KHR_RAY_TRACING_EXTENSION_NAME, false, &raytracingFeature);
+  vk::PhysicalDeviceAccelerationStructureFeaturesKHR accelFeature;
+  contextInfo.addDeviceExtension(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME, false,
+                                 &accelFeature);
+  vk::PhysicalDeviceRayTracingPipelineFeaturesKHR rtPipelineFeature;
+  contextInfo.addDeviceExtension(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME, false,
+                                 &rtPipelineFeature);
   contextInfo.addDeviceExtension(VK_KHR_MAINTENANCE3_EXTENSION_NAME);
   contextInfo.addDeviceExtension(VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME);
   contextInfo.addDeviceExtension(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
@@ -194,7 +202,7 @@ int main(int argc, char** argv)
 
   helloVk.setup(vkctx.m_instance, vkctx.m_device, vkctx.m_physicalDevice,
                 vkctx.m_queueGCT.familyIndex);
-  helloVk.createSurface(surface, SAMPLE_WIDTH, SAMPLE_HEIGHT);
+  helloVk.createSwapchain(surface, SAMPLE_WIDTH, SAMPLE_HEIGHT);
   helloVk.createDepthBuffer();
   helloVk.createRenderPass();
   helloVk.createFrameBuffers();
@@ -272,7 +280,7 @@ int main(int argc, char** argv)
     ImGui::NewFrame();
 
     // Updating camera buffer
-    helloVk.updateUniformBuffer();
+    //helloVk.updateUniformBuffer(cmdBuf);
     nvmath::vec3f eye, up, lookat;
     CameraManip.getLookat(eye, lookat, up);
     /*std::cout << "eye: (" << eye.x << ", " << eye.y << ", " << eye.z <<"), ";
@@ -280,24 +288,30 @@ int main(int argc, char** argv)
     std::cout << "lookat: (" << lookat.x << ", " << lookat.y << ", " << lookat.z << ")" << std::endl;*/
 
     // Show UI window.
-    if(true)
+    if(helloVk.showGui())
     {
+      ImGuiH::Panel::Begin();
       ImGui::ColorEdit3("Clear color", reinterpret_cast<float*>(&clearColor));
       ImGui::Checkbox("Ray Tracer mode", &useRaytracer);  // Switch between raster and ray tracing
 
       renderUI(helloVk);
       ImGui::Text("Application average %.3f ms/frame (%.1f FPS)",
                   1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+
+      ImGuiH::Control::Info("", "", "(F10) Toggle Pane", ImGuiH::Control::Flags::Disabled);
+      ImGuiH::Panel::End();
     }
-    ImGui::Render();
+
     // Start rendering the scene
     helloVk.prepareFrame();
 
     // Start command buffer of this frame
     auto                     curFrame = helloVk.getCurFrame();
-    const vk::CommandBuffer& cmdBuff  = helloVk.getCommandBuffers()[curFrame];
+    const vk::CommandBuffer& cmdBuf   = helloVk.getCommandBuffers()[curFrame];
+    cmdBuf.begin({vk::CommandBufferUsageFlagBits::eOneTimeSubmit});
 
-    cmdBuff.begin({vk::CommandBufferUsageFlagBits::eOneTimeSubmit});
+    // Updating camera buffer
+    helloVk.updateUniformBuffer(cmdBuf);
 
     // Clearing screen
     vk::ClearValue clearValues[2];
@@ -317,13 +331,13 @@ int main(int argc, char** argv)
       // Rendering Scene
       if(useRaytracer)
       {
-        helloVk.raytrace(cmdBuff, clearColor);
+        helloVk.raytrace(cmdBuf, clearColor);
       }
       else
       {
-        cmdBuff.beginRenderPass(offscreenRenderPassBeginInfo, vk::SubpassContents::eInline);
-        helloVk.rasterize(cmdBuff);
-        cmdBuff.endRenderPass();
+        cmdBuf.beginRenderPass(offscreenRenderPassBeginInfo, vk::SubpassContents::eInline);
+        helloVk.rasterize(cmdBuf);
+        cmdBuf.endRenderPass();
       }
     }
 
@@ -336,16 +350,17 @@ int main(int argc, char** argv)
       postRenderPassBeginInfo.setFramebuffer(helloVk.getFramebuffers()[curFrame]);
       postRenderPassBeginInfo.setRenderArea({{}, helloVk.getSize()});
 
-      cmdBuff.beginRenderPass(postRenderPassBeginInfo, vk::SubpassContents::eInline);
+      cmdBuf.beginRenderPass(postRenderPassBeginInfo, vk::SubpassContents::eInline);
       // Rendering tonemapper
-      helloVk.drawPost(cmdBuff);
+      helloVk.drawPost(cmdBuf);
       // Rendering UI
-      ImGui::RenderDrawDataVK(cmdBuff, ImGui::GetDrawData());
-      cmdBuff.endRenderPass();
+      ImGui::Render();
+      ImGui::RenderDrawDataVK(cmdBuf, ImGui::GetDrawData());
+      cmdBuf.endRenderPass();
     }
 
     // Submit for display
-    cmdBuff.end();
+    cmdBuf.end();
     helloVk.submitFrame();
   }
   helloVk.saveImage();

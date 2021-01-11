@@ -63,17 +63,19 @@ public:
              uint32_t                  queueFamily) override;
   void createDescriptorSetLayout();
   void createGraphicsPipeline();
-  void loadModel(const std::string& filename, float extrusion_width = 0, nvmath::mat4f transform = nvmath::mat4f(1));
+  void loadModel(const std::string& filename,
+                 float              extrusion_width = 0,
+                 nvmath::mat4f      transform       = nvmath::mat4f(1));
   void updateDescriptorSet();
   void createUniformBuffer();
   void createSceneDescriptionBuffer();
   void createTextureImages(const vk::CommandBuffer&        cmdBuf,
                            const std::vector<std::string>& textures);
-  void updateUniformBuffer();
+  void updateUniformBuffer(const vk::CommandBuffer& cmdBuf);
   void onResize(int /*w*/, int /*h*/) override;
   void destroyResources();
   void rasterize(const vk::CommandBuffer& cmdBuff);
-  int m_modelId = 0;
+  int  m_modelId = 0;
 
   // The OBJ model
   struct ObjModel
@@ -90,8 +92,8 @@ public:
   {
     uint32_t     nbIndices{0};
     uint32_t     nbVertices{0};
-    nvvk::Buffer vertexBuffer;    // Device buffer of all 'Vertex'
-    nvvk::Buffer indexBuffer;     // Device buffer of the indices forming triangles
+    nvvk::Buffer vertexBuffer;  // Device buffer of all 'Vertex'
+    nvvk::Buffer indexBuffer;   // Device buffer of the indices forming triangles
   };
 
   // Instance of the OBJ
@@ -105,7 +107,7 @@ public:
 
   struct ExtrudeObjInstance
   {
-    uint32_t      extObjIndex{0};     // Reference to the `m_objModel`
+    uint32_t      extObjIndex{0};  // Reference to the `m_objModel`
     nvmath::mat4f transform{1};    // Position of the instance
     nvmath::mat4f transformIT{1};  // Inverse transpose
   };
@@ -121,9 +123,9 @@ public:
   ObjPushConstant m_pushConstant;
 
   // Array of objects and instances in the scene
-  std::vector<ObjModel>    m_objModel;
-  std::vector<ObjInstance> m_objInstance;
-  std::vector<ExtrudedObjModel>    m_extObjModel;
+  std::vector<ObjModel>           m_objModel;
+  std::vector<ObjInstance>        m_objInstance;
+  std::vector<ExtrudedObjModel>   m_extObjModel;
   std::vector<ExtrudeObjInstance> m_extObjInstance;
 
   // Graphic pipeline
@@ -157,10 +159,9 @@ public:
   vk::PipelineLayout          m_postPipelineLayout;
   vk::RenderPass              m_offscreenRenderPass;
   vk::Framebuffer             m_offscreenFramebuffer;
-
-  nvvk::Image   m_offscreenColorImage;
-  nvvk::Texture m_offscreenColor;
-  vk::Format    m_offscreenColorFormat{vk::Format::eR32G32B32A32Sfloat};
+  nvvk::Image                 m_offscreenColorImage;
+  nvvk::Texture               m_offscreenColor;
+  vk::Format                  m_offscreenColorFormat{vk::Format::eR32G32B32A32Sfloat};
 
   nvvk::Image   m_offscreenDepthImage;
   nvvk::Texture m_offscreenDepth;
@@ -187,15 +188,14 @@ public:
 
 
   // #VKRay
-  void                             initRayTracing();
-  nvvk::RaytracingBuilderKHR::Blas objectToVkGeometryKHR(const ObjModel& model);
-  nvvk::RaytracingBuilderKHR::Blas objectToVkGeometryKHR(const ExtrudedObjModel& model);
-  void                             createBottomLevelAS();
-  void                             createTopLevelAS();
-  void                             createRtDescriptorSet();
-  void                             updateRtDescriptorSet();
-  void                             createRtPipeline();
-  void                             createRtShaderBindingTable();
+  void                                  initRayTracing();
+  nvvk::RaytracingBuilderKHR::BlasInput objectToVkGeometryKHR(const ObjModel& model);
+  void                                  createBottomLevelAS();
+  void                                  createTopLevelAS();
+  void                                  createRtDescriptorSet();
+  void                                  updateRtDescriptorSet();
+  void                                  createRtPipeline();
+  void                                  createRtShaderBindingTable();
   void raytrace(const vk::CommandBuffer& cmdBuf, const nvmath::vec4f& clearColor);
   void resetFrame();
   void updateFrame();
@@ -204,7 +204,7 @@ public:
   void postModelSetup();
 
 
-  vk::PhysicalDeviceRayTracingPropertiesKHR           m_rtProperties;
+  vk::PhysicalDeviceRayTracingPipelinePropertiesKHR   m_rtProperties;
   nvvk::RaytracingBuilderKHR                          m_rtBuilder;
   nvvk::DescriptorSetBindings                         m_rtDescSetLayoutBind;
   vk::DescriptorPool                                  m_rtDescPool;
@@ -249,10 +249,10 @@ public:
     int           celsteps = 10;
     bool          celatten = false;
     int           numids;
-    float         r        = 0.005;
-    float         cut      = 0.7;
-    int           rayEdges = 0;
-    int useExtrusion = 0;
+    float         r            = 0.005;
+    float         cut          = 0.7;
+    int           rayEdges     = 0;
+    int           useExtrusion = 0;
 
 
   } m_rtPushConstants;
