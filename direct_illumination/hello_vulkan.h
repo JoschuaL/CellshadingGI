@@ -68,6 +68,7 @@ public:
                  nvmath::mat4f      transform       = nvmath::mat4f(1));
   void updateDescriptorSet();
   void createUniformBuffer();
+  void updateCelBuffer();
   void createSceneDescriptionBuffer();
   void createTextureImages(const vk::CommandBuffer&        cmdBuf,
                            const std::vector<std::string>& textures);
@@ -76,6 +77,17 @@ public:
   void destroyResources();
   void rasterize(const vk::CommandBuffer& cmdBuff);
   int  m_modelId = 0;
+
+
+  struct CelValues
+  {
+    float cel1;
+    float cel2;
+    float cel3;
+    float outR;
+  };
+
+  std::vector<CelValues> m_celValues = {};
 
   // The OBJ model
   struct ObjModel
@@ -214,12 +226,12 @@ public:
   vk::PipelineLayout                                  m_rtPipelineLayout;
   vk::Pipeline                                        m_rtPipeline;
   nvvk::Buffer                                        m_rtSBTBuffer;
-  float                                               m_fuzzyAngle          = 0.1f;
+  float                                               m_fuzzyAngle          = 0.0f;
   std::vector<AreaLight>                              m_AreaLightsPerObject = {};
   int                                                 m_numAreaSamples      = 1;
   int                                                 m_numSamples          = 1;
   int                                                 m_FrameCount          = 0;
-  float                                               m_IOR                 = 0.0f;
+  float                                               m_IOR                 = 20.0f;
   LightType                                           m_LightType           = LightType::Infinite;
   nvmath::vec3f                                       m_LightPosition       = {0, 0, 1};
 
@@ -228,6 +240,7 @@ public:
   std::vector<PointLight> m_PointLights = {};
   nvvk::Buffer            m_pointLightBuffer;
   nvvk::Buffer            m_areaLightBuffer;
+  nvvk::Buffer            m_celBuffer;
   int                     m_modelNumber = 0;
   std::vector<int>        dummy         = {0};
 
@@ -241,8 +254,8 @@ public:
     int           numAreaSamples = 1;
     int           frame          = 0;
     int           numSamples     = 1;
-    float         fuzzyAngle     = 0.1f;
-    float         ior            = 0.0f;
+    float         fuzzyAngle     = 0.0f;
+    float         ior            = 20.0f;
     int           numPointLights;
     int           numAreaLights;
     float         celramp  = 0.9;
@@ -253,6 +266,10 @@ public:
     float         cut          = 0.7;
     int           rayEdges     = 0;
     int           useExtrusion = 0;
+    float         lowercel1    = 0.03f;
+    float         highercel1   = 1.15f;
+    float         lowercel2    = 0.02f;
+    float         highercel2   = 0.45f;
 
 
   } m_rtPushConstants;

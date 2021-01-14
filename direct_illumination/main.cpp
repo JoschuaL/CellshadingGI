@@ -98,6 +98,11 @@ void renderUI(HelloVulkan& helloVk)
   changed |= ImGui::InputInt("use ray based edges", &helloVk.m_rtPushConstants.rayEdges, 1);
   changed |=
       ImGui::InputInt("use extrusion based edges", &helloVk.m_rtPushConstants.useExtrusion, 1);
+  changed |= ImGui::InputFloat("asphalt lower", &helloVk.m_rtPushConstants.lowercel1, 0.001, 0.01);
+  changed |=
+      ImGui::InputFloat("asphalt higher", &helloVk.m_rtPushConstants.highercel1, 0.001, 0.01);
+  changed |= ImGui::InputFloat("lolly lower", &helloVk.m_rtPushConstants.lowercel2, 0.001, 0.01);
+  changed |= ImGui::InputFloat("lolly higher", &helloVk.m_rtPushConstants.highercel2, 0.001, 0.01);
   ImGui::Value("Frames", helloVk.m_FrameCount);
   if(changed)
   {
@@ -108,8 +113,8 @@ void renderUI(HelloVulkan& helloVk)
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
-static int const SAMPLE_WIDTH  = 1920;
-static int const SAMPLE_HEIGHT = 1080;
+static int const SAMPLE_WIDTH  = 1200;
+static int const SAMPLE_HEIGHT = 1200;
 
 //--------------------------------------------------------------------------------------------------
 // Application Entry
@@ -130,7 +135,7 @@ int main(int argc, char** argv)
 
   // Setup camera
   CameraManip.setWindowSize(SAMPLE_WIDTH, SAMPLE_HEIGHT);
-  CameraManip.setLookat(nvmath::vec3f(-0.3, 6.7, 16), nvmath::vec3f(0.5, 4.5, 1.5),
+  CameraManip.setLookat(nvmath::vec3f(27.00, 5.00, -3.00), nvmath::vec3f(0.00, 0.00, 0.00),
                         nvmath::vec3f(0, 1, 0));
 
   // Setup Vulkan
@@ -220,25 +225,36 @@ int main(int argc, char** argv)
 
 
   //helloVk.loadModel(nvh::findFile("media/scenes/ladies/separatewalls.obj", defaultSearchPaths));
-  helloVk.loadModel(nvh::findFile("media/scenes/ladies/gumi.obj", defaultSearchPaths));
+  //helloVk.loadModel(nvh::findFile("media/scenes/ladies/gumi.obj", defaultSearchPaths));
   //helloVk.loadModel(nvh::findFile("media/scenes/ladies/gumi_alone.obj", defaultSearchPaths));
   //helloVk.loadModel(nvh::findFile("media/scenes/ladies/gumi_alone.obj", defaultSearchPaths));
   //helloVk.loadModel(nvh::findFile("media/scenes/ladies/walls.obj", defaultSearchPaths));
   //helloVk.loadModel(nvh::findFile("media/scenes/ladies/gumi_alone.obj", defaultSearchPaths));
   //helloVk.loadModel(nvh::findFile("media/scenes/ladies/cube.obj", defaultSearchPaths));
   //helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Original.obj", defaultSearchPaths));
+  helloVk.loadModel(nvh::findFile("media/scenes/di.obj", defaultSearchPaths));
 
-  nvmath::vec4f plc = {10, 10, 10, 1};
-  nvmath::vec4f b   = {0, 0, 0, 1};
+  nvmath::vec4f p = {100, 100, 100, 1};
+  nvmath::vec4f b = {0, 0, 0, 1};
+  /*helloVk.addPointLight({p, {-0.55, 9.75, 8.25, 1}});
+  helloVk.addPointLight({p, {33.2, 6.65, 0.05, 1}});
+  helloVk.addPointLight({p, {18, -5.7, 8.3, 1}});
+  helloVk.addPointLight({p, {41, -3.7, 6.7, 1}});
+  helloVk.addPointLight({p, {26.6, 1.5, -7, 1}});
+  helloVk.addPointLight({p, {25.195, 9.1, 2.8, 1}});
+  helloVk.addPointLight({{10000, 10000, 10000, 1}, {-0.73, -22, 48.4, 1}});*/
+  /*helloVk.addPointLight({plc, {-0.55, 8.25, 9.75, 1}});
+  helloVk.addPointLight({plc, {-0.55, 8.25, 9.75, 1}});
+  helloVk.addPointLight({plc, {-0.55, 8.25, 9.75, 1}});*/
 
   //helloVk.addPointLight({plc, {3.5, 10, 2.5, 1}});
   //helloVk.addPointLight({plc, {-3.5, 10, 2.5, 1}});
   //helloVk.addPointLight({plc, {3.5, 10, 6.5, 1}});
   //helloVk.addPointLight({plc, {-3.5, 10, 6.5, 1}});
   //helloVk.addPointLight({plc, {0, 10, -0.5, 1}});
-  helloVk.addPointLight({plc, {0, 10, 9, 1}});
+  //helloVk.addPointLight({plc, {0, 10, 9, 1}});
 
-
+  helloVk.updateCelBuffer();
   helloVk.postModelSetup();
 
   helloVk.createOffscreenRender();
@@ -271,6 +287,7 @@ int main(int argc, char** argv)
   // Main loop
   while(!glfwWindowShouldClose(window))
   {
+
     glfwPollEvents();
     if(helloVk.isMinimized())
       continue;
@@ -361,6 +378,7 @@ int main(int argc, char** argv)
 
     // Submit for display
     cmdBuf.end();
+
     helloVk.submitFrame();
   }
   helloVk.saveImage();

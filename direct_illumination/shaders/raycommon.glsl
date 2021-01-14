@@ -14,6 +14,14 @@ struct hitPayload
   int   celid;
 };
 
+struct celValues
+{
+  float cel1;
+  float cel2;
+  float cel3;
+  float  celoutR;
+};
+
 struct celPayload
 {
   float depth;
@@ -55,9 +63,8 @@ struct materialCall
   float celfaccounter;
   int   celcounter;
   vec3  celradiance;
-  float cel1;
-  float cel2;
-  float cel3;
+  int lighttype;
+  float celtotal;
 };
 
 const float origin      = 1.0 / 32.0;

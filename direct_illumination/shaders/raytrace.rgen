@@ -25,6 +25,7 @@ layout(binding = 0, set = 1) uniform CameraProperties
 cam;
 
 layout(push_constant) uniform Constants
+
 {
   vec4  clearColor;
   vec4  lightColor;
@@ -43,8 +44,12 @@ layout(push_constant) uniform Constants
   int   numids;
   float r;
   float cut;
-  int   rayEdges;
-  int   useExtrusion;
+  int           rayEdges    ;
+    int           useExtrusion;
+  float         lowercel1   ;
+    float         highercel1  ;
+    float         lowercel2   ;
+    float         highercel2  ;
 }
 pushC;
 
@@ -86,14 +91,14 @@ void main()
   float outlines = 1;
 
 
-  for(int smpl = 0; smpl < pushC.numSamples; smpl++)
+  for(int smpl = 0; smpl < 1; smpl++)
   {
 
     float r1 = rnd(prd.seed);
     float r2 = rnd(prd.seed);
     // Subpixel jitter: send the ray through a different position inside the pixel
     // each time, to provide antialiasing.
-    vec2 subpixel_jitter = pushC.frame == 0 ? vec2(0.5f, 0.5f) : vec2(r1, r2);
+    vec2 subpixel_jitter = pushC.frame <= 10000 ? vec2(0.5f, 0.5f) : vec2(r1, r2);
 
     const vec2 pixelCenter = vec2(gl_LaunchIDEXT.xy) + subpixel_jitter;
     const vec2 inUV        = pixelCenter / vec2(gl_LaunchSizeEXT.xy);
@@ -280,9 +285,9 @@ void main()
 
 
   // Do accumulation over time
-  if(pushC.frame > 0)
+  if(pushC.frame > 10000)
   {
-    float a         = 1.0f / float(pushC.frame + 1);
+    float a         = 1.0f / float(pushC.frame - 10000 + 1);
     vec3  old_color = imageLoad(image, ivec2(gl_LaunchIDEXT.xy)).xyz;
     imageStore(image, ivec2(gl_LaunchIDEXT.xy), vec4(mix(old_color, prd.hitValue, a), 1.f));
   }

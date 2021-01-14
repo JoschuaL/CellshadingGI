@@ -30,13 +30,23 @@ matIndex[];
 layout(push_constant) uniform Constants
 {
   vec4  clearColor;
-  vec3  lightPosition;
-  float lightIntensity;
-  vec3  lightDirection;
-  float lightSpotCutoff;
-  float lightSpotOuterCutoff;
-  int   lightType;
-};
+  vec4  lightColor;
+  vec4  lightPosition;
+  int   numObjs;
+  int   numAreaSamples;
+  int   frame;
+  int   numSamples;
+  float fuzzyAngle;
+  float ior;
+  int   numPointLights;
+  int   numAreaLights;
+  float celramp;
+  int   celsteps;
+  bool  celatten;
+  int   numids;
+  float r;
+  float cut;
+}pushC;
 
 void main()
 {
@@ -48,7 +58,7 @@ void main()
 
   // Compute specular only if not in shadow
   const float kPi        = 3.14159265;
-  const float kShininess = max(mat.shininess, 4.0);
+  const float kShininess = pushC.ior;
 
   // Specular
   const float kEnergyConservation = (2.0 + kShininess) / (2.0 * kPi);

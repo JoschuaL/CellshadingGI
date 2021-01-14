@@ -27,8 +27,11 @@ layout(binding = 4, set = 1) buffer MatIndexColorBuffer
 }
 matIndex[];
 
+layout(binding = 9, set = 1) buffer CelValueBuffer { celValues c[]; } celvalues;
+
 layout(push_constant) uniform Constants
 {
+
   vec4  clearColor;
   vec4  lightColor;
   vec4  lightPosition;
@@ -46,6 +49,12 @@ layout(push_constant) uniform Constants
   int   numids;
   float r;
   float cut;
+  int           rayEdges    ;
+    int           useExtrusion;
+  float         lowercel1   ;
+    float         highercel1  ;
+    float         lowercel2   ;
+    float         highercel2  ;
 }
 pushC;
 
@@ -54,8 +63,7 @@ pushC;
 
 void main()
 {
-
-
+  const uint id = gl_LaunchIDEXT.y * gl_LaunchSizeEXT.x + gl_LaunchIDEXT.x;
   int               matIdx  = matIndex[nonuniformEXT(mc.objId)].i[mc.pId];
   WaveFrontMaterial mat     = materials[nonuniformEXT(mc.objId)].m[matIdx];
   uint              txtId   = 0;
@@ -65,31 +73,63 @@ void main()
     txtId = mat.textureId + scnDesc.i[mc.instID].txtOffset;
     diffuse *= texture(textureSamplers[nonuniformEXT(txtId)], mc.texCoord).xyz;
   }
-
+if(mc.lighttype > 0 || pushC.frame == 0){
   float celbin = max(min(ceil(dot(mc.normal, mc.inDir) * 3), 3), 1);
-  mc.cel1 += float(celbin == 1) * (mc.inR.x + mc.inR.y + mc.inR.z);
-  mc.cel2 += float(celbin == 2) * (mc.inR.x + mc.inR.y + mc.inR.z);
-  mc.cel3 += float(celbin == 3) * (mc.inR.x + mc.inR.y + mc.inR.z);
+  celvalues.c[id].cel1 += float(celbin == 1) * (mc.inR.x + mc.inR.y + mc.inR.z);
+  celvalues.c[id].cel2 += float(celbin == 2) * (mc.inR.x + mc.inR.y + mc.inR.z);
+  celvalues.c[id].cel3 += float(celbin == 3) * (mc.inR.x + mc.inR.y + mc.inR.z);
+}
   /*mc.outR = vec3(float(mc.cel1 > mc.cel3 || mc.cel2 > mc.cel3),
                  float(mc.cel3 > mc.cel1 || mc.cel2 > mc.cel1), 0.0);*/
+  
+  vec3 tempy = mc.inR * diffuse / M_PI; 
+  //mc.outR += mc.inR * diffuse * f / M_PI;
+  mc.emission = mat.emission;
+  celvalues.c[id].celoutR += tempy.x + tempy.y + tempy.z;
+  float tt = celvalues.c[id].celoutR / (pushC.frame + 1);
+  float illubin = (min(max(tt, pushC.lowercel1), pushC.highercel1) - pushC.lowercel1) / (pushC.highercel1 - pushC.lowercel1);
+  illubin = matIdx == 0 ? illubin : (min(max(tt, pushC.lowercel2), pushC.highercel2) - pushC.lowercel2) / (pushC.highercel2 - pushC.lowercel2);
+  float illubincel = max(min(floor(illubin * 2.f), 2.f), 0.f);
+  //mc.outR = vec3(illubincel < 5 ? 0.3f : illubincel < 9 ? 0.6 : 1.0) * diffuse / M_PI;
+  //mc.outR = vec3(illubincel < 5 ? 0.3f : illubincel < 9 ? 0.6 : 1.0);
+
   float f = 0;
-  if(mc.cel1 > mc.cel2 && mc.cel1 > mc.cel3)
+  if(celvalues.c[id].cel1 > celvalues.c[id].cel2 && celvalues.c[id].cel1 > celvalues.c[id].cel3)
   {
-    f = 0.3;
+    if(illubincel == 0){
+      f = 0.0;
+    } else if(illubincel == 1){
+      f = 0.3;
+    } else {
+      f = 0.6;
+    }
+    
   }
-  else if(mc.cel2 > mc.cel3)
+  else if(celvalues.c[id].cel2 > celvalues.c[id].cel3)
   {
-    f = 0.6;
+    if(illubincel == 0){
+      f = 0.3;
+    } else if(illubincel == 1){
+      f = 0.6;
+    } else {
+      f = 0.6;
+    }
   }
   else
   {
-    f = 1;
+    if(illubincel == 0){
+      f = 0.6;
+    } else if(illubincel == 1){
+      f = 1.0;
+    } else {
+      f = 1.0;
+    }
   }
-
-  mc.outR += mc.inR * diffuse * f / M_PI;
-  mc.emission = mat.emission;
+  mc.outR = vec3(illubincel == 0 ? diffuse  * f / M_PI : illubincel == 1 ? diffuse * f / M_PI : diffuse *  f  / M_PI);
+  //mc.outR = vec3(f);
 
   return;
+  /*
   int   celsteps = pushC.celsteps;
   float celramp  = pushC.celramp;
 
@@ -108,5 +148,5 @@ void main()
 
 
   mc.outR += mc.inR * diffuse * max(dot(mc.normal, mc.inDir), 0.0) / M_PI;
-  mc.emission = mat.emission;
+  mc.emission = mat.emission;*/
 }

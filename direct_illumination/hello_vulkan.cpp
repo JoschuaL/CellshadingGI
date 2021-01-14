@@ -162,6 +162,8 @@ void HelloVulkan::createDescriptorSetLayout()
   m_descSetLayoutBind.addBinding(vkDS(7, vkDT::eStorageBuffer, 1, vkSS::eClosestHitKHR));
   // Point Lights (binding = 8)
   m_descSetLayoutBind.addBinding(vkDS(8, vkDT::eStorageBuffer, 1, vkSS::eClosestHitKHR));
+  //Celvalues (binding = 9)
+  m_descSetLayoutBind.addBinding(vkDS(9, vkDT::eStorageBuffer, 1, vkSS::eCallableKHR));
 
 
   m_descSetLayout = m_descSetLayoutBind.createLayout(m_device);
@@ -212,6 +214,8 @@ void HelloVulkan::updateDescriptorSet()
 
   vk::DescriptorBufferInfo dbiPLights{m_pointLightBuffer.buffer, 0, VK_WHOLE_SIZE};
   writes.emplace_back(m_descSetLayoutBind.makeWrite(m_descSet, 8, &dbiPLights));
+  vk::DescriptorBufferInfo dbiCel{m_celBuffer.buffer, 0, VK_WHOLE_SIZE};
+  writes.emplace_back(m_descSetLayoutBind.makeWrite(m_descSet, 9, &dbiCel));
 
   // Writing the information
   m_device.updateDescriptorSets(static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
@@ -359,6 +363,36 @@ void HelloVulkan::postModelSetup()
     m_debug.setObjectName(m_areaLightBuffer.buffer, (std::string("Arealights").c_str()));
   }
 }
+
+void HelloVulkan::updateCelBuffer()
+{
+  if(m_celValues.empty())
+  {
+    m_celValues = std::vector<CelValues>(1920 * 1080 * 4 * 4, {0.f, 0.f, 0.f, 0.f});
+    {
+      using vkBU = vk::BufferUsageFlagBits;
+      nvvk::CommandPool cmdBufGet(m_device, m_graphicsQueueIndex);
+      vk::CommandBuffer cmdBuf = cmdBufGet.createCommandBuffer();
+      m_celBuffer              = m_alloc.createBuffer(cmdBuf, m_celValues, vkBU::eStorageBuffer);
+      cmdBufGet.submitAndWait(cmdBuf);
+
+      m_alloc.finalizeAndReleaseStaging();
+
+      m_debug.setObjectName(m_celBuffer.buffer, (std::string("celvalues").c_str()));
+    }
+  }
+  else
+  {
+    {
+      using vkBU = vk::BufferUsageFlagBits;
+      nvvk::CommandPool cmdBufGet(m_device, m_graphicsQueueIndex);
+      vk::CommandBuffer cmdBuf = cmdBufGet.createCommandBuffer();
+      cmdBuf.fillBuffer(m_celBuffer.buffer, 0, VK_WHOLE_SIZE, 0);
+      cmdBufGet.submitAndWait(cmdBuf);
+    }
+  }
+}
+
 
 //--------------------------------------------------------------------------------------------------
 // Creating the uniform buffer holding the camera matrices
@@ -511,6 +545,7 @@ void HelloVulkan::destroyResources()
   }
   m_alloc.destroy(m_areaLightBuffer);
   m_alloc.destroy(m_pointLightBuffer);
+  m_alloc.destroy(m_celBuffer);
   //#Post
   m_device.destroy(m_postPipeline);
   m_device.destroy(m_postPipelineLayout);
@@ -575,6 +610,7 @@ void HelloVulkan::onResize(int /*w*/, int /*h*/)
   createOffscreenRender();
   updatePostDescriptorSet();
   updateRtDescriptorSet();
+  updateCelBuffer();
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1297,6 +1333,13 @@ void HelloVulkan::raytrace(const vk::CommandBuffer& cmdBuf, const nvmath::vec4f&
 void HelloVulkan::resetFrame()
 {
   m_FrameCount = -1;
+  {
+    using vkBU = vk::BufferUsageFlagBits;
+    nvvk::CommandPool cmdBufGet(m_device, m_graphicsQueueIndex);
+    vk::CommandBuffer cmdBuf = cmdBufGet.createCommandBuffer();
+    cmdBuf.fillBuffer(m_celBuffer.buffer, 0, VK_WHOLE_SIZE, 0);
+    cmdBufGet.submitAndWait(cmdBuf);
+  }
 }
 
 void HelloVulkan::updateFrame()

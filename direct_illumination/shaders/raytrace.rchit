@@ -46,6 +46,12 @@ layout(push_constant) uniform Constants
   int   numids;
   float r;
   float cut;
+  int           rayEdges    ;
+    int           useExtrusion;
+  float         lowercel1   ;
+    float         highercel1  ;
+    float         lowercel2   ;
+    float         highercel2  ;
 }
 pushC;
 
@@ -69,8 +75,10 @@ void main()
   Vertex v1 = vertices[nonuniformEXT(objId)].v[ind.y];
   Vertex v2 = vertices[nonuniformEXT(objId)].v[ind.z];
 
-  //const int matProb = v0.mat;
-  const int matProb = 32;
+  int matProb = v0.mat;
+  //matProb = matProb == 32 ? 1 : matProb;
+  //const int matProb = 32;
+  
 
   prd.depth = (matProb & 32) != 0 ? gl_HitTEXT : -1;
 
@@ -102,9 +110,6 @@ void main()
   worldPos = offset_ray(worldPos, gnormal);
 
   mc.celcounter = 0;
-  mc.cel1       = 0;
-  mc.cel2       = 0;
-  mc.cel3       = 0;
   prd.celid     = (matProb & 32) != 0 ? v0.celid : 0;
   mc.objId      = objId;
   mc.pId        = gl_PrimitiveID;
@@ -120,6 +125,7 @@ void main()
   mc.emission      = vec3(0, 0, 0);
   mc.celradiance   = vec3(0);
   mc.celfaccounter = 1;
+  mc.celtotal = 0.f;
   vec3 lightsColor = vec3(0.0, 0.0, 0.0);
 
   // Vector toward the light
@@ -155,20 +161,15 @@ void main()
   float fac   = 1.0;
   switch(matProb)
   {
-    case 1: {
+    case 1: { //lambert
       call = 0;
       break;
     }
-    case 2: {
+    case 2: {//gloss
       call = 1;
       break;
     }
-    case 3: {
-      call = rnd(prd.seed) > 0.5 ? 1 : 0;
-      fac *= 2;
-      break;
-    }
-    case 32: {
+    case 32: {//cel
       call = 4;
       break;
     }
@@ -204,11 +205,12 @@ void main()
 
     lcolor = mc.outR * fac * float(!isShadowed);
   }
-
+ 
+  
 
   for(int i = 0; i < pushC.numPointLights; i++)
   {
-
+    mc.lighttype = 0;
     PointLight li = plights.l[i];
 
     if(li.color.x + li.color.y + li.color.z <= 0.0)
@@ -291,10 +293,11 @@ void main()
   }
   vec3 ac = mc.outR;
   mc.outR = vec3(0);
-  for(int pp = 0; pp < 100; pp++)
+  for(int pp = 0; pp < pushC.numAreaSamples; pp++)
   {
     for(int i = 0; i < pushC.numAreaLights; i++)
     {
+      mc.lighttype = 1;
       AreaLight li = lights.l[i];
       if(li.color.x + li.color.y + li.color.z <= 0.0)
       {
@@ -386,7 +389,7 @@ void main()
       executeCallableEXT(call, 0);
     }
   }
-  mc.outR = mc.outR / 100.0 + ac;
+  mc.outR = mc.outR / pushC.numAreaSamples + ac;
 
   if((matProb & 8) != 0)
   {
@@ -414,5 +417,5 @@ void main()
   }
 
 
-  prd.hitValue = lcolor + mc.outR;
+  prd.hitValue = lcolor + mc.outR + emission;
 }
